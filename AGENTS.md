@@ -123,6 +123,13 @@ pnpm run electron:build   # 构建 Electron 应用 (输出到 dist/)
 
 ## 最近更新
 
+### 2025-11-02 - Base64 解码前移优化
+- ✅ 新增 `saveDrawioXML` 统一保存函数，确保 localStorage 永远存储解码后的纯 XML
+- ✅ 所有写入 localStorage 的操作（DrawIO 自动保存、文件加载、AI 工具替换）都自动解码 base64
+- ✅ 解决保存到文件时可能出现 base64 编码内容的问题
+- ✅ 重构 `replaceDrawioXML` 和 `batchReplaceDrawioXML` 使用统一保存函数
+- ✅ 优化数据流：DrawIO 编辑器 → 自动解码 → localStorage（纯 XML）→ 文件保存（纯 XML）
+
 ### 2025-10-31 - LLM 配置供应商切换
 - ✅ 设置侧边栏支持选择 AI 请求供应商（OpenAI Responses/Chat、DeepSeek 等）
 - ✅ 全局统一通过 `@ai-sdk/openai` 发送请求，移除旧式 REST 手写调用

@@ -83,6 +83,28 @@ function decodeBase64XML(xml: string): string {
 }
 
 /**
+ * 保存 XML 到 localStorage（自动解码 base64）
+ *
+ * 统一的保存入口，确保 localStorage 中永远存储解码后的纯 XML
+ *
+ * @param xml - XML 内容（可能包含 base64 编码）
+ */
+export function saveDrawioXML(xml: string): void {
+  if (typeof window === "undefined") {
+    throw new Error('saveDrawioXML 只能在浏览器环境中使用');
+  }
+
+  // 自动解码 base64（如果是base64格式）
+  const decodedXml = decodeBase64XML(xml);
+
+  // 写入 localStorage（纯XML）
+  localStorage.setItem(STORAGE_KEY, decodedXml);
+
+  // 触发更新事件
+  triggerUpdateEvent(decodedXml);
+}
+
+/**
  * 触发自定义事件，通知组件 XML 已更新
  *
  * @param xml - 更新后的 XML 内容
@@ -179,11 +201,8 @@ export function replaceDrawioXML(drawio_xml: string): ReplaceXMLResult {
   }
 
   try {
-    // 写入 localStorage
-    localStorage.setItem(STORAGE_KEY, drawio_xml);
-
-    // 触发更新事件
-    triggerUpdateEvent(drawio_xml);
+    // 保存到 localStorage（自动解码 base64）
+    saveDrawioXML(drawio_xml);
 
     return {
       success: true,
@@ -298,10 +317,9 @@ export function batchReplaceDrawioXML(
       };
     }
 
-    // 保存到 localStorage 并触发更新事件
+    // 保存到 localStorage（自动解码 base64）并触发更新事件
     try {
-      localStorage.setItem(STORAGE_KEY, currentXml);
-      triggerUpdateEvent(currentXml);
+      saveDrawioXML(currentXml);
     } catch (error) {
       return {
         success: false,

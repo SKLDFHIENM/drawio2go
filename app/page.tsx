@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import DrawioEditorNative from "./components/DrawioEditorNative"; // 使用原生 iframe 实现
 import BottomBar from "./components/BottomBar";
 import UnifiedSidebar from "./components/UnifiedSidebar";
-import { UPDATE_EVENT } from "./lib/drawio-tools";
+import { UPDATE_EVENT, saveDrawioXML } from "./lib/drawio-tools";
 import { useDrawioSocket } from "./hooks/useDrawioSocket";
 
 export default function Home() {
@@ -49,11 +49,11 @@ export default function Home() {
     }
   }, []);
 
-  // 自动保存图表到 localStorage
+  // 自动保存图表到 localStorage（自动解码 base64）
   const handleAutoSave = (xml: string) => {
     setCurrentXml(xml);
     if (typeof window !== "undefined") {
-      localStorage.setItem("currentDiagram", xml);
+      saveDrawioXML(xml);
     }
   };
 
@@ -94,7 +94,7 @@ export default function Home() {
       if (result.success) {
         setDiagramXml(result.xml);
         setCurrentXml(result.xml);
-        localStorage.setItem("currentDiagram", result.xml);
+        saveDrawioXML(result.xml);
       } else if (result.message !== "用户取消打开") {
         alert(`加载失败: ${result.message}`);
       }
@@ -111,7 +111,7 @@ export default function Home() {
             const xml = event.target?.result as string;
             setDiagramXml(xml);
             setCurrentXml(xml);
-            localStorage.setItem("currentDiagram", xml);
+            saveDrawioXML(xml);
           };
           reader.readAsText(file);
         }
