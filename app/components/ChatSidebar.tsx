@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useChat } from "@ai-sdk/react";
 import { Button, TooltipContent, TooltipRoot } from "@heroui/react";
 import ReactMarkdown, { type Components as MarkdownComponents } from "react-markdown";
 import { useLLMConfig } from "@/app/hooks/useLLMConfig";
+import { useChatSessions } from "@/app/hooks/useChatSessions";
 
 const TOOL_LABELS: Record<string, string> = {
   "tool-get_drawio_xml": "获取 DrawIO XML",
@@ -179,10 +180,39 @@ interface ChatSidebarProps {
 export default function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) {
   const [input, setInput] = useState("");
   const [expandedToolCalls, setExpandedToolCalls] = useState<Record<string, boolean>>({});
+  const [showSessionMenu, setShowSessionMenu] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { config: llmConfig, isLoading: configLoading, error: configError } = useLLMConfig();
 
-  const { messages, sendMessage, status, error: chatError } = useChat();
+  // 会话管理
+  const {
+    sessionsData,
+    activeSession,
+    isLoading: sessionsLoading,
+    createSession,
+    deleteSession,
+    switchSession,
+    updateSessionMessages,
+    exportSession,
+    exportAllSessions,
+    importSessions,
+  } = useChatSessions();
+
+  // 初始消息（从当前活动会话加载）
+  const initialMessages = useMemo(() => {
+    return activeSession?.messages || [];
+  }, [activeSession?.id]); // 只在会话 ID 变化时重新计算
+
+  const { messages, sendMessage, status, error: chatError } = useChat({
+    id: activeSession?.id || "default",
+    messages: initialMessages,
+    onFinish: ({ messages }) => {
+      // 自动保存消息到会话
+      if (activeSession) {
+        updateSessionMessages(activeSession.id, messages);
+      }
+    },
+  });
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -211,13 +241,134 @@ export default function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) {
   };
 
   const handleNewChat = () => {
-    console.log("新建聊天");
-    // TODO: 清空当前对话，开始新对话
+    createSession();
   };
 
   const handleHistory = () => {
-    console.log("打开历史对话");
-    // TODO: 显示历史对话列表
+    setShowSessionMenu(!showSessionMenu);
+  };
+
+  const handleDeleteSession = () => {
+    if (!activeSession || !sessionsData) return;
+
+    // 如果只有一个会话，不允许删除
+    if (sessionsData.sessionOrder.length === 1) {
+      alert("至少需要保留一个会话");
+      return;
+    }
+
+    if (confirm(`确定要删除会话 "${activeSession.title}" 吗？`)) {
+      deleteSession(activeSession.id);
+    }
+  };
+
+  const handleExportSession = async () => {
+    if (!activeSession) return;
+
+    const jsonData = exportSession(activeSession.id);
+    if (!jsonData) return;
+
+    // 使用 Electron 文件对话框
+    if (window.electron?.showSaveDialog) {
+      try {
+        const filePath = await window.electron.showSaveDialog({
+          defaultPath: `chat-${activeSession.title}.json`,
+          filters: [{ name: "JSON 文件", extensions: ["json"] }],
+        });
+
+        if (filePath) {
+          await window.electron.writeFile(filePath, jsonData);
+          alert("导出成功！");
+        }
+      } catch (error) {
+        console.error("导出失败:", error);
+        alert("导出失败");
+      }
+    } else {
+      // 浏览器环境，使用下载
+      const blob = new Blob([jsonData], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `chat-${activeSession.title}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  };
+
+  const handleExportAllSessions = async () => {
+    const jsonData = exportAllSessions();
+    if (!jsonData) return;
+
+    // 使用 Electron 文件对话框
+    if (window.electron?.showSaveDialog) {
+      try {
+        const filePath = await window.electron.showSaveDialog({
+          defaultPath: `all-chats-${new Date().toISOString().split("T")[0]}.json`,
+          filters: [{ name: "JSON 文件", extensions: ["json"] }],
+        });
+
+        if (filePath) {
+          await window.electron.writeFile(filePath, jsonData);
+          alert("导出成功！");
+        }
+      } catch (error) {
+        console.error("导出失败:", error);
+        alert("导出失败");
+      }
+    } else {
+      // 浏览器环境，使用下载
+      const blob = new Blob([jsonData], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `all-chats-${new Date().toISOString().split("T")[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  };
+
+  const handleImportSessions = async () => {
+    // 使用 Electron 文件对话框
+    if (window.electron?.showOpenDialog) {
+      try {
+        const filePaths = await window.electron.showOpenDialog({
+          filters: [{ name: "JSON 文件", extensions: ["json"] }],
+          properties: ["openFile"],
+        });
+
+        if (filePaths && filePaths.length > 0) {
+          const jsonData = await window.electron.readFile(filePaths[0]);
+          const success = importSessions(jsonData);
+          if (success) {
+            alert("导入成功！");
+          } else {
+            alert("导入失败，请检查文件格式");
+          }
+        }
+      } catch (error) {
+        console.error("导入失败:", error);
+        alert("导入失败");
+      }
+    } else {
+      // 浏览器环境，使用文件输入
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = "application/json";
+      input.onchange = async (e) => {
+        const file = (e.target as HTMLInputElement).files?.[0];
+        if (file) {
+          const text = await file.text();
+          const success = importSessions(text);
+          if (success) {
+            alert("导入成功！");
+          } else {
+            alert("导入失败，请检查文件格式");
+          }
+        }
+      };
+      input.click();
+    }
   };
 
   const handleVersionControl = () => {
@@ -239,6 +390,178 @@ export default function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) {
     <div className="chat-sidebar-content">
       {/* 消息内容区域 - 无分隔线一体化设计 */}
       <div className="chat-messages-area">
+        {/* 会话标题栏 */}
+        {activeSession && (
+          <div className="chat-session-header">
+            <div className="chat-session-title-wrapper">
+              <button
+                type="button"
+                className="chat-session-title-button"
+                onClick={handleHistory}
+              >
+                <span className="chat-session-title">{activeSession.title}</span>
+                <svg
+                  className={`chat-session-chevron ${showSessionMenu ? "chat-session-chevron--open" : ""}`}
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </button>
+              <span className="chat-session-meta">
+                {activeSession.messages.length} 条消息
+              </span>
+            </div>
+            <div className="chat-session-actions">
+              <TooltipRoot delay={0}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  isIconOnly
+                  onPress={handleDeleteSession}
+                  className="chat-icon-button"
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <polyline points="3 6 5 6 21 6" />
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                  </svg>
+                </Button>
+                <TooltipContent placement="top">
+                  <p>删除会话</p>
+                </TooltipContent>
+              </TooltipRoot>
+
+              <TooltipRoot delay={0}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  isIconOnly
+                  onPress={handleExportSession}
+                  className="chat-icon-button"
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                </Button>
+                <TooltipContent placement="top">
+                  <p>导出当前会话</p>
+                </TooltipContent>
+              </TooltipRoot>
+
+              <TooltipRoot delay={0}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  isIconOnly
+                  onPress={handleExportAllSessions}
+                  className="chat-icon-button"
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                    <line x1="12" y1="18" x2="12" y2="12" />
+                    <line x1="9" y1="15" x2="15" y2="15" />
+                  </svg>
+                </Button>
+                <TooltipContent placement="top">
+                  <p>导出所有会话</p>
+                </TooltipContent>
+              </TooltipRoot>
+
+              <TooltipRoot delay={0}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  isIconOnly
+                  onPress={handleImportSessions}
+                  className="chat-icon-button"
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                  </svg>
+                </Button>
+                <TooltipContent placement="top">
+                  <p>导入会话</p>
+                </TooltipContent>
+              </TooltipRoot>
+            </div>
+          </div>
+        )}
+
+        {/* 会话选择菜单 */}
+        {showSessionMenu && sessionsData && (
+          <div className="chat-session-menu">
+            {sessionsData.sessionOrder.map((sessionId) => {
+              const session = sessionsData.sessions[sessionId];
+              const isActive = sessionId === activeSession?.id;
+              return (
+                <button
+                  key={sessionId}
+                  type="button"
+                  className={`chat-session-menu-item ${isActive ? "chat-session-menu-item--active" : ""}`}
+                  onClick={() => {
+                    switchSession(sessionId);
+                    setShowSessionMenu(false);
+                  }}
+                >
+                  <div className="chat-session-menu-item-title">
+                    {session.title}
+                  </div>
+                  <div className="chat-session-menu-item-meta">
+                    {session.messages.length} 条消息 · {new Date(session.updatedAt).toLocaleDateString()}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         <div className="messages-scroll-area">
           {configLoading ? (
             <div className="empty-state">
@@ -278,7 +601,7 @@ export default function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) {
                   </span>
                 </div>
                 <div className="message-content">
-                  {message.parts.map((part, index) => {
+                  {message.parts.map((part: any, index: number) => {
                     if (part.type === "text") {
                       return (
                         <div key={`${message.id}-${index}`} className="message-markdown">

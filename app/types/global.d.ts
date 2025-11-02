@@ -21,6 +21,29 @@ declare global {
     resolve: (value: any) => void;
     reject: (error: Error) => void;
   }> | undefined;
+
+  /**
+   * Electron API
+   * 通过 preload.js 注入的 API
+   */
+  interface Window {
+    electron?: {
+      selectFolder: () => Promise<string | null>;
+      saveDiagram: (xml: string, defaultPath?: string) => Promise<{ success: boolean; message?: string; filePath?: string }>;
+      loadDiagram: () => Promise<{ success: boolean; xml?: string; filePath?: string; message?: string }>;
+      openExternal: (url: string) => Promise<void>;
+      showSaveDialog: (options: {
+        defaultPath?: string;
+        filters?: { name: string; extensions: string[] }[];
+      }) => Promise<string | null>;
+      showOpenDialog: (options: {
+        filters?: { name: string; extensions: string[] }[];
+        properties?: string[];
+      }) => Promise<string[] | null>;
+      writeFile: (filePath: string, data: string) => Promise<{ success: boolean; error?: string }>;
+      readFile: (filePath: string) => Promise<string>;
+    };
+  }
 }
 
 export {};
