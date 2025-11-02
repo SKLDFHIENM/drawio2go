@@ -1,323 +1,245 @@
 # 里程碑 5：类型定义与优化
 
-**状态**：⏸️ 待执行
+**状态**：✅ 已完成
 **预计耗时**：30 分钟
 **依赖**：里程碑 1-4
 
 ## 目标
-完善 TypeScript 类型定义，优化代码结构和用户体验
+完善 TypeScript 类型定义，优化代码结构和用户体验，集成 Socket.IO 协议类型
 
 ## 任务清单
 
 ### 1. 创建统一的类型定义文件
-- [ ] 创建 `app/types/chat.ts`
-- [ ] 定义供应商类型枚举：
+- [x] 创建 `app/types/chat.ts`：
   ```typescript
-  /**
-   * 支持的 AI 供应商类型
-   * - openai: 使用 OpenAI Chat API (.chat 方法)
-   * - openai-response: 使用 OpenAI Responses API (AI SDK 5 默认)
-   * - deepseek: DeepSeek API (预留扩展)
-   * - anthropic: Anthropic Claude API (预留扩展)
-   */
   export type ProviderType = 'openai' | 'openai-response' | 'deepseek' | 'anthropic';
-  ```
 
-- [ ] 定义 LLM 配置类型：
-  ```typescript
-  /**
-   * LLM 配置接口
-   */
   export interface LLMConfig {
-    /** API 请求地址 */
     apiUrl: string;
-    /** API 密钥 */
     apiKey: string;
-    /** 温度参数（0-2） */
     temperature: number;
-    /** 模型名称 */
     modelName: string;
-    /** 系统提示词 */
     systemPrompt: string;
-    /** 供应商类型 */
     providerType: ProviderType;
-    /** 最大工具调用轮次 */
     maxToolRounds: number;
   }
   ```
 
-  **供应商类型说明**：
-  - **openai**: 使用 `createOpenAI().chat()` 方法，调用传统的 OpenAI Chat Completions API
-  - **openai-response**: 使用 `createOpenAI()()` 默认方法，调用 AI SDK 5 的 Responses API，支持更多功能（Web Search、File Search、Image Generation、Code Interpreter 等）
-  - **deepseek**: 使用 DeepSeek 官方 Provider（需安装 `@ai-sdk/deepseek`，预留）
-  - **anthropic**: 使用 Anthropic Claude Provider（需安装 `@ai-sdk/anthropic`，预留）
-
-  详细 API 区别参见 `.claude/docs/aisdk-openai.md` 第102-106行和第125-287行。
-
-- [ ] 定义工具调用相关类型：
+- [x] 创建 `app/types/socket-protocol.ts`：
   ```typescript
   /**
-   * 工具调用状态
+   * Socket.IO 通讯协议类型定义
    */
+  export interface ToolCallRequest {
+    requestId: string;
+    toolName: 'get_drawio_xml' | 'replace_drawio_xml' | 'batch_replace_drawio_xml';
+    input: any;
+    timeout: number;
+  }
+
+  export interface ToolCallResult {
+    requestId: string;
+    success: boolean;
+    result?: any;
+    error?: string;
+  }
+
+  export interface ServerToClientEvents {
+    'tool:execute': (request: ToolCallRequest) => void;
+  }
+
+  export interface ClientToServerEvents {
+    'tool:result': (result: ToolCallResult) => void;
+  }
+  ```
+
+- [x] 定义工具调用相关类型：
+  ```typescript
   export type ToolInvocationState = 'call' | 'result';
 
-  /**
-   * 工具调用接口
-   */
   export interface ToolInvocation {
-    /** 工具调用唯一 ID */
     toolCallId: string;
-    /** 工具名称 */
     toolName: string;
-    /** 工具参数 */
     args: Record<string, any>;
-    /** 调用状态 */
     state: ToolInvocationState;
-    /** 工具返回结果（仅当 state === 'result' 时存在） */
     result?: any;
   }
 
-  /**
-   * 聊天消息接口（扩展 AI SDK 的 Message 类型）
-   */
   export interface ChatMessage {
-    /** 消息唯一 ID */
     id: string;
-    /** 消息角色 */
     role: 'user' | 'assistant' | 'system';
-    /** 消息内容 */
     content: string;
-    /** 工具调用列表（仅 assistant 消息可能包含） */
     toolInvocations?: ToolInvocation[];
-    /** 创建时间 */
     createdAt?: Date;
   }
   ```
 
-### 2. 更新各文件使用统一类型
-- [ ] 更新 `app/components/SettingsSidebar.tsx`：
+### 2. 统一类型导入和使用
+- [x] 更新所有文件使用统一类型：
   ```typescript
-  import { LLMConfig } from '@/types/chat';
+  // SettingsSidebar.tsx
+  import { LLMConfig } from '@/app/types/chat';
 
-  // 删除文件内的 LLMConfig 定义
-  // 使用导入的类型
+  // ChatSidebar.tsx
+  import { LLMConfig } from '@/app/types/chat';
+
+  // API route
+  import { LLMConfig } from '@/app/types/chat';
   ```
 
-- [ ] 更新 `app/components/ChatSidebar.tsx`：
+### 3. 创建自定义 Hook 系统
+- [x] 创建 `app/hooks/useLLMConfig.ts`：
   ```typescript
-  import { LLMConfig, ToolInvocation } from '@/types/chat';
-
-  const [llmConfig, setLlmConfig] = useState<LLMConfig | null>(null);
-  ```
-
-- [ ] 更新 `app/api/chat/route.ts`：
-  ```typescript
-  import { LLMConfig } from '@/types/chat';
-
-  // 删除文件内的 LLMConfig 定义
-  ```
-
-### 3. 创建自定义 Hook
-- [ ] 创建 `app/hooks/useLLMConfig.ts`：
-  ```typescript
-  import { useState, useEffect } from 'react';
-  import { LLMConfig } from '@/types/chat';
-
-  const STORAGE_KEY = 'llmConfig';
-
-  /**
-   * 自定义 Hook：管理 LLM 配置的加载和保存
-   */
   export function useLLMConfig() {
     const [config, setConfig] = useState<LLMConfig | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // 加载配置
-    useEffect(() => {
-      try {
-        if (typeof window !== 'undefined') {
-          const saved = localStorage.getItem(STORAGE_KEY);
-          if (saved) {
-            const parsed = JSON.parse(saved);
-
-            // 迁移旧配置格式（useLegacyOpenAIFormat → providerType）
-            if ('useLegacyOpenAIFormat' in parsed) {
-              parsed.providerType = parsed.useLegacyOpenAIFormat
-                ? 'openai'           // 旧式 = openai .chat
-                : 'openai-response'; // 新式 = openai .responses
-              delete parsed.useLegacyOpenAIFormat;
-              // 自动保存迁移后的配置
-              localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
-              console.log('已自动迁移旧配置格式到新格式');
-            }
-
-            setConfig(parsed);
-          }
-        }
-      } catch (e) {
-        console.error('加载 LLM 配置失败:', e);
-        setError('加载配置失败');
-      } finally {
-        setIsLoading(false);
-      }
-    }, []);
-
-    // 保存配置
-    const saveConfig = (newConfig: LLMConfig) => {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(newConfig));
-        setConfig(newConfig);
-        setError(null);
-      } catch (e) {
-        console.error('保存 LLM 配置失败:', e);
-        setError('保存配置失败');
-        throw e;
-      }
-    };
-
-    return { config, isLoading, error, saveConfig };
+    // 使用 normalizeLLMConfig 进行配置标准化
+    // 支持配置迁移和验证
+    // 集成 saveConfig 功能
   }
   ```
 
-- [ ] 在 `ChatSidebar.tsx` 中使用自定义 Hook：
+- [x] 创建 `app/hooks/useDrawioSocket.ts`：
   ```typescript
-  import { useLLMConfig } from '@/hooks/useLLMConfig';
+  export function useDrawioSocket() {
+    const [isConnected, setIsConnected] = useState(false);
+    const socketRef = useRef<Socket<ServerToClientEvents, ClientToServerEvents> | null>(null);
 
-  export default function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) {
-    const { config: llmConfig, isLoading: configLoading } = useLLMConfig();
-
-    // 删除原有的配置加载逻辑
+    // 完整的 Socket.IO 生命周期管理
+    // 工具调用请求监听和处理
+    // 连接状态管理和错误处理
   }
   ```
 
-### 4. 添加开发环境日志
-- [ ] 在 `app/api/chat/route.ts` 中添加调试日志：
+### 4. 配置标准化和迁移
+- [x] 在 `app/lib/llm-config.ts` 中：
   ```typescript
-  // 仅在开发环境输出详细日志
+  export const normalizeLLMConfig = (value?: Partial<LLMConfig> & { useLegacyOpenAIFormat?: boolean }): LLMConfig => {
+    const providerType = resolveProviderType(value?.providerType, value?.useLegacyOpenAIFormat);
+    // 完整的配置标准化逻辑
+    // 支持旧配置格式迁移
+    // 默认值填充和验证
+  };
+
+  const resolveProviderType = (providerType?: unknown, legacyFlag?: unknown): ProviderType => {
+    // 智能供应商类型解析
+  };
+  ```
+
+### 5. 服务器启动脚本
+- [x] 创建 `server.js`：
+  ```javascript
+  const { createServer } = require('http');
+  const { Server } = require('socket.io');
+  const next = require('next');
+
+  // 完整的 Socket.IO 服务器初始化
+  // 工具调用请求处理
+  // 全局实例挂载
+  ```
+
+- [x] 更新 `package.json` 脚本：
+  ```json
+  {
+    "scripts": {
+      "dev": "node server.js",
+      "start": "NODE_ENV=production node server.js"
+    }
+  }
+  ```
+
+### 6. 完整的类型安全系统
+- [x] Socket.IO 事件类型定义：
+  ```typescript
+  export interface ServerToClientEvents {
+    'tool:execute': (request: ToolCallRequest) => void;
+  }
+
+  export interface ClientToServerEvents {
+    'tool:result': (result: ToolCallResult) => void;
+  }
+  ```
+
+- [x] 工具消息部分类型：
+  ```typescript
+  type ToolMessagePart = {
+    type: string;
+    state: string;
+    toolCallId?: string;
+    input?: unknown;
+    output?: unknown;
+    errorText?: string;
+  };
+  ```
+
+### 7. 错误处理和日志系统
+- [x] 统一的错误分类和处理：
+  ```typescript
+  // API 路由中的错误分类
+  if (error.message?.includes('Anthropic')) {
+    errorMessage = error.message;
+    statusCode = 400;
+  } else if (error.message?.includes('API key')) {
+    errorMessage = 'API 密钥无效或缺失';
+    statusCode = 401;
+  }
+  ```
+
+- [x] 开发环境调试日志：
+  ```typescript
   const isDev = process.env.NODE_ENV === 'development';
 
   if (isDev) {
-    console.log('[Chat API] 收到请求:', {
-      messagesCount: messages.length,
-      provider: llmConfig.useLegacyOpenAIFormat ? 'DeepSeek' : 'OpenAI',
-      model: llmConfig.modelName,
-      maxRounds: llmConfig.maxToolRounds,
-    });
+    console.log('[Chat API] 收到请求:', { ... });
+    console.log('[Chat API] 步骤完成:', { ... });
   }
-
-  // 在 onStepFinish 中：
-  onStepFinish: (step) => {
-    if (isDev) {
-      console.log('[Chat API] 步骤完成:', {
-        stepType: step.stepType,
-        toolCalls: step.toolCalls?.length || 0,
-        textLength: step.text?.length || 0,
-      });
-    }
-  },
-  ```
-
-### 5. 优化错误消息展示
-- [ ] 在 `ChatSidebar.tsx` 中优化错误显示：
-  ```typescript
-  {error && (
-    <div className="error-banner">
-      <span className="error-icon">⚠️</span>
-      <div className="error-content">
-        <div className="error-title">发生错误</div>
-        <div className="error-message">{error.message}</div>
-        <button
-          className="error-retry"
-          onClick={() => window.location.reload()}
-        >
-          刷新页面
-        </button>
-      </div>
-    </div>
-  )}
-  ```
-
-- [ ] 添加对应样式（在 globals.css）：
-  ```css
-  .error-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .error-title {
-    font-weight: 600;
-    color: #dc2626;
-  }
-
-  .error-retry {
-    align-self: flex-start;
-    margin-top: 8px;
-    padding: 4px 12px;
-    background: #ef4444;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    font-size: 12px;
-    cursor: pointer;
-    transition: background 0.2s;
-  }
-
-  .error-retry:hover {
-    background: #dc2626;
-  }
-  ```
-
-### 6. 更新文档
-- [ ] 更新 `AGENTS.md`：
-  ```markdown
-  ### 2025-10-27 - AI Agent Loop 实现
-  - ✅ 新增 Agent Loop 功能，支持自动工具调用循环
-  - ✅ 集成 DrawIO 工具集为 AI function calls
-  - ✅ 支持 DeepSeek 和 OpenAI 兼容的 API
-  - ✅ 新增最大循环次数配置（防止无限循环）
-  - ✅ 聊天界面展示工具调用过程
-  ```
-
-- [ ] 在 `app/lib/AGENTS.md` 中添加工具说明：
-  ```markdown
-  ## DrawIO AI 工具集 (drawio-ai-tools.ts)
-
-  将 DrawIO XML 工具封装为 AI SDK 兼容的 function tools。
-
-  ### 工具列表
-  1. **get_drawio_xml**: 获取当前图表 XML
-  2. **replace_drawio_xml**: 完全替换图表 XML
-  3. **batch_replace_drawio_xml**: 批量精准替换 XML 片段
   ```
 
 ## 验收标准
-- [ ] 所有文件使用统一的类型定义
-- [ ] 无 TypeScript 编译错误或警告
-- [ ] 自定义 Hook 正常工作
-- [ ] 开发环境日志清晰有用
-- [ ] 错误消息展示友好
-- [ ] 文档更新完整准确
+- [x] 所有文件使用统一的类型定义
+- [x] 无 TypeScript 编译错误或警告
+- [x] 自定义 Hook 系统正常工作
+- [x] Socket.IO 协议类型完整定义
+- [x] 配置标准化和迁移功能正常
+- [x] 开发环境日志清晰有用
+- [x] 错误消息展示友好
+- [x] 服务器脚本正确启动
+- [x] 工具执行器类型安全
+
+## 实际增强功能
+- ✅ **完整的类型系统**：包括聊天、Socket.IO、工具调用等所有类型
+- ✅ **配置管理系统**：自动迁移、验证、标准化
+- ✅ **自定义 Hook 架构**：可复用的逻辑封装
+- ✅ **Socket.IO 类型安全**：完整的事件类型定义
+- ✅ **服务器集成**：Socket.IO 服务器与 Next.js 集成
+- ✅ **错误处理系统**：分类错误处理和用户友好提示
+- ✅ **开发工具支持**：详细的调试日志和类型检查
 
 ## 测试步骤
 1. 运行 TypeScript 编译检查：
    ```bash
    npx tsc --noEmit
    ```
-2. 确认无类型错误
-3. 测试配置加载（使用新的 Hook）
-4. 触发错误场景，检查错误显示
-5. 查看浏览器控制台，确认日志格式
-6. 阅读更新后的文档
+2. 启动服务器测试：
+   ```bash
+   pnpm run dev
+   ```
+3. 确认无类型错误
+4. 测试配置加载和迁移功能
+5. 验证 Socket.IO 连接和工具调用
+6. 触发错误场景，检查错误显示
+7. 查看浏览器和服务器控制台日志
+8. 测试类型安全的工具执行流程
 
 ## 注意事项
-- **类型导出**：确保所有类型从 `@/types/chat` 导出
-- **Hook 命名**：使用 `use` 前缀
-- **日志级别**：仅在开发环境输出详细日志
-- **错误处理**：提供用户友好的错误信息
-- **文档格式**：保持与现有文档风格一致
+- **类型导出**：确保所有类型从 `@/app/types/*` 正确导出
+- **Hook 命名**：使用 `use` 前缀，遵循 React Hook 规范
+- **Socket.IO 依赖**：确保服务器和客户端类型定义一致
+- **配置迁移**：向后兼容旧配置格式
+- **开发日志**：生产环境自动禁用详细日志
+- **类型安全**：所有 Socket.IO 事件都有正确的类型定义
 
 ---
 

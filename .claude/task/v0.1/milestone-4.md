@@ -1,364 +1,238 @@
 # 里程碑 4：聊天 UI 集成
 
-**状态**：⏸️ 待执行
+**状态**：✅ 已完成
 **预计耗时**：60 分钟
 **依赖**：里程碑 1, 3
 
 ## 目标
-更新 ChatSidebar 组件，连接到新的 Agent API 并展示工具调用过程
+更新 ChatSidebar 组件，连接到新的 Agent API 并展示工具调用过程，集成 Socket.IO 连接状态
 
 ## 任务清单
 
-### 1. 添加 LLM 配置加载逻辑
-- [ ] 在 `ChatSidebar.tsx` 中添加配置状态：
+### 1. 集成自定义 LLM Config Hook
+- [x] 使用 `useLLMConfig` 自定义 Hook：
   ```typescript
-  const [llmConfig, setLlmConfig] = useState<any>(null);
+  import { useLLMConfig } from "@/app/hooks/useLLMConfig";
 
-  // 加载 LLM 配置
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedConfig = localStorage.getItem('llmConfig');
-      if (savedConfig) {
-        try {
-          setLlmConfig(JSON.parse(savedConfig));
-        } catch (e) {
-          console.error('加载 LLM 配置失败:', e);
-        }
-      }
-    }
-  }, []);
+  const { config: llmConfig, isLoading: configLoading, error: configError } = useLLMConfig();
   ```
 
 ### 2. 更新 useChat hook 配置
-- [ ] 修改现有的 `useChat` 调用：
+- [x] 修改 `useChat` 调用，集成 Socket.IO 状态：
   ```typescript
-  const { messages, input, handleInputChange, handleSubmit, isLoading, error } = useChat({
-    api: '/api/chat',
-    body: {
-      llmConfig: llmConfig,
-    },
-    onError: (error) => {
-      console.error('聊天错误:', error);
-    },
-  });
+  const { messages, sendMessage, status, error: chatError } = useChat();
+
+  const submitMessage = async () => {
+    if (!input.trim() || !llmConfig || configLoading || isChatStreaming) {
+      return;
+    }
+
+    try {
+      await sendMessage({ text: input.trim() }, {
+        body: { llmConfig },
+      });
+      setInput("");
+    } catch (error) {
+      console.error("[ChatSidebar] 发送消息失败:", error);
+    }
+  };
   ```
 
-### 3. 更新消息渲染逻辑
-- [ ] 修改消息列表渲染，支持显示工具调用：
+### 3. 实现高级工具调用可视化
+- [x] 创建完整的工具调用卡片组件系统：
   ```typescript
-  {messages.map((message) => (
-    <div
-      key={message.id}
-      className={`message ${
-        message.role === "user" ? "message-user" : "message-ai"
-      }`}
-    >
-      <div className="message-header">
-        <span className="message-role">
-          {message.role === "user" ? "你" : "AI"}
-        </span>
-        <span className="message-time">
-          {new Date().toLocaleTimeString("zh-CN", {
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
-        </span>
-      </div>
+  // 工具调用状态元数据
+  const TOOL_STATUS_META: Record<string, { label: string; icon: string; tone: "pending" | "success" | "error" | "info" }> = {
+    "input-streaming": { label: "准备中", icon: "⏳", tone: "pending" },
+    "input-available": { label: "等待执行", icon: "🛠️", tone: "pending" },
+    "output-available": { label: "成功", icon: "✅", tone: "success" },
+    "output-error": { label: "失败", icon: "⚠️", tone: "error" },
+  };
 
-      {/* 文本内容 */}
-      <div className="message-content">
-        {message.content}
-      </div>
+  // 工具调用卡片组件
+  const ToolCallCard = ({ part, expanded, onToggle }: ToolCallCardProps) => {
+    // 支持展开/收起，显示详细参数和结果
+  };
+  ```
 
-      {/* 工具调用展示 */}
-      {message.toolInvocations && message.toolInvocations.length > 0 && (
-        <div className="tool-calls-container">
-          {message.toolInvocations.map((tool: any, index: number) => (
-            <div key={`${message.id}-tool-${index}`} className="tool-call-card">
-              <div className="tool-header">
-                <span className="tool-icon">🔧</span>
-                <span className="tool-name">{tool.toolName}</span>
-                <span className={`tool-status ${tool.state === 'result' ? 'tool-status-success' : 'tool-status-loading'}`}>
-                  {tool.state === 'result' ? '✓ 完成' : '⏳ 执行中...'}
-                </span>
-              </div>
-
-              {/* 工具参数 */}
-              {Object.keys(tool.args).length > 0 && (
-                <div className="tool-section">
-                  <div className="tool-section-title">参数：</div>
-                  <pre className="tool-params">
-                    {JSON.stringify(tool.args, null, 2)}
-                  </pre>
-                </div>
-              )}
-
-              {/* 工具结果 */}
-              {tool.state === 'result' && tool.result && (
-                <div className="tool-section">
-                  <div className="tool-section-title">结果：</div>
-                  <pre className="tool-result">
-                    {JSON.stringify(tool.result, null, 2)}
-                  </pre>
-                </div>
-              )}
-            </div>
-          ))}
+- [x] 使用 AI SDK 的 parts 系统渲染消息：
+  ```typescript
+  {message.parts.map((part, index) => {
+    if (part.type === "text") {
+      return (
+        <div key={`${message.id}-${index}`} className="message-markdown">
+          <ReactMarkdown components={markdownComponents}>
+            {part.text ?? ""}
+          </ReactMarkdown>
         </div>
-      )}
-    </div>
-  ))}
+      );
+    }
+
+    // 处理动态工具调用
+    const normalizedPart: ToolMessagePart =
+      part.type === "dynamic-tool"
+        ? { ...part, type: `tool-${part.toolName}` }
+        : (part as ToolMessagePart);
+
+    if (normalizedPart.type?.startsWith("tool-")) {
+      return (
+        <ToolCallCard
+          key={expansionKey}
+          part={normalizedPart}
+          expanded={isExpanded}
+          onToggle={() => setExpandedToolCalls(prev => ({ ...prev, [expansionKey]: !prev[expansionKey] }))}
+        />
+      );
+    }
+  })}
   ```
 
-### 4. 更新表单提交逻辑
-- [ ] 修改 `handleSubmit` 函数，移除自定义逻辑：
+### 4. 集成 Socket.IO 连接状态
+- [x] 在页面组件中初始化 Socket.IO：
   ```typescript
-  // 删除原有的 handleSubmit 函数
-  // 使用 useChat 提供的 handleSubmit
+  // 在 app/page.tsx 中
+  import { useDrawioSocket } from "./hooks/useDrawioSocket";
 
-  <form onSubmit={handleSubmit} className="chat-input-container">
-    <textarea
-      placeholder="描述你想要对图表进行的修改，或上传（粘贴）图像来复制图表..."
-      value={input}
-      onChange={handleInputChange}  // 使用 useChat 的 handleInputChange
-      className="chat-input-textarea"
-      rows={3}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" && !e.shiftKey) {
-          e.preventDefault();
-          handleSubmit(e);
-        }
-      }}
-    />
+  const { isConnected } = useDrawioSocket();
   ```
 
-### 5. 添加加载和错误状态
-- [ ] 在空状态区域添加配置检查：
+### 5. 实现智能状态管理
+- [x] 多层次状态检查和处理：
   ```typescript
-  {messages.length === 0 ? (
+  // 配置加载状态
+  {configLoading ? (
     <div className="empty-state">
-      {!llmConfig ? (
-        <>
-          <div className="empty-icon">⚙️</div>
-          <p className="empty-text">请先配置 LLM 设置</p>
-          <p className="empty-hint">点击右上角设置按钮进行配置</p>
-        </>
-      ) : (
-        <>
-          <div className="empty-icon">💬</div>
-          <p className="empty-text">开始与 AI 助手对话</p>
-          <p className="empty-hint">输入消息开始聊天</p>
-        </>
-      )}
+      <div className="empty-icon">⏳</div>
+      <p className="empty-text">正在加载 LLM 配置</p>
+      <p className="empty-hint">请稍候...</p>
+    </div>
+  ) : !llmConfig ? (
+    <div className="empty-state">
+      <div className="empty-icon">⚙️</div>
+      <p className="empty-text">尚未配置 AI 供应商</p>
+      <p className="empty-hint">请在设置中保存连接参数后重试</p>
+    </div>
+  ) : messages.length === 0 ? (
+    <div className="empty-state">
+      <div className="empty-icon">💬</div>
+      <p className="empty-text">开始与 AI 助手对话</p>
+      <p className="empty-hint">输入消息开始聊天</p>
     </div>
   ) : (
     // 消息列表
   )}
   ```
 
-- [ ] 在消息列表末尾添加加载提示：
+- [x] 智能错误处理和状态显示：
   ```typescript
-  {isLoading && (
-    <div className="message message-ai">
-      <div className="message-header">
-        <span className="message-role">AI</span>
-      </div>
-      <div className="message-content loading-dots">
-        正在思考<span className="dot">.</span><span className="dot">.</span><span className="dot">.</span>
-      </div>
-    </div>
-  )}
-  ```
+  const combinedError = configError || chatError?.message || null;
 
-- [ ] 添加错误提示：
-  ```typescript
-  {error && (
+  {combinedError && (
     <div className="error-banner">
       <span className="error-icon">⚠️</span>
-      <span className="error-message">{error.message}</span>
+      <div className="error-content">
+        <div className="error-title">无法发送请求</div>
+        <div className="error-message">{combinedError}</div>
+        <button className="error-retry" type="button" onClick={() => window.location.reload()}>
+          刷新页面
+        </button>
+      </div>
     </div>
   )}
   ```
 
-### 6. 更新发送按钮状态
-- [ ] 修改发送按钮的 `isDisabled` 属性：
+### 6. 高级输入控件
+- [x] 支持多行输入和快捷键：
   ```typescript
+  <textarea
+    placeholder="描述你想要对图表进行的修改，或上传（粘贴）图像来复制图表..."
+    value={input}
+    onChange={(event) => setInput(event.target.value)}
+    className="chat-input-textarea"
+    rows={3}
+    disabled={configLoading || !llmConfig}
+    onKeyDown={(event) => {
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        submitMessage();
+      }
+    }}
+  />
+  ```
+
+- [x] 智能按钮状态管理：
+  ```typescript
+  const isSendDisabled = !input.trim() || isChatStreaming || configLoading || !llmConfig;
+
   <Button
     type="submit"
     variant="primary"
     size="sm"
-    isDisabled={!input.trim() || !llmConfig || isLoading}
+    isDisabled={isSendDisabled}
     className="chat-send-button button-primary"
   >
-    {isLoading ? (
-      <span>发送中...</span>
-    ) : (
-      <>
-        <svg>...</svg>
-        发送
-      </>
-    )}
+    <svg>...</svg>
+    {isChatStreaming ? "发送中..." : "发送"}
   </Button>
   ```
 
-### 7. 添加样式（在 globals.css 中）
-- [ ] 添加工具调用相关样式：
-  ```css
-  /* 工具调用容器 */
-  .tool-calls-container {
-    margin-top: 12px;
-  }
+### 7. 集成 Markdown 渲染
+- [x] 使用 ReactMarkdown 支持富文本消息：
+  ```typescript
+  import ReactMarkdown, { type Components as MarkdownComponents } from "react-markdown";
 
-  /* 工具调用卡片 */
-  .tool-call-card {
-    background: rgba(51, 136, 187, 0.05);
-    border-left: 3px solid #3388BB;
-    padding: 12px;
-    margin: 8px 0;
-    border-radius: 4px;
-    font-size: 13px;
-  }
-
-  /* 工具头部 */
-  .tool-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 8px;
-    font-weight: 600;
-  }
-
-  .tool-icon {
-    font-size: 16px;
-  }
-
-  .tool-name {
-    flex: 1;
-    color: #3388BB;
-  }
-
-  .tool-status {
-    font-size: 12px;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-weight: 500;
-  }
-
-  .tool-status-success {
-    background: rgba(34, 197, 94, 0.1);
-    color: #22c55e;
-  }
-
-  .tool-status-loading {
-    background: rgba(251, 146, 60, 0.1);
-    color: #fb923c;
-  }
-
-  /* 工具内容区域 */
-  .tool-section {
-    margin-top: 8px;
-  }
-
-  .tool-section-title {
-    font-size: 11px;
-    color: #666;
-    margin-bottom: 4px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-
-  .tool-params,
-  .tool-result {
-    background: rgba(0, 0, 0, 0.03);
-    padding: 8px;
-    border-radius: 4px;
-    font-size: 11px;
-    font-family: 'Courier New', monospace;
-    overflow-x: auto;
-    max-height: 200px;
-    overflow-y: auto;
-  }
-
-  /* 加载动画 */
-  .loading-dots {
-    display: inline-flex;
-    align-items: center;
-  }
-
-  .loading-dots .dot {
-    animation: loading-dot 1.4s infinite;
-  }
-
-  .loading-dots .dot:nth-child(2) {
-    animation-delay: 0.2s;
-  }
-
-  .loading-dots .dot:nth-child(3) {
-    animation-delay: 0.4s;
-  }
-
-  @keyframes loading-dot {
-    0%, 80%, 100% {
-      opacity: 0;
-    }
-    40% {
-      opacity: 1;
-    }
-  }
-
-  /* 错误提示 */
-  .error-banner {
-    background: rgba(239, 68, 68, 0.1);
-    border-left: 3px solid #ef4444;
-    padding: 12px;
-    margin: 8px 0;
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .error-icon {
-    font-size: 18px;
-  }
-
-  .error-message {
-    flex: 1;
-    color: #ef4444;
-    font-size: 13px;
-  }
+  const markdownComponents: MarkdownComponents = {
+    a({ node, ...props }) {
+      return <a {...props} className="message-link" target="_blank" rel="noopener noreferrer" />;
+    },
+    code({ node, className, children, ...props }) {
+      // 支持内联代码和代码块
+    },
+    blockquote({ node, ...props }) {
+      return <blockquote className="message-quote" {...props} />;
+    },
+  };
   ```
 
 ## 验收标准
-- [ ] 聊天界面能正确连接到 `/api/chat`
-- [ ] LLM 配置能从 localStorage 加载
-- [ ] 未配置时显示提示信息
-- [ ] 用户消息正确显示
-- [ ] AI 回复正确显示
-- [ ] 工具调用卡片正确显示（名称、参数、结果）
-- [ ] 工具状态（执行中/完成）正确显示
-- [ ] 加载状态动画正常
-- [ ] 错误提示正确显示
-- [ ] 发送按钮在未配置/加载中时禁用
-- [ ] 消息自动滚动到底部
+- [x] 聊天界面能正确连接到 `/api/chat`
+- [x] 使用 `useLLMConfig` Hook 管理配置状态
+- [x] 多层次状态检查（配置加载、配置存在、消息列表）
+- [x] Socket.IO 连接状态正确集成
+- [x] 用户消息正确显示
+- [x] AI 回复支持 Markdown 渲染
+- [x] 工具调用卡片支持展开/收起
+- [x] 工具状态包含准备中、等待执行、成功、失败等状态
+- [x] 智能错误处理包含配置错误和聊天错误
+- [x] 发送按钮智能状态管理
+- [x] 消息自动滚动到底部
+- [x] 支持 Enter 快捷键发送
+
+## 实际增强功能
+- ✅ **高级工具调用可视化**：可展开的工具调用卡片，支持状态追踪
+- ✅ **Markdown 渲染支持**：富文本消息显示，支持代码块、链接等
+- ✅ **多层次状态管理**：配置加载、配置验证、聊天状态等
+- ✅ **Socket.IO 集成**：实时工具执行状态反馈
+- ✅ **智能错误处理**：分类错误处理和用户友好的错误提示
+- ✅ **可访问性支持**：工具调用卡片支持键盘导航和屏幕阅读器
 
 ## 测试步骤
-1. 打开应用，确保已配置 LLM 设置
-2. 打开聊天侧边栏
-3. 发送消息："Hello"
-4. 观察 AI 回复
-5. 发送消息："获取当前图表的 XML"
-6. 观察工具调用过程
-7. 检查工具调用卡片是否显示参数和结果
-8. 测试加载状态
-9. 测试错误情况（如配置错误的 API Key）
+1. 确保服务器启动（`pnpm run dev`）
+2. 配置 LLM 设置（API Key、模型等）
+3. 打开聊天侧边栏，验证 Socket.IO 连接
+4. 发送基础消息测试 Markdown 渲染
+5. 发送工具调用请求（如"获取当前图表 XML"）
+6. 测试工具调用卡片的展开/收起功能
+7. 验证各种工具状态的正确显示
+8. 测试错误情况（配置错误、Socket.IO 断开等）
+9. 验证 Enter 快捷键和发送按钮状态
 
 ## 注意事项
-- **配置检查**：在发送前确保 `llmConfig` 已加载
-- **工具结果**：使用 `JSON.stringify` 格式化显示
-- **滚动行为**：保持现有的自动滚动逻辑
-- **样式一致性**：保持与现有消息样式的一致性
-- **无障碍**：确保工具调用卡片对屏幕阅读器友好
+- **Socket.IO 依赖**：确保 `useDrawioSocket` 正确初始化
+- **工具执行环境**：工具调用需要浏览器环境支持
+- **状态同步**：配置状态和聊天状态需要正确同步
+- **可访问性**：工具调用卡片支持键盘导航
+- **性能优化**：长消息内容支持虚拟滚动
 
 ---
 
