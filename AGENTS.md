@@ -123,6 +123,20 @@ pnpm run electron:build   # 构建 Electron 应用 (输出到 dist/)
 
 ## 最近更新
 
+### 2025-11-03 - 会话消息错位问题修复
+- ✅ **核心问题**: 修复 `ChatSidebar.tsx` 中严重的竞态条件问题
+- ✅ **问题场景**: 用户在会话A发送消息后切换到会话B，AI响应会错误保存到会话B
+- ✅ **修复方案**: 使用 `sendingSessionIdRef` 在发送时捕获会话ID，确保 `onFinish` 回调使用正确的目标会话
+- ✅ **关键改进**:
+  - 发送消息时记录目标会话ID到 ref (`submitMessage` 函数)
+  - `onFinish` 回调使用记录的会话ID而非当前的 `activeSession.id`
+  - 增强错误处理和会话存在性验证
+  - 开发模式下检测会话切换并警告
+  - 发送失败时正确清理状态
+- ✅ **代码位置**: `app/components/ChatSidebar.tsx:248-311`
+- ✅ **技术方案**: 闭包 + useRef 解决异步回调中的状态竞态问题
+- ✅ **测试验证**: 构建通过，逻辑验证正确
+
 ### 2025-11-02 - OpenAI Compatible 迁移
 - ✅ **架构重构**: 将 LLM API 调用从 `@ai-sdk/openai` 迁移到 `@ai-sdk/openai-compatible`
 - ✅ **供应商类型更新**:
@@ -220,4 +234,4 @@ pnpm run electron:build   # 构建 Electron 应用 (输出到 dist/)
 
 ---
 
-*最后更新: 2025-10-31*
+*最后更新: 2025-11-03*

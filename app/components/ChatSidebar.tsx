@@ -245,14 +245,46 @@ export default function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) {
     return activeSession?.messages || [];
   }, [activeSession?.id]); // 只在会话 ID 变化时重新计算
 
+  // 使用 ref 来跟踪发送消息时的会话ID
+  const sendingSessionIdRef = useRef<string | null>(null);
+
   const { messages, sendMessage, status, error: chatError } = useChat({
     id: activeSession?.id || "default",
     messages: initialMessages,
     onFinish: ({ messages }) => {
-      // 自动保存消息到会话
-      if (activeSession) {
-        updateSessionMessages(activeSession.id, messages);
+      // 使用发送时记录的会话ID，而不是当前的 activeSession.id
+      // 这彻底解决了竞态条件问题
+      const targetSessionId = sendingSessionIdRef.current;
+
+      if (!targetSessionId) {
+        console.error("[ChatSidebar] onFinish: 没有记录的目标会话ID");
+        // 开发模式下抛出错误，便于发现问题
+        if (process.env.NODE_ENV === 'development') {
+          throw new Error('会话消息保存失败：没有记录目标会话ID。这可能是由于组件卸载导致的竞态条件。');
+        }
+        return;
       }
+
+      // 验证会话是否仍然存在
+      const sessionExists = sessionsData?.sessions[targetSessionId];
+      if (sessionExists) {
+        updateSessionMessages(targetSessionId, messages);
+        console.log("[ChatSidebar] 消息已保存到会话:", targetSessionId);
+
+        // 开发模式下检测会话切换情况
+        if (process.env.NODE_ENV === 'development' && activeSession?.id !== targetSessionId) {
+          console.warn(`[ChatSidebar] 检测到会话切换：消息保存到 ${targetSessionId}，但当前活动会话是 ${activeSession?.id || 'none'}`);
+        }
+      } else {
+        console.error("[ChatSidebar] 目标会话不存在，无法保存消息:", targetSessionId);
+        // 开发模式下抛出错误，便于发现问题
+        if (process.env.NODE_ENV === 'development') {
+          throw new Error(`会话消息保存失败：目标会话 ${targetSessionId} 不存在。`);
+        }
+      }
+
+      // 清除记录的会话ID
+      sendingSessionIdRef.current = null;
     },
   });
 
@@ -267,6 +299,18 @@ export default function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) {
       return;
     }
 
+    // 在发送消息时捕获当前会话ID，避免竞态条件
+    const targetSessionId = activeSession?.id;
+
+    if (!targetSessionId) {
+      console.error("[ChatSidebar] 无法发送消息：没有活动会话");
+      return;
+    }
+
+    // 记录发送消息时的会话ID，确保 onFinish 回调使用正确的会话
+    sendingSessionIdRef.current = targetSessionId;
+    console.log("[ChatSidebar] 开始发送消息到会话:", targetSessionId);
+
     try {
       await sendMessage({ text: input.trim() }, {
         body: { llmConfig },
@@ -274,6 +318,8 @@ export default function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) {
       setInput("");
     } catch (error) {
       console.error("[ChatSidebar] 发送消息失败:", error);
+      // 发送失败时清除记录的会话ID
+      sendingSessionIdRef.current = null;
     }
   };
 
