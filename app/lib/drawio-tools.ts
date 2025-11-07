@@ -102,7 +102,8 @@ export async function saveDrawioXML(xml: string): Promise<void> {
     const storage = await getStorage();
 
     // 获取现有版本
-    const existingVersions = await storage.getXMLVersionsByProject(PROJECT_UUID);
+    const existingVersions =
+      await storage.getXMLVersionsByProject(PROJECT_UUID);
 
     // 删除所有旧版本（仅保留最新版策略）
     for (const version of existingVersions) {
@@ -134,7 +135,7 @@ function triggerUpdateEvent(xml: string): void {
     window.dispatchEvent(
       new CustomEvent(UPDATE_EVENT, {
         detail: { xml },
-      })
+      }),
     );
   }
 }
@@ -181,7 +182,9 @@ export async function getDrawioXML(): Promise<GetXMLResult> {
 /**
  * 覆写 DrawIO XML 内容
  */
-export async function replaceDrawioXML(drawio_xml: string): Promise<ReplaceXMLResult> {
+export async function replaceDrawioXML(
+  drawio_xml: string,
+): Promise<ReplaceXMLResult> {
   if (typeof window === "undefined") {
     return {
       success: false,

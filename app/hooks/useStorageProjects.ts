@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import { getStorage, DEFAULT_PROJECT_UUID } from '@/app/lib/storage';
-import type { Project } from '@/app/lib/storage';
+import { useState, useEffect, useCallback } from "react";
+import { getStorage, DEFAULT_PROJECT_UUID } from "@/app/lib/storage";
+import type { Project } from "@/app/lib/storage";
 
 /**
  * 工程管理 Hook
@@ -35,7 +35,9 @@ export function useStorageProjects() {
    * 更新默认工程
    */
   const updateDefaultProject = useCallback(
-    async (updates: Partial<Omit<Project, 'uuid' | 'created_at' | 'updated_at'>>): Promise<void> => {
+    async (
+      updates: Partial<Omit<Project, "uuid" | "created_at" | "updated_at">>,
+    ): Promise<void> => {
       try {
         const storage = await getStorage();
         await storage.updateProject(DEFAULT_PROJECT_UUID, updates);
@@ -46,7 +48,7 @@ export function useStorageProjects() {
         throw error;
       }
     },
-    [getDefaultProject]
+    [getDefaultProject],
   );
 
   // 初始化时加载默认工程

@@ -28,7 +28,11 @@ export default function MessageItem({
     >
       <div className="message-header">
         <span className="message-role">
-          {message.role === "user" ? "你" : message.role === "system" ? "系统" : "AI"}
+          {message.role === "user"
+            ? "你"
+            : message.role === "system"
+              ? "系统"
+              : "AI"}
         </span>
         <span className="message-time">
           {new Date().toLocaleTimeString("zh-CN", {

@@ -19,13 +19,16 @@
 
 // ==================== 核心 API ====================
 
-export { getStorage, resetStorage, detectStorageType, isStorageInitialized } from './storage-factory';
+export {
+  getStorage,
+  resetStorage,
+  detectStorageType,
+  isStorageInitialized,
+} from "./storage-factory";
 
 // ==================== 类型定义 ====================
 
-export type {
-  StorageAdapter,
-} from './adapter';
+export type { StorageAdapter } from "./adapter";
 
 export type {
   Setting,
@@ -41,7 +44,7 @@ export type {
   MessageRole,
   CreateMessageInput,
   PreviewImageData,
-} from './types';
+} from "./types";
 
 // ==================== 常量 ====================
 
@@ -51,7 +54,7 @@ export {
   DB_NAME,
   DB_VERSION,
   SQLITE_DB_FILE,
-} from './constants';
+} from "./constants";
 
 // ==================== 内部实现（仅用于测试） ====================
 
@@ -59,5 +62,5 @@ export {
  * ⚠️ 警告：以下导出仅用于测试和调试，
  * 不应在生产代码中直接使用
  */
-export { SQLiteStorage } from './sqlite-storage';
-export { IndexedDBStorage } from './indexeddb-storage';
+export { SQLiteStorage } from "./sqlite-storage";
+export { IndexedDBStorage } from "./indexeddb-storage";

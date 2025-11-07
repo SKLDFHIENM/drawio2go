@@ -5,11 +5,13 @@
 **依赖**：无
 
 ## 目标
+
 使用 HeroUI v3 Card 组件重构设置页面布局，实现清晰的视觉分组和层次结构。
 
 ## 任务清单
 
 ### 1. 导入 HeroUI Card 组件
+
 - [ ] 在 `app/components/SettingsSidebar.tsx` 中导入 Card 组件：
   ```typescript
   import {
@@ -19,20 +21,19 @@
     Input,
     Description,
     TextArea,
-    Card,      // 新增
-    Separator  // 新增
+    Card, // 新增
+    Separator, // 新增
   } from "@heroui/react";
   ```
 
 ### 2. 重构"文件路径配置"区块
+
 - [ ] 将现有的 `<div className="settings-section">` 替换为 Card 组件：
   ```tsx
   <Card.Root className="settings-card" variant="outlined">
     <Card.Header>
       <Card.Title>文件路径配置</Card.Title>
-      <Card.Description>
-        设置 DrawIO 文件的默认保存位置
-      </Card.Description>
+      <Card.Description>设置 DrawIO 文件的默认保存位置</Card.Description>
     </Card.Header>
     <Card.Content className="space-y-4">
       {/* 现有的文件路径配置内容 */}
@@ -63,27 +64,23 @@
   ```
 
 ### 3. 重构"LLM 配置"区块
+
 - [ ] 将 LLM 配置区块改造为 Card 组件：
+
   ```tsx
   <Card.Root className="settings-card" variant="outlined">
     <Card.Header>
       <Card.Title>LLM 配置</Card.Title>
-      <Card.Description>
-        配置 AI 助手的连接参数和行为
-      </Card.Description>
+      <Card.Description>配置 AI 助手的连接参数和行为</Card.Description>
     </Card.Header>
     <Card.Content className="space-y-4">
       {/* 请求地址 */}
-      <TextField className="w-full">
-        {/* ... */}
-      </TextField>
+      <TextField className="w-full">{/* ... */}</TextField>
 
       <Separator />
 
       {/* 供应商选择 */}
-      <TextField className="w-full">
-        {/* ... */}
-      </TextField>
+      <TextField className="w-full">{/* ... */}</TextField>
 
       <Separator />
 
@@ -93,7 +90,9 @@
   ```
 
 ### 4. 添加 Separator 分隔符
+
 - [ ] 在 LLM 配置的各个设置项之间添加 Separator：
+
   ```tsx
   {/* 请求地址 */}
   <TextField>...</TextField>
@@ -112,6 +111,7 @@
   ```
 
 ### 5. 调整容器布局
+
 - [ ] 修改 `.sidebar-content` 的布局样式：
   ```tsx
   <div className="sidebar-content space-y-6">
@@ -122,7 +122,9 @@
   ```
 
 ### 6. 添加卡片样式类
+
 - [ ] 在 `app/styles/layout/sidebar.css` 中添加卡片样式：
+
   ```css
   /* 设置卡片样式 */
   .settings-card {
@@ -140,6 +142,7 @@
   ```
 
 ## 验收标准
+
 - [ ] 文件路径配置使用 Card 组件包裹
 - [ ] LLM 配置使用 Card 组件包裹
 - [ ] Card.Header 正确显示标题和描述
@@ -151,6 +154,7 @@
 - [ ] 所有现有功能保持正常（保存、取消、弹窗等）
 
 ## 测试步骤
+
 1. 启动开发服务器 `pnpm run dev`
 2. 打开设置侧边栏
 3. 检查卡片布局：
@@ -173,34 +177,41 @@
 ## 设计要点
 
 ### Card 组件使用
+
 - **variant="outlined"**：使用边框样式，符合 Material Design
 - **Card.Header**：包含标题和描述，提供清晰的区块说明
 - **Card.Content**：包含具体设置项，使用 `space-y-4` 控制间距
 
 ### Separator 使用
+
 - **位置**：在不同类型的设置项之间
 - **作用**：视觉分隔，不添加额外间距
 - **样式**：使用默认样式，自动适配主题
 
 ### 间距规范
+
 - **卡片间距**：24px (space-y-6) - 清晰分组
 - **设置项间距**：16px (space-y-4) - 适度分隔
 - **标签与输入框**：8px (gap-2) - 紧密关联
 
 ## 注意事项
+
 - 保持所有现有功能不变（状态管理、事件处理）
 - 仅修改布局结构，不改变逻辑
 - 确保 Card 组件正确导入（HeroUI v3 复合组件模式）
-- 使用 Tailwind CSS 类名控制间距（space-y-*）
+- 使用 Tailwind CSS 类名控制间距（space-y-\*）
 - 测试所有交互功能（输入、按钮、弹窗）
 
 ## 破坏性变更
+
 - ⚠️ 移除 `.settings-section` 类名，替换为 Card 组件
 - ⚠️ 移除 `.section-title` 和 `.section-description` 类名
 - ⚠️ 使用 Card.Title 和 Card.Description 替代
 
 ## 回滚方案
+
 如果遇到问题，可以：
+
 1. 保留原有的 `.settings-section` 结构
 2. 仅在外层包裹 Card.Root
 3. 逐步迁移到完整的 Card 结构

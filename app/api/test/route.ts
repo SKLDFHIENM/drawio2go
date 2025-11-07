@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
     if (!normalizedConfig.apiUrl || !normalizedConfig.modelName) {
       return NextResponse.json(
         { error: "缺少必要的配置参数：apiUrl 和 modelName" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
         success: false,
         error: (error as Error)?.message || "测试请求失败，请检查配置是否正确",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

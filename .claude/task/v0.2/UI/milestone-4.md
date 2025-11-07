@@ -5,18 +5,21 @@
 **依赖**：里程碑 1, 2, 3
 
 ## 目标
+
 统一样式规范，优化间距、颜色和动画效果，确保所有元素符合 Material Design 风格和 #3388BB 主题。
 
 ## 任务清单
 
 ### 1. 统一间距规范
+
 - [ ] 在 `app/styles/layout/sidebar.css` 中定义间距变量：
+
   ```css
   /* 设置页面间距规范 */
   :root {
-    --settings-card-gap: 1.5rem;      /* 24px - 卡片间距 */
-    --settings-item-gap: 1rem;        /* 16px - 设置项间距 */
-    --settings-label-gap: 0.5rem;     /* 8px - 标签与输入框间距 */
+    --settings-card-gap: 1.5rem; /* 24px - 卡片间距 */
+    --settings-item-gap: 1rem; /* 16px - 设置项间距 */
+    --settings-label-gap: 0.5rem; /* 8px - 标签与输入框间距 */
     --settings-section-padding: 1.25rem; /* 20px - 卡片内边距 */
   }
 
@@ -34,7 +37,9 @@
   ```
 
 ### 2. 优化卡片样式
+
 - [ ] 增强卡片的视觉效果：
+
   ```css
   /* 卡片样式优化 */
   .settings-card {
@@ -55,11 +60,7 @@
   .settings-card [class*="card__header"] {
     padding: var(--settings-section-padding);
     border-bottom: 1px solid var(--border-light);
-    background: linear-gradient(
-      to bottom,
-      var(--bg-primary),
-      transparent
-    );
+    background: linear-gradient(to bottom, var(--bg-primary), transparent);
   }
 
   /* 卡片内容 */
@@ -83,7 +84,9 @@
   ```
 
 ### 3. 统一输入框样式
+
 - [ ] 优化所有输入框的样式：
+
   ```css
   /* 统一输入框样式 */
   .settings-card input[type="text"],
@@ -112,7 +115,9 @@
   ```
 
 ### 4. 优化按钮样式
+
 - [ ] 统一按钮的样式和动画：
+
   ```css
   /* 主按钮样式 */
   .button-primary {
@@ -166,7 +171,9 @@
   ```
 
 ### 5. 优化浮动按钮
+
 - [ ] 增强浮动操作按钮的视觉效果：
+
   ```css
   /* 浮动操作按钮 */
   .floating-actions {
@@ -201,7 +208,9 @@
   ```
 
 ### 6. 优化弹窗样式
+
 - [ ] 统一弹窗的样式和动画：
+
   ```css
   /* 弹窗遮罩 */
   .modal-overlay {
@@ -267,7 +276,9 @@
   ```
 
 ### 7. 添加加载状态样式
+
 - [ ] 优化加载和测试状态的样式：
+
   ```css
   /* 测试加载状态 */
   .test-loading {
@@ -336,6 +347,7 @@
   ```
 
 ### 8. 优化 Separator 样式
+
 - [ ] 统一分隔符的样式：
   ```css
   /* Separator 样式 */
@@ -348,7 +360,9 @@
   ```
 
 ### 9. 添加响应式优化
+
 - [ ] 确保在不同侧边栏宽度下的显示效果：
+
   ```css
   /* 响应式优化 */
   @media (max-width: 400px) {
@@ -374,6 +388,7 @@
   ```
 
 ## 验收标准
+
 - [ ] 所有卡片使用统一的圆角和边框
 - [ ] 卡片 hover 时有阴影和位移效果
 - [ ] 所有输入框 focus 时有蓝色边框和阴影
@@ -387,6 +402,7 @@
 - [ ] 响应式布局在不同宽度下正常
 
 ## 测试步骤
+
 1. 启动开发服务器 `pnpm run dev`
 2. 打开设置侧边栏
 3. 测试卡片样式：
@@ -415,24 +431,28 @@
 ## 设计要点
 
 ### 动画原则
+
 - **流畅性**：所有动画使用 ease-out 缓动
 - **一致性**：相同类型的元素使用相同的动画
 - **性能**：使用 transform 和 opacity，避免 layout 变化
 - **时长**：快速交互 0.2s，复杂动画 0.3s
 
 ### 颜色使用
+
 - **主题色**：#3388BB 用于标题、按钮、边框
 - **成功色**：#22c55e 用于成功状态
 - **错误色**：#ef4444 用于错误状态
 - **灰色**：#6b7280 用于描述文本
 
 ### 间距规范
+
 - **卡片间距**：24px (1.5rem)
 - **设置项间距**：16px (1rem)
 - **标签间距**：8px (0.5rem)
 - **卡片内边距**：20px (1.25rem)
 
 ## 注意事项
+
 - 所有动画使用 CSS 变量定义的缓动函数
 - 确保动画不影响性能（使用 transform 和 opacity）
 - 测试深色模式下的颜色对比度
@@ -440,11 +460,13 @@
 - 确保响应式布局在极端宽度下不破坏
 
 ## 破坏性变更
+
 - ⚠️ 完全重写卡片、输入框、按钮的样式
 - ⚠️ 移除旧的样式类名，使用新的统一样式
 - ⚠️ 动画可能在低性能设备上影响体验
 
 ## 性能优化
+
 - 使用 `will-change` 提示浏览器优化动画
 - 避免在动画中使用 `box-shadow`（使用 transform 替代）
 - 使用 `contain` 属性隔离重绘区域

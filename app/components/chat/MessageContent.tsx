@@ -36,7 +36,7 @@ export default function MessageContent({
       {message.parts.map((part, index: number) => {
         // 思考内容
         if (part.type === "reasoning") {
-          const isReasoningStreaming = part.state === 'streaming';
+          const isReasoningStreaming = part.state === "streaming";
           return (
             <ThinkingBlock
               key={`${message.id}-${index}`}
@@ -56,7 +56,10 @@ export default function MessageContent({
             isStreaming && isAssistantMessage && isLastTextPart;
 
           return (
-            <div key={`${message.id}-${index}`} className="message-markdown-wrapper">
+            <div
+              key={`${message.id}-${index}`}
+              className="message-markdown-wrapper"
+            >
               <div className="message-markdown">
                 <ReactMarkdown components={markdownComponents}>
                   {part.text ?? ""}
@@ -84,10 +87,11 @@ export default function MessageContent({
             message.id,
             index,
             normalizedPart.toolCallId,
-            normalizedPart.state
+            normalizedPart.state,
           );
           const isExpanded =
-            expandedToolCalls[expansionKey] ?? shouldToolBeExpanded(normalizedPart.state);
+            expandedToolCalls[expansionKey] ??
+            shouldToolBeExpanded(normalizedPart.state);
 
           return (
             <ToolCallCard

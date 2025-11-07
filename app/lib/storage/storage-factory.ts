@@ -41,9 +41,9 @@
  * @module storage-factory
  */
 
-import type { StorageAdapter } from './adapter';
-import { SQLiteStorage } from './sqlite-storage';
-import { IndexedDBStorage } from './indexeddb-storage';
+import type { StorageAdapter } from "./adapter";
+import { SQLiteStorage } from "./sqlite-storage";
+import { IndexedDBStorage } from "./indexeddb-storage";
 
 /**
  * 存储实例缓存
@@ -94,29 +94,31 @@ export async function getStorage(): Promise<StorageAdapter> {
  * 内部初始化函数
  */
 async function _initializeStorage(): Promise<StorageAdapter> {
-  console.log('[Storage] Initializing storage...');
-  console.log('[Storage] Environment check:', {
-    hasWindow: typeof window !== 'undefined',
-    hasElectronStorage: typeof window !== 'undefined' && !!window.electronStorage,
-    hasIndexedDB: typeof window !== 'undefined' && typeof indexedDB !== 'undefined',
+  console.log("[Storage] Initializing storage...");
+  console.log("[Storage] Environment check:", {
+    hasWindow: typeof window !== "undefined",
+    hasElectronStorage:
+      typeof window !== "undefined" && !!window.electronStorage,
+    hasIndexedDB:
+      typeof window !== "undefined" && typeof indexedDB !== "undefined",
   });
 
   let storage: StorageAdapter;
 
   // 检测 Electron 环境
-  if (typeof window !== 'undefined' && window.electronStorage) {
-    console.log('[Storage] Detected Electron environment, using SQLite');
+  if (typeof window !== "undefined" && window.electronStorage) {
+    console.log("[Storage] Detected Electron environment, using SQLite");
     storage = new SQLiteStorage();
   }
   // 检测 Web 环境
-  else if (typeof window !== 'undefined' && typeof indexedDB !== 'undefined') {
-    console.log('[Storage] Detected Web environment, using IndexedDB');
+  else if (typeof window !== "undefined" && typeof indexedDB !== "undefined") {
+    console.log("[Storage] Detected Web environment, using IndexedDB");
     storage = new IndexedDBStorage();
   }
   // 不支持的环境
   else {
     throw new Error(
-      'Unsupported environment: Neither Electron nor Web environment detected'
+      "Unsupported environment: Neither Electron nor Web environment detected",
     );
   }
 
@@ -135,7 +137,7 @@ async function _initializeStorage(): Promise<StorageAdapter> {
 export function resetStorage(): void {
   storageInstance = null;
   initializationPromise = null;
-  console.log('[Storage] Storage instance reset');
+  console.log("[Storage] Storage instance reset");
 }
 
 /**
@@ -143,13 +145,16 @@ export function resetStorage(): void {
  *
  * @returns 'sqlite' | 'indexeddb' | 'unknown'
  */
-export function detectStorageType(): 'sqlite' | 'indexeddb' | 'unknown' {
-  if (typeof window !== 'undefined' && window.electronStorage) {
-    return 'sqlite';
-  } else if (typeof window !== 'undefined' && typeof indexedDB !== 'undefined') {
-    return 'indexeddb';
+export function detectStorageType(): "sqlite" | "indexeddb" | "unknown" {
+  if (typeof window !== "undefined" && window.electronStorage) {
+    return "sqlite";
+  } else if (
+    typeof window !== "undefined" &&
+    typeof indexedDB !== "undefined"
+  ) {
+    return "indexeddb";
   } else {
-    return 'unknown';
+    return "unknown";
   }
 }
 

@@ -5,29 +5,34 @@
 **依赖**：无
 
 ## 目标
+
 建立完整的 TypeScript 类型系统和抽象接口定义，为后续实现提供类型安全保障。
 
 ## 任务清单
 
 ### 1. 创建常量定义文件
+
 - [x] 创建 `app/lib/storage/constants.ts`：
+
   ```typescript
   // 默认常量（临时实现）
-  export const DEFAULT_PROJECT_UUID = 'default';
-  export const DEFAULT_XML_VERSION = '1.0.0';
+  export const DEFAULT_PROJECT_UUID = "default";
+  export const DEFAULT_XML_VERSION = "1.0.0";
 
   // 数据库配置
-  export const DB_NAME = 'drawio2go';
+  export const DB_NAME = "drawio2go";
   export const DB_VERSION = 1;
 
   // Electron SQLite 数据库文件名
-  export const SQLITE_DB_FILE = 'drawio2go.db';
+  export const SQLITE_DB_FILE = "drawio2go.db";
   ```
 
 ### 2. 创建类型定义文件
+
 - [x] 创建 `app/lib/storage/types.ts`，定义所有数据模型：
 
 #### Settings 类型
+
 ```typescript
 /**
  * 设置键值对
@@ -40,6 +45,7 @@ export interface Setting {
 ```
 
 #### Project 类型
+
 ```typescript
 /**
  * 工程实体
@@ -58,15 +64,18 @@ export interface Project {
 /**
  * 创建工程时的输入类型
  */
-export type CreateProjectInput = Omit<Project, 'created_at' | 'updated_at'>;
+export type CreateProjectInput = Omit<Project, "created_at" | "updated_at">;
 
 /**
  * 更新工程时的输入类型
  */
-export type UpdateProjectInput = Partial<Omit<Project, 'uuid' | 'created_at' | 'updated_at'>>;
+export type UpdateProjectInput = Partial<
+  Omit<Project, "uuid" | "created_at" | "updated_at">
+>;
 ```
 
 #### XMLVersion 类型
+
 ```typescript
 /**
  * XML 版本实体
@@ -78,27 +87,28 @@ export interface XMLVersion {
   semantic_version: string;
   name?: string;
   description?: string;
-  source_version_id: number;  // 0 表示首个版本
+  source_version_id: number; // 0 表示首个版本
   xml_content: string;
-  preview_image?: Blob | Buffer;  // 🆕 预览图（Web: Blob, Electron: Buffer）
+  preview_image?: Blob | Buffer; // 🆕 预览图（Web: Blob, Electron: Buffer）
   created_at: number;
 }
 
 /**
  * 创建 XML 版本时的输入类型
  */
-export type CreateXMLVersionInput = Omit<XMLVersion, 'id' | 'created_at'>;
+export type CreateXMLVersionInput = Omit<XMLVersion, "id" | "created_at">;
 
 /**
  * 预览图数据类型（用于 IPC 传输）
  */
 export interface PreviewImageData {
   buffer: ArrayBuffer;
-  mimeType: string;  // 'image/png' | 'image/jpeg'
+  mimeType: string; // 'image/png' | 'image/jpeg'
 }
 ```
 
 #### Conversation 类型
+
 ```typescript
 /**
  * 对话实体
@@ -107,7 +117,7 @@ export interface PreviewImageData {
 export interface Conversation {
   id: string;
   project_uuid: string;
-  xml_version_id: number;  // 🆕 关联的 XML 版本 ID
+  xml_version_id: number; // 🆕 关联的 XML 版本 ID
   title: string;
   created_at: number;
   updated_at: number;
@@ -116,20 +126,26 @@ export interface Conversation {
 /**
  * 创建对话时的输入类型
  */
-export type CreateConversationInput = Omit<Conversation, 'created_at' | 'updated_at'>;
+export type CreateConversationInput = Omit<
+  Conversation,
+  "created_at" | "updated_at"
+>;
 
 /**
  * 更新对话时的输入类型
  */
-export type UpdateConversationInput = Partial<Omit<Conversation, 'id' | 'created_at'>>;
+export type UpdateConversationInput = Partial<
+  Omit<Conversation, "id" | "created_at">
+>;
 ```
 
 #### Message 类型
+
 ```typescript
 /**
  * 消息角色
  */
-export type MessageRole = 'user' | 'assistant' | 'system';
+export type MessageRole = "user" | "assistant" | "system";
 
 /**
  * 消息实体
@@ -139,17 +155,18 @@ export interface Message {
   conversation_id: string;
   role: MessageRole;
   content: string;
-  tool_invocations?: string;  // JSON 序列化的工具调用记录
+  tool_invocations?: string; // JSON 序列化的工具调用记录
   created_at: number;
 }
 
 /**
  * 创建消息时的输入类型
  */
-export type CreateMessageInput = Omit<Message, 'created_at'>;
+export type CreateMessageInput = Omit<Message, "created_at">;
 ```
 
 ### 3. 创建抽象接口文件
+
 - [x] 创建 `app/lib/storage/adapter.ts`，定义 StorageAdapter 接口：
 
 ```typescript
@@ -165,7 +182,7 @@ import type {
   UpdateConversationInput,
   Message,
   CreateMessageInput,
-} from './types';
+} from "./types";
 
 /**
  * 存储适配器抽象接口
@@ -294,14 +311,19 @@ export interface StorageAdapter {
    * @param conversation 对话数据（不包含时间戳）
    * @returns 创建后的完整对话实体
    */
-  createConversation(conversation: CreateConversationInput): Promise<Conversation>;
+  createConversation(
+    conversation: CreateConversationInput,
+  ): Promise<Conversation>;
 
   /**
    * 更新对话
    * @param id 对话 ID
    * @param updates 更新的字段（Partial）
    */
-  updateConversation(id: string, updates: UpdateConversationInput): Promise<void>;
+  updateConversation(
+    id: string,
+    updates: UpdateConversationInput,
+  ): Promise<void>;
 
   /**
    * 删除对话（级联删除关联的消息）
@@ -355,6 +377,7 @@ export interface StorageAdapter {
 ```
 
 ### 4. 添加全局类型声明
+
 - [x] 修改 `app/types/global.d.ts`，添加 Electron 存储接口类型：
 
 ```typescript
@@ -414,6 +437,7 @@ electronStorage?: {
 ```
 
 ## 验收标准
+
 - [x] `constants.ts` 定义所有必要常量
 - [x] `types.ts` 包含 5 张表的完整类型定义
 - [x] `types.ts` 包含所有 Input 类型（Create/Update）
@@ -424,6 +448,7 @@ electronStorage?: {
 - [x] 编译无 TypeScript 错误
 
 ## 测试步骤
+
 1. ✅ 创建所有文件
 2. ✅ 运行 `pnpm run build` 或 `pnpm tsc` 检查类型
 3. ✅ 确认无编译错误
@@ -432,28 +457,33 @@ electronStorage?: {
 ## 设计要点
 
 ### 类型安全原则
+
 - **明确的类型边界**：Input 类型省略时间戳和自增 ID
 - **避免 any**：所有接口使用明确的类型定义
 - **可选字段**：使用 `?` 标记可选字段
 - **联合类型**：MessageRole 使用字面量联合类型
 
 ### 接口设计原则
+
 - **异步优先**：所有方法返回 Promise
 - **CRUD 完整性**：每张表提供完整的增删改查
 - **批量操作**：提供 `createMessages` 等批量方法
 - **关联查询**：提供按外键查询的方法（`getConversationsByXMLVersion`）
 
 ### 预览图处理
+
 - **类型灵活性**：`Blob | Buffer` 适配 Web 和 Electron
 - **IPC 传输**：定义 `PreviewImageData` 接口，使用 ArrayBuffer
 - **MIME 类型**：记录图片格式，便于后续渲染
 
 ### 临时实现标记
+
 - **JSDoc 注释**：标记临时实现的字段和方法
 - **常量定义**：`DEFAULT_PROJECT_UUID` 和 `DEFAULT_XML_VERSION`
 - **未来扩展**：预留 `getAllProjects` 等方法
 
 ## 注意事项
+
 - 所有时间戳使用 `number` 类型（Unix timestamp 毫秒）
 - 所有 ID 字段明确类型（`string` 或 `number`）
 - 接口方法按功能分组（Settings, Projects, 等）
@@ -462,6 +492,7 @@ electronStorage?: {
 ## 可扩展性设计
 
 ### 未来可添加的方法
+
 ```typescript
 // 搜索和过滤
 searchConversations(query: string): Promise<Conversation[]>;
@@ -479,11 +510,14 @@ syncProject(uuid: string, remoteData: any): Promise<void>;
 ```
 
 ## 破坏性变更
+
 - 🆕 新增整套类型系统，不影响现有代码
 - 🆕 新增 Window.electronStorage 接口
 
 ## 下一步
+
 完成后继续：
+
 - [里程碑 2：Electron SQLite 实现](./milestone-2.md)
 - [里程碑 3：Web IndexedDB 实现](./milestone-3.md)（可并行）
 

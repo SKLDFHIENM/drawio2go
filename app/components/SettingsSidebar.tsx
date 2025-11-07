@@ -1,7 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Button, TextField, Label, Input, Description, TextArea } from "@heroui/react";
+import {
+  Button,
+  TextField,
+  Label,
+  Input,
+  Description,
+  TextArea,
+} from "@heroui/react";
 import { LLMConfig, ProviderType } from "@/app/types/chat";
 import {
   DEFAULT_LLM_CONFIG,
@@ -39,20 +46,29 @@ const PROVIDER_OPTIONS: Array<{
   },
 ];
 
-export default function SettingsSidebar({ onSettingsChange }: SettingsSidebarProps) {
+export default function SettingsSidebar({
+  onSettingsChange,
+}: SettingsSidebarProps) {
   // 存储 Hook
-  const { getLLMConfig, saveLLMConfig, getDefaultPath, saveDefaultPath } = useStorageSettings();
+  const { getLLMConfig, saveLLMConfig, getDefaultPath, saveDefaultPath } =
+    useStorageSettings();
 
   const [defaultPath, setDefaultPath] = useState("");
   const [savedPath, setSavedPath] = useState("");
 
   // LLM 配置状态
-  const [llmConfig, setLlmConfig] = useState<LLMConfig>({ ...DEFAULT_LLM_CONFIG });
-  const [savedLlmConfig, setSavedLlmConfig] = useState<LLMConfig>({ ...DEFAULT_LLM_CONFIG });
+  const [llmConfig, setLlmConfig] = useState<LLMConfig>({
+    ...DEFAULT_LLM_CONFIG,
+  });
+  const [savedLlmConfig, setSavedLlmConfig] = useState<LLMConfig>({
+    ...DEFAULT_LLM_CONFIG,
+  });
 
   // 系统提示词弹窗状态
   const [isPromptModalOpen, setIsPromptModalOpen] = useState(false);
-  const [tempSystemPrompt, setTempSystemPrompt] = useState(DEFAULT_SYSTEM_PROMPT);
+  const [tempSystemPrompt, setTempSystemPrompt] = useState(
+    DEFAULT_SYSTEM_PROMPT,
+  );
 
   // 测试状态
   const [isTestModalOpen, setIsTestModalOpen] = useState(false);
@@ -100,7 +116,8 @@ export default function SettingsSidebar({ onSettingsChange }: SettingsSidebarPro
   // 监听变化，检测是否有修改
   useEffect(() => {
     const pathChanged = defaultPath !== savedPath;
-    const llmConfigChanged = JSON.stringify(llmConfig) !== JSON.stringify(savedLlmConfig);
+    const llmConfigChanged =
+      JSON.stringify(llmConfig) !== JSON.stringify(savedLlmConfig);
     setHasChanges(pathChanged || llmConfigChanged);
   }, [defaultPath, savedPath, llmConfig, savedLlmConfig]);
 
@@ -225,9 +242,7 @@ export default function SettingsSidebar({ onSettingsChange }: SettingsSidebarPro
       <div className="sidebar-content">
         <div className="settings-section">
           <h3 className="section-title">文件路径配置</h3>
-          <p className="section-description">
-            设置 DrawIO 文件的默认保存位置
-          </p>
+          <p className="section-description">设置 DrawIO 文件的默认保存位置</p>
 
           <TextField className="w-full mt-4">
             <Label>默认启动路径</Label>
@@ -256,9 +271,7 @@ export default function SettingsSidebar({ onSettingsChange }: SettingsSidebarPro
         {/* LLM 配置区域 */}
         <div className="settings-section">
           <h3 className="section-title">LLM 配置</h3>
-          <p className="section-description">
-            配置 AI 助手的连接参数和行为
-          </p>
+          <p className="section-description">配置 AI 助手的连接参数和行为</p>
 
           {/* 请求地址 */}
           <TextField className="w-full mt-4">
@@ -290,7 +303,11 @@ export default function SettingsSidebar({ onSettingsChange }: SettingsSidebarPro
               }
             >
               {PROVIDER_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value} disabled={option.disabled}>
+                <option
+                  key={option.value}
+                  value={option.value}
+                  disabled={option.disabled}
+                >
                   {option.label}
                 </option>
               ))}
@@ -299,7 +316,11 @@ export default function SettingsSidebar({ onSettingsChange }: SettingsSidebarPro
               根据接口兼容性选择请求方式，Responses 模式支持最新 Response API
             </Description>
             <Description className="mt-1 text-xs">
-              {PROVIDER_OPTIONS.find((option) => option.value === llmConfig.providerType)?.description}
+              {
+                PROVIDER_OPTIONS.find(
+                  (option) => option.value === llmConfig.providerType,
+                )?.description
+              }
             </Description>
           </TextField>
 
@@ -391,9 +412,7 @@ export default function SettingsSidebar({ onSettingsChange }: SettingsSidebarPro
             >
               编辑系统提示词
             </Button>
-            <Description className="mt-2">
-              定义 AI 助手的行为和角色
-            </Description>
+            <Description className="mt-2">定义 AI 助手的行为和角色</Description>
           </div>
 
           {/* 测试按钮 */}

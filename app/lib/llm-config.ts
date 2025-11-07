@@ -34,14 +34,18 @@ export const DEFAULT_LLM_CONFIG: LLMConfig = {
   maxToolRounds: 5,
 };
 
-const PROVIDER_TYPES: ProviderType[] = ["openai-reasoning", "openai-compatible", "deepseek"];
+const PROVIDER_TYPES: ProviderType[] = [
+  "openai-reasoning",
+  "openai-compatible",
+  "deepseek",
+];
 
 export const isProviderType = (value: unknown): value is ProviderType =>
   typeof value === "string" && PROVIDER_TYPES.includes(value as ProviderType);
 
 export const resolveProviderType = (
   providerType?: unknown,
-  legacyFlag?: unknown
+  legacyFlag?: unknown,
 ): ProviderType => {
   if (isProviderType(providerType)) {
     return providerType;
@@ -66,7 +70,10 @@ export const resolveProviderType = (
   return "openai-compatible";
 };
 
-export const normalizeApiUrl = (value?: string, fallback: string = DEFAULT_API_URL): string => {
+export const normalizeApiUrl = (
+  value?: string,
+  fallback: string = DEFAULT_API_URL,
+): string => {
   if (!value) {
     return fallback;
   }
@@ -86,15 +93,22 @@ export const normalizeApiUrl = (value?: string, fallback: string = DEFAULT_API_U
 };
 
 export const normalizeLLMConfig = (
-  value?: Partial<LLMConfig> & { useLegacyOpenAIFormat?: boolean }
+  value?: Partial<LLMConfig> & { useLegacyOpenAIFormat?: boolean },
 ): LLMConfig => {
-  const providerType = resolveProviderType(value?.providerType, value?.useLegacyOpenAIFormat);
+  const providerType = resolveProviderType(
+    value?.providerType,
+    value?.useLegacyOpenAIFormat,
+  );
 
   return {
     apiUrl: normalizeApiUrl(value?.apiUrl),
-    apiKey: typeof value?.apiKey === "string" ? value.apiKey : DEFAULT_LLM_CONFIG.apiKey,
+    apiKey:
+      typeof value?.apiKey === "string"
+        ? value.apiKey
+        : DEFAULT_LLM_CONFIG.apiKey,
     temperature:
-      typeof value?.temperature === "number" && Number.isFinite(value.temperature)
+      typeof value?.temperature === "number" &&
+      Number.isFinite(value.temperature)
         ? value.temperature
         : DEFAULT_LLM_CONFIG.temperature,
     modelName:
@@ -107,7 +121,8 @@ export const normalizeLLMConfig = (
         : DEFAULT_LLM_CONFIG.systemPrompt,
     providerType,
     maxToolRounds:
-      typeof value?.maxToolRounds === "number" && Number.isFinite(value.maxToolRounds)
+      typeof value?.maxToolRounds === "number" &&
+      Number.isFinite(value.maxToolRounds)
         ? value.maxToolRounds
         : DEFAULT_LLM_CONFIG.maxToolRounds,
   };

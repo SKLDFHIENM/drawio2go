@@ -18,7 +18,7 @@ import type {
   UpdateConversationInput,
   Message,
   CreateMessageInput,
-} from './types';
+} from "./types";
 
 /**
  * 存储适配器抽象接口
@@ -147,14 +147,19 @@ export interface StorageAdapter {
    * @param conversation 对话数据（不包含时间戳）
    * @returns 创建后的完整对话实体
    */
-  createConversation(conversation: CreateConversationInput): Promise<Conversation>;
+  createConversation(
+    conversation: CreateConversationInput,
+  ): Promise<Conversation>;
 
   /**
    * 更新对话
    * @param id 对话 ID
    * @param updates 更新的字段（Partial）
    */
-  updateConversation(id: string, updates: UpdateConversationInput): Promise<void>;
+  updateConversation(
+    id: string,
+    updates: UpdateConversationInput,
+  ): Promise<void>;
 
   /**
    * 删除对话（级联删除关联的消息）

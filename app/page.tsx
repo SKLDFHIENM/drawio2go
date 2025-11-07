@@ -17,8 +17,13 @@ export default function Home() {
   const [diagramXml, setDiagramXml] = useState<string>("");
   const [currentXml, setCurrentXml] = useState<string>("");
   const [settings, setSettings] = useState({ defaultPath: "" });
-  const [activeSidebar, setActiveSidebar] = useState<"none" | "settings" | "chat">("none");
-  const [selectionInfo, setSelectionInfo] = useState<DrawioSelectionInfo>({ count: 0, cells: [] });
+  const [activeSidebar, setActiveSidebar] = useState<
+    "none" | "settings" | "chat"
+  >("none");
+  const [selectionInfo, setSelectionInfo] = useState<DrawioSelectionInfo>({
+    count: 0,
+    cells: [],
+  });
   const [isElectronEnv, setIsElectronEnv] = useState<boolean>(false);
   const [forceReload, setForceReload] = useState<boolean>(false); // 控制是否强制完全重载
 
@@ -96,7 +101,7 @@ export default function Home() {
   // 处理 DrawIO 选区变化
   const handleSelectionChange = (info: DrawioSelectionInfo) => {
     setSelectionInfo(info);
-    console.log('🎯 选中元素详情:', JSON.stringify(info.cells, null, 2));
+    console.log("🎯 选中元素详情:", JSON.stringify(info.cells, null, 2));
   };
 
   // 手动保存到文件
@@ -110,7 +115,7 @@ export default function Home() {
     if (typeof window !== "undefined" && window.electron) {
       const result = await window.electron.saveDiagram(
         currentXml,
-        settings.defaultPath
+        settings.defaultPath,
       );
       if (result.success) {
         alert(`文件已保存到: ${result.filePath}`);
@@ -189,24 +194,28 @@ export default function Home() {
     <main className="main-container">
       {/* Socket.IO 连接状态指示器 */}
       {!isConnected && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          background: '#ff6b6b',
-          color: 'white',
-          padding: '8px 16px',
-          textAlign: 'center',
-          fontSize: '14px',
-          zIndex: 9999,
-        }}>
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            background: "#ff6b6b",
+            color: "white",
+            padding: "8px 16px",
+            textAlign: "center",
+            fontSize: "14px",
+            zIndex: 9999,
+          }}
+        >
           ⚠️ Socket.IO 未连接，AI 工具功能不可用
         </div>
       )}
 
       {/* DrawIO 编辑器区域 */}
-      <div className={`editor-container ${activeSidebar !== "none" ? "sidebar-open" : ""}`}>
+      <div
+        className={`editor-container ${activeSidebar !== "none" ? "sidebar-open" : ""}`}
+      >
         <DrawioEditorNative
           initialXml={diagramXml}
           onSave={handleAutoSave}
@@ -230,9 +239,19 @@ export default function Home() {
         onSave={handleManualSave}
         onLoad={handleLoad}
         activeSidebar={activeSidebar}
-        selectionLabel={isElectronEnv
-          ? `选中了${selectionInfo.count}个对象${selectionInfo.cells.length > 0 ? ` (IDs: ${selectionInfo.cells.map(c => c.id).slice(0, 3).join(', ')}${selectionInfo.cells.length > 3 ? '...' : ''})` : ''}`
-          : "网页无法使用该功能"
+        selectionLabel={
+          isElectronEnv
+            ? `选中了${selectionInfo.count}个对象${
+                selectionInfo.cells.length > 0
+                  ? ` (IDs: ${selectionInfo.cells
+                      .map((c) => c.id)
+                      .slice(0, 3)
+                      .join(
+                        ", ",
+                      )}${selectionInfo.cells.length > 3 ? "..." : ""})`
+                  : ""
+              }`
+            : "网页无法使用该功能"
         }
       />
     </main>

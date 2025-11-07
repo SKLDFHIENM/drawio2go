@@ -1,8 +1,12 @@
-'use client';
+"use client";
 
-import { useState, useCallback } from 'react';
-import { getStorage, DEFAULT_PROJECT_UUID, DEFAULT_XML_VERSION } from '@/app/lib/storage';
-import type { XMLVersion } from '@/app/lib/storage';
+import { useState, useCallback } from "react";
+import {
+  getStorage,
+  DEFAULT_PROJECT_UUID,
+  DEFAULT_XML_VERSION,
+} from "@/app/lib/storage";
+import type { XMLVersion } from "@/app/lib/storage";
 
 /**
  * XML 版本管理 Hook
@@ -28,7 +32,7 @@ export function useStorageXMLVersions() {
       xml: string,
       previewImage?: Blob,
       name?: string,
-      description?: string
+      description?: string,
     ): Promise<XMLVersion> => {
       setLoading(true);
       setError(null);
@@ -54,7 +58,7 @@ export function useStorageXMLVersions() {
         throw error;
       }
     },
-    []
+    [],
   );
 
   /**
@@ -66,7 +70,8 @@ export function useStorageXMLVersions() {
 
     try {
       const storage = await getStorage();
-      const versions = await storage.getXMLVersionsByProject(DEFAULT_PROJECT_UUID);
+      const versions =
+        await storage.getXMLVersionsByProject(DEFAULT_PROJECT_UUID);
 
       if (versions.length === 0) {
         setLoading(false);
@@ -94,7 +99,8 @@ export function useStorageXMLVersions() {
 
     try {
       const storage = await getStorage();
-      const versions = await storage.getXMLVersionsByProject(DEFAULT_PROJECT_UUID);
+      const versions =
+        await storage.getXMLVersionsByProject(DEFAULT_PROJECT_UUID);
       setLoading(false);
       return versions;
     } catch (err) {
@@ -108,22 +114,25 @@ export function useStorageXMLVersions() {
   /**
    * 获取指定版本
    */
-  const getXMLVersion = useCallback(async (id: number): Promise<XMLVersion | null> => {
-    setLoading(true);
-    setError(null);
+  const getXMLVersion = useCallback(
+    async (id: number): Promise<XMLVersion | null> => {
+      setLoading(true);
+      setError(null);
 
-    try {
-      const storage = await getStorage();
-      const version = await storage.getXMLVersion(id);
-      setLoading(false);
-      return version;
-    } catch (err) {
-      const error = err as Error;
-      setError(error);
-      setLoading(false);
-      throw error;
-    }
-  }, []);
+      try {
+        const storage = await getStorage();
+        const version = await storage.getXMLVersion(id);
+        setLoading(false);
+        return version;
+      } catch (err) {
+        const error = err as Error;
+        setError(error);
+        setLoading(false);
+        throw error;
+      }
+    },
+    [],
+  );
 
   return {
     loading,

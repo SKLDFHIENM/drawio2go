@@ -1,4 +1,4 @@
-import type { StorageAdapter } from './adapter';
+import type { StorageAdapter } from "./adapter";
 import type {
   Setting,
   Project,
@@ -11,7 +11,7 @@ import type {
   UpdateConversationInput,
   Message,
   CreateMessageInput,
-} from './types';
+} from "./types";
 
 /**
  * SQLite 存储实现（Electron 环境）
@@ -20,7 +20,9 @@ import type {
 export class SQLiteStorage implements StorageAdapter {
   private async ensureElectron() {
     if (!window.electronStorage) {
-      throw new Error('electronStorage is not available. Not in Electron environment.');
+      throw new Error(
+        "electronStorage is not available. Not in Electron environment.",
+      );
     }
   }
 
@@ -63,7 +65,10 @@ export class SQLiteStorage implements StorageAdapter {
     return window.electronStorage!.createProject(project);
   }
 
-  async updateProject(uuid: string, updates: UpdateProjectInput): Promise<void> {
+  async updateProject(
+    uuid: string,
+    updates: UpdateProjectInput,
+  ): Promise<void> {
     await this.ensureElectron();
     await window.electronStorage!.updateProject(uuid, updates);
   }
@@ -96,9 +101,11 @@ export class SQLiteStorage implements StorageAdapter {
     // Blob → ArrayBuffer 转换
     const versionToCreate: CreateXMLVersionInput = { ...version };
     if (version.preview_image instanceof Blob) {
-      versionToCreate.preview_image = (await version.preview_image.arrayBuffer()) as unknown as Blob;
+      versionToCreate.preview_image =
+        (await version.preview_image.arrayBuffer()) as unknown as Blob;
     }
-    const result = await window.electronStorage!.createXMLVersion(versionToCreate);
+    const result =
+      await window.electronStorage!.createXMLVersion(versionToCreate);
     if (result.preview_image) {
       const buffer = result.preview_image as unknown as ArrayBuffer;
       result.preview_image = new Blob([buffer]);
@@ -108,7 +115,8 @@ export class SQLiteStorage implements StorageAdapter {
 
   async getXMLVersionsByProject(projectUuid: string): Promise<XMLVersion[]> {
     await this.ensureElectron();
-    const results = await window.electronStorage!.getXMLVersionsByProject(projectUuid);
+    const results =
+      await window.electronStorage!.getXMLVersionsByProject(projectUuid);
     return results.map((r) => {
       if (r.preview_image) {
         const buffer = r.preview_image as unknown as ArrayBuffer;
@@ -130,12 +138,17 @@ export class SQLiteStorage implements StorageAdapter {
     return window.electronStorage!.getConversation(id);
   }
 
-  async createConversation(conversation: CreateConversationInput): Promise<Conversation> {
+  async createConversation(
+    conversation: CreateConversationInput,
+  ): Promise<Conversation> {
     await this.ensureElectron();
     return window.electronStorage!.createConversation(conversation);
   }
 
-  async updateConversation(id: string, updates: UpdateConversationInput): Promise<void> {
+  async updateConversation(
+    id: string,
+    updates: UpdateConversationInput,
+  ): Promise<void> {
     await this.ensureElectron();
     await window.electronStorage!.updateConversation(id, updates);
   }
@@ -145,12 +158,16 @@ export class SQLiteStorage implements StorageAdapter {
     await window.electronStorage!.deleteConversation(id);
   }
 
-  async getConversationsByProject(projectUuid: string): Promise<Conversation[]> {
+  async getConversationsByProject(
+    projectUuid: string,
+  ): Promise<Conversation[]> {
     await this.ensureElectron();
     return window.electronStorage!.getConversationsByProject(projectUuid);
   }
 
-  async getConversationsByXMLVersion(xmlVersionId: number): Promise<Conversation[]> {
+  async getConversationsByXMLVersion(
+    xmlVersionId: number,
+  ): Promise<Conversation[]> {
     await this.ensureElectron();
     return window.electronStorage!.getConversationsByXMLVersion(xmlVersionId);
   }

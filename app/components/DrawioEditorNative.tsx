@@ -29,7 +29,7 @@ interface RawDrawioCell {
 // 通过具体的类型定义避免使用 any
 function debounceXmlUpdate(
   func: (xml: string | undefined) => void,
-  wait: number
+  wait: number,
 ): (xml: string | undefined) => void {
   let timeout: NodeJS.Timeout | null = null;
   return function (xml: string | undefined) {
@@ -40,7 +40,12 @@ function debounceXmlUpdate(
   };
 }
 
-export default function DrawioEditorNative({ initialXml, onSave, onSelectionChange, forceReload }: DrawioEditorNativeProps) {
+export default function DrawioEditorNative({
+  initialXml,
+  onSave,
+  onSelectionChange,
+  forceReload,
+}: DrawioEditorNativeProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isReady, setIsReady] = useState(false);
   const previousXmlRef = useRef<string | undefined>(initialXml);
@@ -50,29 +55,45 @@ export default function DrawioEditorNative({ initialXml, onSave, onSelectionChan
   const drawioUrl = `https://embed.diagrams.net/?embed=1&proto=json&spin=1&ui=kennedy&libraries=1&saveAndExit=1&noExitBtn=1`;
 
   // 首次加载图表（使用 load 动作）
-  const loadDiagram = useCallback((xml: string | undefined, skipReadyCheck = false) => {
-    if (iframeRef.current && iframeRef.current.contentWindow && (isReady || skipReadyCheck)) {
-      const loadData = {
-        action: 'load',
-        xml: xml || '',
-        autosave: true
-      };
-      console.log("📤 发送 load 命令（首次加载）");
-      iframeRef.current.contentWindow.postMessage(JSON.stringify(loadData), '*');
-    }
-  }, [isReady]);
+  const loadDiagram = useCallback(
+    (xml: string | undefined, skipReadyCheck = false) => {
+      if (
+        iframeRef.current &&
+        iframeRef.current.contentWindow &&
+        (isReady || skipReadyCheck)
+      ) {
+        const loadData = {
+          action: "load",
+          xml: xml || "",
+          autosave: true,
+        };
+        console.log("📤 发送 load 命令（首次加载）");
+        iframeRef.current.contentWindow.postMessage(
+          JSON.stringify(loadData),
+          "*",
+        );
+      }
+    },
+    [isReady],
+  );
 
   // 更新图表（使用 merge 动作，保留编辑状态）
-  const updateDiagram = useCallback((xml: string | undefined) => {
-    if (iframeRef.current && iframeRef.current.contentWindow && isReady) {
-      const updateData = {
-        action: 'merge',
-        xml: xml || ''
-      };
-      console.log("🔄 发送 merge 命令（增量更新，保留编辑状态）");
-      iframeRef.current.contentWindow.postMessage(JSON.stringify(updateData), '*');
-    }
-  }, [isReady]);
+  const updateDiagram = useCallback(
+    (xml: string | undefined) => {
+      if (iframeRef.current && iframeRef.current.contentWindow && isReady) {
+        const updateData = {
+          action: "merge",
+          xml: xml || "",
+        };
+        console.log("🔄 发送 merge 命令（增量更新，保留编辑状态）");
+        iframeRef.current.contentWindow.postMessage(
+          JSON.stringify(updateData),
+          "*",
+        );
+      }
+    },
+    [isReady],
+  );
 
   // 使用 ref 保存最新的函数引用，确保防抖函数始终能访问到最新版本
   const loadDiagramRef = useRef(loadDiagram);
@@ -85,17 +106,18 @@ export default function DrawioEditorNative({ initialXml, onSave, onSelectionChan
 
   // 防抖的更新函数 - 使用 useMemo 确保只创建一次
   const debouncedUpdate = useMemo(
-    () => debounceXmlUpdate((xml: string | undefined) => {
-      if (isFirstLoadRef.current) {
-        // 首次加载使用 load
-        loadDiagramRef.current(xml);
-        isFirstLoadRef.current = false;
-      } else {
-        // 后续更新使用 merge
-        updateDiagramRef.current(xml);
-      }
-    }, 300),
-    [] // 空依赖数组，因为使用 ref 来访问最新的函数
+    () =>
+      debounceXmlUpdate((xml: string | undefined) => {
+        if (isFirstLoadRef.current) {
+          // 首次加载使用 load
+          loadDiagramRef.current(xml);
+          isFirstLoadRef.current = false;
+        } else {
+          // 后续更新使用 merge
+          updateDiagramRef.current(xml);
+        }
+      }, 300),
+    [], // 空依赖数组，因为使用 ref 来访问最新的函数
   );
 
   useEffect(() => {
@@ -105,7 +127,7 @@ export default function DrawioEditorNative({ initialXml, onSave, onSelectionChan
     // 监听来自 iframe 的消息
     const handleMessage = (event: MessageEvent) => {
       // 安全检查：确保消息来自 diagrams.net
-      if (!event.origin.includes('diagrams.net')) {
+      if (!event.origin.includes("diagrams.net")) {
         return;
       }
 
@@ -113,14 +135,14 @@ export default function DrawioEditorNative({ initialXml, onSave, onSelectionChan
         const data = JSON.parse(event.data);
         console.log("📩 收到来自 DrawIO 的消息:", data.event);
 
-        if (data.event === 'init') {
+        if (data.event === "init") {
           console.log("✅ DrawIO iframe 初始化成功！");
           setIsReady(true);
 
           // 加载初始数据（跳过 ready 检查，因为此时状态还未更新）
           loadDiagram(initialXml, true);
           isFirstLoadRef.current = false; // 标记首次加载已完成
-        } else if (data.event === 'autosave' || data.event === 'save') {
+        } else if (data.event === "autosave" || data.event === "save") {
           console.log("💾 DrawIO 保存事件触发");
           if (onSave && data.xml) {
             onSave(data.xml);
@@ -128,47 +150,53 @@ export default function DrawioEditorNative({ initialXml, onSave, onSelectionChan
 
           // 请求导出 XML
           if (iframeRef.current && iframeRef.current.contentWindow) {
-            iframeRef.current.contentWindow.postMessage(JSON.stringify({
-              action: 'export',
-              format: 'xmlsvg'
-            }), '*');
+            iframeRef.current.contentWindow.postMessage(
+              JSON.stringify({
+                action: "export",
+                format: "xmlsvg",
+              }),
+              "*",
+            );
           }
-        } else if (data.event === 'export') {
+        } else if (data.event === "export") {
           console.log("📦 收到导出数据");
           if (onSave && data.data) {
             onSave(data.data);
           }
-        } else if (data.event === 'load') {
+        } else if (data.event === "load") {
           console.log("✅ DrawIO 已加载内容");
-        } else if (data.event === 'drawio-selection') {
+        } else if (data.event === "drawio-selection") {
           // 处理新的详细信息格式，同时保持向后兼容
-          const count = typeof data.count === 'number' ? data.count : Number(data.count ?? 0) || 0;
+          const count =
+            typeof data.count === "number"
+              ? data.count
+              : Number(data.count ?? 0) || 0;
           const cells = data.cells || [];
 
           const selectionInfo: DrawioSelectionInfo = {
             count,
             cells: cells.map((cell: RawDrawioCell) => ({
-              id: cell.id || '',
-              type: cell.type || 'unknown',
+              id: cell.id || "",
+              type: cell.type || "unknown",
               value: cell.value,
-              style: cell.style || '',
-              label: cell.label || '',
-              geometry: cell.geometry || undefined
-            }))
+              style: cell.style || "",
+              label: cell.label || "",
+              geometry: cell.geometry || undefined,
+            })),
           };
 
-                    onSelectionChange?.(selectionInfo);
+          onSelectionChange?.(selectionInfo);
         }
       } catch (error) {
         console.error("❌ 解析消息失败:", error);
       }
     };
 
-    window.addEventListener('message', handleMessage);
+    window.addEventListener("message", handleMessage);
 
     return () => {
       console.log("🔴 DrawioEditorNative 组件将卸载");
-      window.removeEventListener('message', handleMessage);
+      window.removeEventListener("message", handleMessage);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -178,8 +206,16 @@ export default function DrawioEditorNative({ initialXml, onSave, onSelectionChan
     // 只在 isReady 为 true 且 initialXml 真正变化时才更新
     if (isReady && initialXml !== previousXmlRef.current) {
       console.log("🔄 检测到 XML 更新");
-      console.log("🔄 之前的 XML:", previousXmlRef.current ? `存在 (${previousXmlRef.current?.length} 字符)` : "不存在");
-      console.log("🔄 新的 XML:", initialXml ? `存在 (${initialXml?.length} 字符)` : "不存在");
+      console.log(
+        "🔄 之前的 XML:",
+        previousXmlRef.current
+          ? `存在 (${previousXmlRef.current?.length} 字符)`
+          : "不存在",
+      );
+      console.log(
+        "🔄 新的 XML:",
+        initialXml ? `存在 (${initialXml?.length} 字符)` : "不存在",
+      );
       console.log("🔄 强制重载:", forceReload ? "是" : "否");
 
       // 如果需要强制重载（如用户手动加载文件），使用 load 动作
@@ -226,7 +262,7 @@ export default function DrawioEditorNative({ initialXml, onSave, onSelectionChan
   }, [isReady]);
 
   return (
-    <div className="drawio-container" style={{ width: '100%', height: '100%' }}>
+    <div className="drawio-container" style={{ width: "100%", height: "100%" }}>
       <iframe
         ref={iframeRef}
         src={drawioUrl}
@@ -234,24 +270,26 @@ export default function DrawioEditorNative({ initialXml, onSave, onSelectionChan
         allow="clipboard-read; clipboard-write"
         title="DrawIO Editor"
         style={{
-          width: '100%',
-          height: '100%',
-          border: 'none',
-          minWidth: '400px',
-          minHeight: '400px'
+          width: "100%",
+          height: "100%",
+          border: "none",
+          minWidth: "400px",
+          minHeight: "400px",
         }}
       />
       {!isReady && (
-        <div style={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          background: 'white',
-          padding: '20px',
-          borderRadius: '8px',
-          boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
-        }}>
+        <div
+          style={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            background: "white",
+            padding: "20px",
+            borderRadius: "8px",
+            boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
+          }}
+        >
           <p>正在加载 DrawIO 编辑器...</p>
         </div>
       )}

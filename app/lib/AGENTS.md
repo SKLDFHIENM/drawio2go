@@ -22,16 +22,19 @@
 ## DrawIO XML 转接层（`drawio-xml-service.ts`）
 
 ### 核心设计原则
+
 - **无推断 (No Inference)**: 不对 XML 做领域特化解析，只处理调用者提供的 XPath 与原始字符串
 - **XPath 驱动**: 所有查询与编辑均使用标准 XPath 表达式定位节点
 - **原子性**: `drawio_edit_batch` 全部成功后才写回前端，任一操作失败立即返回错误，不修改原始 XML
 - **Base64 解码**: 每次从前端读取 XML 后都会自动检测并解码 `data:image/svg+xml;base64,` 前缀
 
 ### 提供的函数
+
 - `executeDrawioRead(xpath?: string)`: 返回结构化的查询结果（元素 / 属性 / 文本），并在 `matched_xpath` 字段中携带命中路径
 - `executeDrawioEditBatch({ operations })`: 执行批量操作，遵守 `allow_no_match` 语义并保持原子性
 
 ### 支持的操作类型
+
 `set_attribute`, `remove_attribute`, `insert_element`, `remove_element`, `replace_element`, `set_text_content`
 
 ## DrawIO AI 工具（`drawio-ai-tools.ts`）
@@ -56,6 +59,7 @@
 ## 类型定义
 
 所有公共类型位于 `../types/drawio-tools.ts`，包含：
+
 - 前端桥接返回结果（`GetXMLResult` / `ReplaceXMLResult` / `XMLValidationResult`）
 - `drawio_read` 查询结果结构
 - `drawio_edit_batch` 支持的操作及返回值

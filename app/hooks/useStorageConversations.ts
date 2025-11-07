@@ -1,9 +1,13 @@
-'use client';
+"use client";
 
-import { useState, useCallback } from 'react';
-import { v4 as uuidv4 } from 'uuid';
-import { getStorage, DEFAULT_PROJECT_UUID } from '@/app/lib/storage';
-import type { Conversation, Message, CreateMessageInput } from '@/app/lib/storage';
+import { useState, useCallback } from "react";
+import { v4 as uuidv4 } from "uuid";
+import { getStorage, DEFAULT_PROJECT_UUID } from "@/app/lib/storage";
+import type {
+  Conversation,
+  Message,
+  CreateMessageInput,
+} from "@/app/lib/storage";
 
 /**
  * 对话管理 Hook
@@ -22,7 +26,10 @@ export function useStorageConversations() {
    * @returns 创建的对话
    */
   const createConversation = useCallback(
-    async (xmlVersionId: number, title: string = 'New Chat'): Promise<Conversation> => {
+    async (
+      xmlVersionId: number,
+      title: string = "New Chat",
+    ): Promise<Conversation> => {
       setLoading(true);
       setError(null);
 
@@ -44,34 +51,40 @@ export function useStorageConversations() {
         throw error;
       }
     },
-    []
+    [],
   );
 
   /**
    * 获取对话
    */
-  const getConversation = useCallback(async (id: string): Promise<Conversation | null> => {
-    setLoading(true);
-    setError(null);
+  const getConversation = useCallback(
+    async (id: string): Promise<Conversation | null> => {
+      setLoading(true);
+      setError(null);
 
-    try {
-      const storage = await getStorage();
-      const conversation = await storage.getConversation(id);
-      setLoading(false);
-      return conversation;
-    } catch (err) {
-      const error = err as Error;
-      setError(error);
-      setLoading(false);
-      throw error;
-    }
-  }, []);
+      try {
+        const storage = await getStorage();
+        const conversation = await storage.getConversation(id);
+        setLoading(false);
+        return conversation;
+      } catch (err) {
+        const error = err as Error;
+        setError(error);
+        setLoading(false);
+        throw error;
+      }
+    },
+    [],
+  );
 
   /**
    * 更新对话
    */
   const updateConversation = useCallback(
-    async (id: string, updates: Partial<Pick<Conversation, 'title' | 'xml_version_id'>>): Promise<void> => {
+    async (
+      id: string,
+      updates: Partial<Pick<Conversation, "title" | "xml_version_id">>,
+    ): Promise<void> => {
       setLoading(true);
       setError(null);
 
@@ -86,7 +99,7 @@ export function useStorageConversations() {
         throw error;
       }
     },
-    []
+    [],
   );
 
   /**
@@ -117,7 +130,8 @@ export function useStorageConversations() {
 
     try {
       const storage = await getStorage();
-      const conversations = await storage.getConversationsByProject(DEFAULT_PROJECT_UUID);
+      const conversations =
+        await storage.getConversationsByProject(DEFAULT_PROJECT_UUID);
       setLoading(false);
       return conversations;
     } catch (err) {
@@ -131,28 +145,37 @@ export function useStorageConversations() {
   /**
    * 获取对话的所有消息
    */
-  const getMessages = useCallback(async (conversationId: string): Promise<Message[]> => {
-    setLoading(true);
-    setError(null);
+  const getMessages = useCallback(
+    async (conversationId: string): Promise<Message[]> => {
+      setLoading(true);
+      setError(null);
 
-    try {
-      const storage = await getStorage();
-      const messages = await storage.getMessagesByConversation(conversationId);
-      setLoading(false);
-      return messages;
-    } catch (err) {
-      const error = err as Error;
-      setError(error);
-      setLoading(false);
-      throw error;
-    }
-  }, []);
+      try {
+        const storage = await getStorage();
+        const messages =
+          await storage.getMessagesByConversation(conversationId);
+        setLoading(false);
+        return messages;
+      } catch (err) {
+        const error = err as Error;
+        setError(error);
+        setLoading(false);
+        throw error;
+      }
+    },
+    [],
+  );
 
   /**
    * 添加消息
    */
   const addMessage = useCallback(
-    async (conversationId: string, role: 'user' | 'assistant' | 'system', content: string, toolInvocations?: unknown): Promise<Message> => {
+    async (
+      conversationId: string,
+      role: "user" | "assistant" | "system",
+      content: string,
+      toolInvocations?: unknown,
+    ): Promise<Message> => {
       setLoading(true);
       setError(null);
 
@@ -163,7 +186,9 @@ export function useStorageConversations() {
           conversation_id: conversationId,
           role,
           content,
-          tool_invocations: toolInvocations ? JSON.stringify(toolInvocations) : undefined,
+          tool_invocations: toolInvocations
+            ? JSON.stringify(toolInvocations)
+            : undefined,
         });
 
         setLoading(false);
@@ -175,28 +200,31 @@ export function useStorageConversations() {
         throw error;
       }
     },
-    []
+    [],
   );
 
   /**
    * 批量添加消息
    */
-  const addMessages = useCallback(async (messages: CreateMessageInput[]): Promise<Message[]> => {
-    setLoading(true);
-    setError(null);
+  const addMessages = useCallback(
+    async (messages: CreateMessageInput[]): Promise<Message[]> => {
+      setLoading(true);
+      setError(null);
 
-    try {
-      const storage = await getStorage();
-      const created = await storage.createMessages(messages);
-      setLoading(false);
-      return created;
-    } catch (err) {
-      const error = err as Error;
-      setError(error);
-      setLoading(false);
-      throw error;
-    }
-  }, []);
+      try {
+        const storage = await getStorage();
+        const created = await storage.createMessages(messages);
+        setLoading(false);
+        return created;
+      } catch (err) {
+        const error = err as Error;
+        setError(error);
+        setLoading(false);
+        throw error;
+      }
+    },
+    [],
+  );
 
   return {
     loading,

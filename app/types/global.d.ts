@@ -4,7 +4,7 @@
  * 用于声明挂载到 global 对象上的变量
  */
 
-import type { Server } from 'socket.io';
+import type { Server } from "socket.io";
 import type {
   Setting,
   Project,
@@ -17,7 +17,7 @@ import type {
   UpdateConversationInput,
   Message,
   CreateMessageInput,
-} from '@/lib/storage/types';
+} from "@/lib/storage/types";
 
 declare global {
   /**
@@ -30,10 +30,15 @@ declare global {
    * 待处理的工具调用请求
    * key: requestId, value: { resolve, reject }
    */
-  var pendingRequests: Map<string, {
-    resolve: (value: unknown) => void;
-    reject: (error: Error) => void;
-  }> | undefined;
+  var pendingRequests:
+    | Map<
+        string,
+        {
+          resolve: (value: unknown) => void;
+          reject: (error: Error) => void;
+        }
+      >
+    | undefined;
 
   /**
    * Electron API
@@ -42,8 +47,16 @@ declare global {
   interface Window {
     electron?: {
       selectFolder: () => Promise<string | null>;
-      saveDiagram: (xml: string, defaultPath?: string) => Promise<{ success: boolean; message?: string; filePath?: string }>;
-      loadDiagram: () => Promise<{ success: boolean; xml?: string; filePath?: string; message?: string }>;
+      saveDiagram: (
+        xml: string,
+        defaultPath?: string,
+      ) => Promise<{ success: boolean; message?: string; filePath?: string }>;
+      loadDiagram: () => Promise<{
+        success: boolean;
+        xml?: string;
+        filePath?: string;
+        message?: string;
+      }>;
       openExternal: (url: string) => Promise<void>;
       showSaveDialog: (options: {
         defaultPath?: string;
@@ -53,9 +66,15 @@ declare global {
         filters?: { name: string; extensions: string[] }[];
         properties?: string[];
       }) => Promise<string[] | null>;
-      writeFile: (filePath: string, data: string) => Promise<{ success: boolean; error?: string }>;
+      writeFile: (
+        filePath: string,
+        data: string,
+      ) => Promise<{ success: boolean; error?: string }>;
       readFile: (filePath: string) => Promise<string>;
-      enableSelectionWatcher: () => Promise<{ success: boolean; message?: string }>;
+      enableSelectionWatcher: () => Promise<{
+        success: boolean;
+        message?: string;
+      }>;
     };
 
     /**
@@ -75,7 +94,10 @@ declare global {
       // Projects
       getProject: (uuid: string) => Promise<Project | null>;
       createProject: (project: CreateProjectInput) => Promise<Project>;
-      updateProject: (uuid: string, updates: UpdateProjectInput) => Promise<void>;
+      updateProject: (
+        uuid: string,
+        updates: UpdateProjectInput,
+      ) => Promise<void>;
       deleteProject: (uuid: string) => Promise<void>;
       getAllProjects: () => Promise<Project[]>;
 
@@ -87,11 +109,20 @@ declare global {
 
       // Conversations
       getConversation: (id: string) => Promise<Conversation | null>;
-      createConversation: (conversation: CreateConversationInput) => Promise<Conversation>;
-      updateConversation: (id: string, updates: UpdateConversationInput) => Promise<void>;
+      createConversation: (
+        conversation: CreateConversationInput,
+      ) => Promise<Conversation>;
+      updateConversation: (
+        id: string,
+        updates: UpdateConversationInput,
+      ) => Promise<void>;
       deleteConversation: (id: string) => Promise<void>;
-      getConversationsByProject: (projectUuid: string) => Promise<Conversation[]>;
-      getConversationsByXMLVersion: (xmlVersionId: number) => Promise<Conversation[]>;
+      getConversationsByProject: (
+        projectUuid: string,
+      ) => Promise<Conversation[]>;
+      getConversationsByXMLVersion: (
+        xmlVersionId: number,
+      ) => Promise<Conversation[]>;
 
       // Messages
       getMessagesByConversation: (conversationId: string) => Promise<Message[]>;
@@ -102,14 +133,14 @@ declare global {
   }
 }
 
-declare module 'xpath' {
-  import type { Document, Node } from '@xmldom/xmldom';
+declare module "xpath" {
+  import type { Document, Node } from "@xmldom/xmldom";
 
   export type XPathValue = Node | string | number | boolean;
 
   export function select(
     expression: string,
-    node: Node | Document
+    node: Node | Document,
   ): XPathValue | XPathValue[];
 }
 

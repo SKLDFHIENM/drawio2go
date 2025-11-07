@@ -5,11 +5,13 @@
 **依赖**：里程碑 1, 2
 
 ## 目标
+
 实现实时搜索过滤功能，帮助用户快速定位设置项，提升大型设置页面的可用性。
 
 ## 任务清单
 
 ### 1. 添加搜索状态管理
+
 - [ ] 在 `SettingsSidebar.tsx` 中添加搜索相关状态：
   ```typescript
   // 搜索状态
@@ -24,6 +26,7 @@
   ```
 
 ### 2. 定义可搜索的设置项
+
 - [ ] 创建设置项元数据：
   ```typescript
   // 设置项元数据（用于搜索）
@@ -37,16 +40,31 @@
       title: "LLM 配置",
       description: "配置 AI 助手的连接参数和行为",
       keywords: [
-        "LLM", "AI", "助手", "API", "密钥", "模型", "温度",
-        "供应商", "提示词", "工具", "调用", "轮次", "测试",
-        "openai", "deepseek", "reasoning"
+        "LLM",
+        "AI",
+        "助手",
+        "API",
+        "密钥",
+        "模型",
+        "温度",
+        "供应商",
+        "提示词",
+        "工具",
+        "调用",
+        "轮次",
+        "测试",
+        "openai",
+        "deepseek",
+        "reasoning",
       ],
     },
   };
   ```
 
 ### 3. 实现搜索过滤逻辑
+
 - [ ] 添加搜索过滤函数：
+
   ```typescript
   // 搜索过滤逻辑
   useEffect(() => {
@@ -67,7 +85,7 @@
         metadata.title.toLowerCase().includes(query) ||
         metadata.description.toLowerCase().includes(query) ||
         metadata.keywords.some((keyword) =>
-          keyword.toLowerCase().includes(query)
+          keyword.toLowerCase().includes(query),
         )
       );
     };
@@ -80,7 +98,9 @@
   ```
 
 ### 4. 添加搜索输入框
+
 - [ ] 在设置页面顶部添加搜索框：
+
   ```tsx
   <div className="sidebar-container">
     {/* 搜索框 */}
@@ -107,20 +127,21 @@
       </TextField>
       {searchQuery && (
         <Description className="mt-2 text-xs">
-          找到 {Object.values(filteredSections).filter(Boolean).length} 个匹配的设置区块
+          找到 {Object.values(filteredSections).filter(Boolean).length}{" "}
+          个匹配的设置区块
         </Description>
       )}
     </div>
 
     {/* 设置内容区域 */}
-    <div className="sidebar-content space-y-6">
-      {/* ... 卡片内容 */}
-    </div>
+    <div className="sidebar-content space-y-6">{/* ... 卡片内容 */}</div>
   </div>
   ```
 
 ### 5. 应用过滤效果
+
 - [ ] 根据过滤结果显示/隐藏卡片：
+
   ```tsx
   <div className="sidebar-content space-y-6">
     {/* 文件路径配置卡片 */}
@@ -162,7 +183,9 @@
   ```
 
 ### 6. 添加搜索样式
+
 - [ ] 在 `app/styles/components/forms.css` 中添加搜索样式：
+
   ```css
   /* 搜索容器 */
   .settings-search-container {
@@ -234,7 +257,9 @@
   ```
 
 ### 7. 优化搜索体验
+
 - [ ] 添加防抖优化（可选）：
+
   ```typescript
   // 防抖搜索（可选，如果设置项很多）
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -254,6 +279,7 @@
   ```
 
 ## 验收标准
+
 - [ ] 搜索框固定在顶部（sticky）
 - [ ] 输入搜索词实时过滤设置区块
 - [ ] 匹配的卡片显示，未匹配的隐藏
@@ -266,6 +292,7 @@
 - [ ] 清空搜索后恢复所有卡片
 
 ## 测试步骤
+
 1. 启动开发服务器 `pnpm run dev`
 2. 打开设置侧边栏
 3. 测试搜索功能：
@@ -288,23 +315,27 @@
 ## 设计要点
 
 ### 搜索策略
+
 - **多字段匹配**：标题、描述、关键词
 - **不区分大小写**：toLowerCase() 处理
 - **部分匹配**：includes() 而非完全匹配
 - **关键词扩展**：中英文、同义词
 
 ### 视觉反馈
+
 - **高亮动画**：匹配卡片有脉冲效果
 - **结果计数**：显示匹配数量
 - **无结果提示**：友好的提示信息
 - **清除按钮**：快速清空搜索
 
 ### 性能优化
+
 - **防抖处理**：减少不必要的过滤计算
 - **条件渲染**：未匹配的卡片不渲染
 - **Sticky 定位**：搜索框始终可见
 
 ## 注意事项
+
 - 搜索框使用 sticky 定位，确保在滚动时可见
 - 关键词列表应覆盖所有重要的搜索词
 - 高亮动画不应过于频繁，避免干扰用户
@@ -312,6 +343,7 @@
 - 测试中英文混合搜索
 
 ## 扩展功能（可选）
+
 - [ ] 搜索历史记录
 - [ ] 搜索建议/自动完成
 - [ ] 高亮匹配的文本
@@ -319,11 +351,14 @@
 - [ ] 搜索结果排序（相关度）
 
 ## 破坏性变更
+
 - ⚠️ 添加新的顶部搜索区域，可能影响布局
 - ⚠️ 卡片可能被隐藏，需要确保状态管理正确
 
 ## 回滚方案
+
 如果搜索功能影响性能：
+
 1. 移除防抖，使用即时过滤
 2. 简化关键词列表
 3. 移除高亮动画

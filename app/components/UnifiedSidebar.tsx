@@ -34,7 +34,7 @@ export default function UnifiedSidebar({
           setSidebarWidth(width);
           document.documentElement.style.setProperty(
             "--sidebar-width",
-            `${width}px`
+            `${width}px`,
           );
         }
       } catch (e) {
@@ -60,7 +60,7 @@ export default function UnifiedSidebar({
         setSidebarWidth(newWidth);
         document.documentElement.style.setProperty(
           "--sidebar-width",
-          `${newWidth}px`
+          `${newWidth}px`,
         );
       }
     };
