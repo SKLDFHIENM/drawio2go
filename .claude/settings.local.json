@@ -47,7 +47,8 @@
       "mcp__heroui-react__get_component_info",
       "Bash(mkdir:*)",
       "Bash(pnpm run rebuild)",
-      "Bash(npx eslint:*)"
+      "Bash(npx eslint:*)",
+      "Bash(pnpm rebuild:*)"
     ],
     "deny": [],
     "ask": []
