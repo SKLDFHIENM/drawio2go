@@ -1,7 +1,7 @@
 # 里程碑 5：React Hooks 封装
 
-**状态**：⏳ 待开始
-**预计耗时**：60 分钟
+**状态**：✅ 已完成
+**实际耗时**：约 60 分钟
 **依赖**：里程碑 4
 
 ## 目标
@@ -10,7 +10,7 @@
 ## 任务清单
 
 ### 1. 创建设置管理 Hook
-- [ ] 创建 `app/hooks/useStorageSettings.ts`：
+- [x] 创建 `app/hooks/useStorageSettings.ts`：
 
 ```typescript
 'use client';
@@ -166,7 +166,7 @@ export function useStorageSettings() {
 ```
 
 ### 2. 创建工程管理 Hook
-- [ ] 创建 `app/hooks/useStorageProjects.ts`：
+- [x] 创建 `app/hooks/useStorageProjects.ts`：
 
 ```typescript
 'use client';
@@ -243,7 +243,7 @@ export function useStorageProjects() {
 ```
 
 ### 3. 创建 XML 版本管理 Hook
-- [ ] 创建 `app/hooks/useStorageXMLVersions.ts`：
+- [x] 创建 `app/hooks/useStorageXMLVersions.ts`：
 
 ```typescript
 'use client';
@@ -385,7 +385,7 @@ export function useStorageXMLVersions() {
 ```
 
 ### 4. 创建对话管理 Hook
-- [ ] 创建 `app/hooks/useStorageConversations.ts`：
+- [x] 创建 `app/hooks/useStorageConversations.ts`：
 
 ```typescript
 'use client';
@@ -604,13 +604,13 @@ export function useStorageConversations() {
 ```
 
 ## 验收标准
-- [ ] 4 个 Hook 文件全部创建
-- [ ] 所有 Hook 使用 `'use client'` 指令
-- [ ] 所有 Hook 提供 loading 和 error 状态
-- [ ] 所有方法使用 useCallback 优化
-- [ ] 临时实现正确使用默认常量
-- [ ] 所有方法都有 JSDoc 注释
-- [ ] 编译无 TypeScript 错误
+- [x] 4 个 Hook 文件全部创建
+- [x] 所有 Hook 使用 `'use client'` 指令
+- [x] 所有 Hook 提供 loading 和 error 状态
+- [x] 所有方法使用 useCallback 优化
+- [x] 临时实现正确使用默认常量
+- [x] 所有方法都有 JSDoc 注释
+- [x] 编译无 TypeScript 错误
 
 ## 测试步骤
 
