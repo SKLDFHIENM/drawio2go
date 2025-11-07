@@ -48,7 +48,8 @@
       "Bash(mkdir:*)",
       "Bash(pnpm run rebuild)",
       "Bash(npx eslint:*)",
-      "Bash(pnpm rebuild:*)"
+      "Bash(pnpm rebuild:*)",
+      "Bash(pnpm run format:*)"
     ],
     "deny": [],
     "ask": []

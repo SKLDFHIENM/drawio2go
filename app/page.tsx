@@ -141,9 +141,15 @@ export default function Home() {
       if (result.success && result.xml) {
         console.log("📂 用户手动加载文件，触发完全重载");
         setForceReload(true); // 触发完全重载
-        setDiagramXml(result.xml);
-        setCurrentXml(result.xml);
         await saveDrawioXML(result.xml);
+
+        // 手动触发 UPDATE_EVENT，确保编辑器更新
+        window.dispatchEvent(
+          new CustomEvent(UPDATE_EVENT, {
+            detail: { xml: result.xml },
+          }),
+        );
+
         // 重置 forceReload 标志
         setTimeout(() => setForceReload(false), 100);
       } else if (result.message !== "用户取消打开") {
@@ -162,9 +168,15 @@ export default function Home() {
             const xml = event.target?.result as string;
             console.log("📂 用户手动加载文件，触发完全重载");
             setForceReload(true); // 触发完全重载
-            setDiagramXml(xml);
-            setCurrentXml(xml);
             await saveDrawioXML(xml);
+
+            // 手动触发 UPDATE_EVENT，确保编辑器更新
+            window.dispatchEvent(
+              new CustomEvent(UPDATE_EVENT, {
+                detail: { xml },
+              }),
+            );
+
             // 重置 forceReload 标志
             setTimeout(() => setForceReload(false), 100);
           };

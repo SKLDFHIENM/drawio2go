@@ -72,7 +72,13 @@ function decodeBase64XML(xml: string): string {
   if (xml.startsWith(prefix)) {
     try {
       const base64Content = xml.substring(prefix.length);
-      const decoded = atob(base64Content);
+
+      // 正确处理 UTF-8 编码：
+      // atob() 返回的是 binary string (Latin-1)，需要转换为 UTF-8
+      const binaryString = atob(base64Content);
+      const bytes = Uint8Array.from(binaryString, (c) => c.charCodeAt(0));
+      const decoded = new TextDecoder("utf-8").decode(bytes);
+
       return decoded;
     } catch (error) {
       console.error("[DrawIO Tools] Base64 解码失败:", error);
@@ -84,10 +90,35 @@ function decodeBase64XML(xml: string): string {
 }
 
 /**
+ * 保存 XML 到存储的内部实现（不触发事件）
+ *
+ * @param decodedXml - 已解码的 XML 内容
+ */
+async function saveDrawioXMLInternal(decodedXml: string): Promise<void> {
+  const storage = await getStorage();
+
+  // 获取现有版本
+  const existingVersions = await storage.getXMLVersionsByProject(PROJECT_UUID);
+
+  // 删除所有旧版本（仅保留最新版策略）
+  for (const version of existingVersions) {
+    await storage.deleteXMLVersion(version.id);
+  }
+
+  // 创建新版本
+  await storage.createXMLVersion({
+    project_uuid: PROJECT_UUID,
+    semantic_version: SEMANTIC_VERSION,
+    xml_content: decodedXml,
+    source_version_id: 0,
+  });
+}
+
+/**
  * 保存 XML 到 IndexedDB（自动解码 base64）
  *
- * 统一的保存入口，使用 IndexedDB 存储架构
- * 仅保存最新版本，自动删除旧版本以节省空间
+ * 用于用户手动编辑时的自动保存，不触发 UPDATE_EVENT
+ * 避免在用户编辑时触发不必要的 merge 操作
  *
  * @param xml - XML 内容（可能包含 base64 编码）
  */
@@ -99,26 +130,8 @@ export async function saveDrawioXML(xml: string): Promise<void> {
   const decodedXml = decodeBase64XML(xml);
 
   try {
-    const storage = await getStorage();
-
-    // 获取现有版本
-    const existingVersions =
-      await storage.getXMLVersionsByProject(PROJECT_UUID);
-
-    // 删除所有旧版本（仅保留最新版策略）
-    for (const version of existingVersions) {
-      await storage.deleteXMLVersion(version.id);
-    }
-
-    // 创建新版本
-    await storage.createXMLVersion({
-      project_uuid: PROJECT_UUID,
-      semantic_version: SEMANTIC_VERSION,
-      xml_content: decodedXml,
-      source_version_id: 0,
-    });
-
-    triggerUpdateEvent(decodedXml);
+    await saveDrawioXMLInternal(decodedXml);
+    // 注意：不触发 UPDATE_EVENT，避免用户编辑时触发 merge 循环
   } catch (error) {
     console.error("[DrawIO Tools] 保存 XML 失败:", error);
     throw error;
@@ -180,7 +193,10 @@ export async function getDrawioXML(): Promise<GetXMLResult> {
 }
 
 /**
- * 覆写 DrawIO XML 内容
+ * 覆写 DrawIO XML 内容（仅供 AI 工具调用）
+ *
+ * 会触发 UPDATE_EVENT，通知编辑器重新加载
+ * 用于 AI 工具更新图表时，需要编辑器同步显示新内容
  */
 export async function replaceDrawioXML(
   drawio_xml: string,
@@ -203,7 +219,11 @@ export async function replaceDrawioXML(
   }
 
   try {
-    await saveDrawioXML(drawio_xml);
+    const decodedXml = decodeBase64XML(drawio_xml);
+    await saveDrawioXMLInternal(decodedXml);
+
+    // 触发 UPDATE_EVENT，通知编辑器 merge 新内容
+    triggerUpdateEvent(decodedXml);
 
     return {
       success: true,
