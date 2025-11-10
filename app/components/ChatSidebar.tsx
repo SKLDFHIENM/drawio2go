@@ -103,7 +103,7 @@ function convertMessageToUIMessage(msg: Message): ChatUIMessage {
 function convertUIMessageToCreateInput(
   uiMsg: ChatUIMessage,
   conversationId: string,
-  xmlVersionId?: number,
+  xmlVersionId?: string,
 ): CreateMessageInput {
   // 提取所有文本部分
   const textParts = uiMsg.parts.filter((part) => part.type === "text");
@@ -155,9 +155,7 @@ function generateTitle(messages: ChatUIMessage[]): string {
 
 // ========== 主组件 ==========
 
-export default function ChatSidebar({
-  currentProjectId,
-}: ChatSidebarProps) {
+export default function ChatSidebar({ currentProjectId }: ChatSidebarProps) {
   const [input, setInput] = useState("");
   const [expandedToolCalls, setExpandedToolCalls] = useState<
     Record<string, boolean>
@@ -193,7 +191,7 @@ export default function ChatSidebar({
   const [conversationMessages, setConversationMessages] = useState<
     Record<string, ChatUIMessage[]>
   >({});
-  const [defaultXmlVersionId, setDefaultXmlVersionId] = useState<number | null>(
+  const [defaultXmlVersionId, setDefaultXmlVersionId] = useState<string | null>(
     null,
   );
 
@@ -264,7 +262,7 @@ export default function ChatSidebar({
 
         // 2. 确保有默认 XML 版本
         const xmlVersions = await getAllXMLVersions();
-        let defaultVersionId: number;
+        let defaultVersionId: string;
 
         if (xmlVersions.length === 0) {
           // 创建默认空白 XML 版本
