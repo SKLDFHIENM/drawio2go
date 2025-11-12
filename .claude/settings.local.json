@@ -54,7 +54,11 @@
       "Bash(xargs:*)",
       "Bash(gh pr list:*)",
       "Bash(gh pr view:*)",
-      "Bash(gh pr diff:*)"
+      "Bash(gh pr diff:*)",
+      "Bash(git -C /home/aaa/Code/drawio2go log --all --oneline --grep=\"里程碑\\|milestone\" -10)",
+      "Bash(git -C /home/aaa/Code/drawio2go show 523b444:. --name-only)",
+      "Bash(git -C /home/aaa/Code/drawio2go show 523b444 --stat)",
+      "Bash(git -C /home/aaa/Code/drawio2go log --oneline --all --grep=\"milestone-1\\|里程碑 1\\|WIP\" -10)"
     ],
     "deny": [],
     "ask": []

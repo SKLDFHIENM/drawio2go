@@ -1,0 +1,102 @@
+/* ================================
+   版本管理 - 侧边栏容器布局
+   ================================ */
+
+/* 版本侧边栏主容器 */
+.version-sidebar {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg-primary);
+}
+
+/* ================================
+   侧边栏头部区域
+   ================================ */
+
+.version-sidebar .sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border-primary);
+  background: var(--bg-primary);
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+.version-sidebar .sidebar-header h2 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* ================================
+   侧边栏内容区域（可滚动）
+   ================================ */
+
+.version-sidebar .sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* 自定义滚动条 */
+.version-sidebar .sidebar-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.version-sidebar .sidebar-content::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+.version-sidebar .sidebar-content::-webkit-scrollbar-thumb {
+  background: var(--border-primary);
+  border-radius: 3px;
+}
+
+.version-sidebar .sidebar-content::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-color);
+}
+
+/* ================================
+   空状态样式
+   ================================ */
+
+.version-sidebar .empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 2rem;
+  text-align: center;
+}
+
+.version-sidebar .empty-state p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+/* ================================
+   响应式布局
+   ================================ */
+
+@media (max-width: 400px) {
+  .version-sidebar .sidebar-header {
+    flex-direction: column;
+    gap: 0.75rem;
+    align-items: stretch;
+  }
+
+  .version-sidebar .sidebar-content {
+    padding: 1rem;
+    gap: 1rem;
+  }
+}

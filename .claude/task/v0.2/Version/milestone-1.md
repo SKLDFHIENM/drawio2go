@@ -12,7 +12,7 @@
 
 ### 1. 添加 WIP 版本常量
 
-- [ ] 在 `app/lib/storage/constants.ts` 中添加 WIP 版本标识：
+- [x] 在 `app/lib/storage/constants.ts` 中添加 WIP 版本标识：
   ```typescript
   /**
    * WIP (Work In Progress) 版本号
@@ -30,7 +30,7 @@
 
 ### 2. 修改 xml-version-engine.ts 支持 WIP 模式
 
-- [ ] 在 `app/lib/storage/xml-version-engine.ts` 中修改 `computeVersionPayload()`：
+- [x] 在 `app/lib/storage/xml-version-engine.ts` 中修改 `computeVersionPayload()`：
   ```typescript
   import { WIP_VERSION, ZERO_SOURCE_VERSION_ID } from './constants';
 
@@ -64,7 +64,7 @@
 
 ### 3. 增强 useStorageXMLVersions Hook
 
-- [ ] 在 `app/hooks/useStorageXMLVersions.ts` 中添加新方法：
+- [x] 在 `app/hooks/useStorageXMLVersions.ts` 中添加新方法：
 
 #### 3.1 区分 WIP 和历史版本的保存逻辑
 
@@ -311,7 +311,7 @@ const isVersionExists = useCallback(
 
 ### 4. 导出新方法
 
-- [ ] 在 `useStorageXMLVersions` Hook 的返回值中添加新方法：
+- [x] 在 `useStorageXMLVersions` Hook 的返回值中添加新方法：
   ```typescript
   return {
     saveXML,
@@ -330,16 +330,16 @@ const isVersionExists = useCallback(
 
 ## 验收标准
 
-- [ ] `WIP_VERSION` 和 `DEFAULT_FIRST_VERSION` 常量已添加
-- [ ] `computeVersionPayload()` 正确处理 WIP 版本（始终为关键帧）
-- [ ] `saveXML()` 始终保存到 WIP 版本（0.0.0）
-- [ ] `createHistoricalVersion()` 能从 WIP 创建历史版本快照
-- [ ] `rollbackToVersion()` 能将历史版本内容覆盖到 WIP
-- [ ] `getRecommendedVersion()` 能智能推荐下一个版本号
-- [ ] `validateVersion()` 能正确验证版本号格式
-- [ ] `isVersionExists()` 能检查版本号是否重复
-- [ ] 所有新方法有完整的 TypeScript 类型定义
-- [ ] 所有新方法有详细的 JSDoc 注释
+- [x] `WIP_VERSION` 和 `DEFAULT_FIRST_VERSION` 常量已添加
+- [x] `computeVersionPayload()` 正确处理 WIP 版本（始终为关键帧）
+- [x] `saveXML()` 始终保存到 WIP 版本（0.0.0）
+- [x] `createHistoricalVersion()` 能从 WIP 创建历史版本快照
+- [x] `rollbackToVersion()` 能将历史版本内容覆盖到 WIP
+- [x] `getRecommendedVersion()` 能智能推荐下一个版本号
+- [x] `validateVersion()` 能正确验证版本号格式
+- [x] `isVersionExists()` 能检查版本号是否重复
+- [x] 所有新方法有完整的 TypeScript 类型定义
+- [x] 所有新方法有详细的 JSDoc 注释
 
 ## 测试步骤
 

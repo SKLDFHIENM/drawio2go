@@ -5,7 +5,6 @@ import { v4 as uuidv4 } from "uuid";
 import {
   getStorage,
   DEFAULT_PROJECT_UUID,
-  DEFAULT_XML_VERSION,
   WIP_VERSION,
   DEFAULT_FIRST_VERSION,
 } from "@/app/lib/storage";

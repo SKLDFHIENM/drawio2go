@@ -31,6 +31,13 @@
 @import "./styles/components/modal.css";
 @import "./styles/components/sessions.css";
 
+/* 版本管理样式模块 */
+@import "./styles/components/version-animations.css";
+@import "./styles/components/version-sidebar.css";
+@import "./styles/components/version-wip.css";
+@import "./styles/components/version-timeline.css";
+@import "./styles/components/version-dialog.css";
+
 /* 工具类模块 */
 @import "./styles/utilities/animations.css";
 @import "./styles/utilities/markdown.css";
