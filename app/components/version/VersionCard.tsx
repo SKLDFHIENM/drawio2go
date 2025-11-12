@@ -2,7 +2,9 @@
 
 import React from "react";
 import { Button, Card, Separator } from "@heroui/react";
-import { Clock, Key, GitBranch, RotateCcw } from "lucide-react";
+import { Clock, Key, GitBranch, RotateCcw, Download } from "lucide-react";
+import { materializeVersionXml } from "@/app/lib/storage/xml-version-engine";
+import { useStorageXMLVersions } from "@/app/hooks/useStorageXMLVersions";
 import type { XMLVersion } from "@/app/lib/storage/types";
 
 interface VersionCardProps {
@@ -16,6 +18,9 @@ interface VersionCardProps {
  * 显示单个历史版本的详细信息，包括版本号、时间、类型标记等
  */
 export function VersionCard({ version, isLatest, onRestore }: VersionCardProps) {
+  const [isExporting, setIsExporting] = React.useState(false);
+  const { getXMLVersion } = useStorageXMLVersions();
+
   // 格式化创建时间
   const createdAt = new Date(version.created_at).toLocaleString("zh-CN", {
     year: "numeric",
@@ -33,6 +38,33 @@ export function VersionCard({ version, isLatest, onRestore }: VersionCardProps) 
       } catch (error) {
         console.error("回滚版本失败:", error);
       }
+    }
+  };
+
+  // 处理导出按钮点击
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      // 恢复完整 XML
+      const fullXml = await materializeVersionXml(version, (id) =>
+        getXMLVersion(id),
+      );
+
+      // 创建下载
+      const blob = new Blob([fullXml], { type: "text/xml" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `diagram-v${version.semantic_version}.drawio`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      console.log(`✅ 版本 ${version.semantic_version} 导出成功`);
+    } catch (error) {
+      console.error("导出版本失败:", error);
+      alert("导出失败");
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -79,17 +111,31 @@ export function VersionCard({ version, isLatest, onRestore }: VersionCardProps) 
             <span>{createdAt}</span>
           </div>
 
-          {onRestore && (
+          <div className="flex items-center gap-2">
+            {/* 导出按钮 */}
             <Button
               size="sm"
-              variant="secondary"
-              onPress={handleRestore}
-              className="button-small-optimized"
+              variant="ghost"
+              onPress={handleExport}
+              isDisabled={isExporting}
+              className="button-icon"
             >
-              <RotateCcw className="w-3.5 h-3.5" />
-              回滚
+              <Download className="w-3.5 h-3.5" />
             </Button>
-          )}
+
+            {/* 回滚按钮 */}
+            {onRestore && (
+              <Button
+                size="sm"
+                variant="secondary"
+                onPress={handleRestore}
+                className="button-small-optimized"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                回滚
+              </Button>
+            )}
+          </div>
         </div>
       </Card.Content>
     </Card.Root>

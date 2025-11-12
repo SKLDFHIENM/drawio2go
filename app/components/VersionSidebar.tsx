@@ -51,6 +51,16 @@ export function VersionSidebar({
     loadVersions();
   }, [loadVersions]);
 
+  // 监听版本更新事件（创建/回滚后自动刷新）
+  React.useEffect(() => {
+    const handleVersionUpdate = () => {
+      loadVersions();
+    };
+
+    window.addEventListener("version-updated", handleVersionUpdate);
+    return () => window.removeEventListener("version-updated", handleVersionUpdate);
+  }, [loadVersions]);
+
   // 版本创建后重新加载列表
   const handleVersionCreated = React.useCallback(() => {
     setShowCreateDialog(false);

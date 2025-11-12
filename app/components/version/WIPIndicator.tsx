@@ -16,6 +16,17 @@ interface WIPIndicatorProps {
  * 显示当前活跃工作区的信息，包括版本号和最后更新时间
  */
 export function WIPIndicator({ versions }: WIPIndicatorProps) {
+  // 监听 WIP 更新事件，触发版本列表刷新
+  React.useEffect(() => {
+    const handleWIPUpdate = () => {
+      // 触发版本列表更新
+      window.dispatchEvent(new Event("version-updated"));
+    };
+
+    window.addEventListener("wip-updated", handleWIPUpdate);
+    return () => window.removeEventListener("wip-updated", handleWIPUpdate);
+  }, []);
+
   // 查找 WIP 版本 (0.0.0)
   const wipVersion = versions.find((v) => v.semantic_version === WIP_VERSION);
 
