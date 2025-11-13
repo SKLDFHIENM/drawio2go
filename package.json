@@ -31,6 +31,7 @@
     "@heroui/react": "3.0.0-beta.1",
     "@heroui/styles": "3.0.0-beta.1",
     "@tailwindcss/postcss": "^4.1.16",
+    "@tanstack/react-virtual": "^3.13.12",
     "@xmldom/xmldom": "^0.8.11",
     "ai": "^5.0.86",
     "better-sqlite3": "^12.4.1",

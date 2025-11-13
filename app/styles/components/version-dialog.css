@@ -7,7 +7,7 @@
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(2px);
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -20,10 +20,10 @@
    ================================ */
 
 .dialog-container {
-  background: var(--bg-primary);
-  border-radius: 1rem;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
-    0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  background: var(--background, #ffffff);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-8);
   width: 90%;
   max-width: 500px;
   animation: slideUp var(--transition-slow) ease;
@@ -38,8 +38,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1.5rem;
-  border-bottom: 1px solid var(--border-primary);
+  padding: var(--spacing-lg);
+  border-bottom: 1px solid var(--border-light);
+  gap: var(--spacing-md);
 }
 
 .dialog-header h3 {
@@ -60,7 +61,7 @@
    ================================ */
 
 .dialog-content {
-  padding: 1.5rem;
+  padding: var(--spacing-lg);
   max-height: 60vh;
   overflow-y: auto;
 }
@@ -91,10 +92,10 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 0.75rem;
-  padding: 1.5rem;
-  border-top: 1px solid var(--border-primary);
-  background: var(--bg-secondary);
+  gap: var(--spacing-sm);
+  padding: var(--spacing-lg);
+  border-top: 1px solid var(--border-light);
+  background: var(--bg-primary);
 }
 
 /* ================================
@@ -102,8 +103,8 @@
    ================================ */
 
 .error-message {
-  padding: 0.75rem;
-  border-radius: 0.5rem;
+  padding: var(--spacing-sm);
+  border-radius: var(--radius);
   background: rgba(239, 68, 68, 0.1);
   border: 1px solid rgba(239, 68, 68, 0.3);
 }

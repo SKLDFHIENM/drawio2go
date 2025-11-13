@@ -19,6 +19,22 @@
 - **语言**: TypeScript
 - **主题**: 现代扁平化设计，Material Design风格 (#3388BB 蓝色主题)
 
+### 设计系统规范
+
+> 详细文档请参考 `app/styles/AGENTS.md`
+
+**设计令牌（Design Tokens）**:
+- **圆角**: 4px (小) / 8px (标准) / 12px (大)
+- **间距**: 4px 基准（4/8/16/24/32px）
+- **阴影**: Material Design 4 层阴影系统
+- **动画**: 150ms (快) / 200ms (标准) / 300ms (慢)
+
+**核心原则**:
+- ✅ 使用 CSS 变量 (`var(--radius)`, `var(--shadow-2)`)
+- ✅ 扁平化设计，避免渐变和复杂效果
+- ✅ 简单交互反馈，避免干扰性动画（脉冲、浮动）
+- ❌ 禁止硬编码颜色、尺寸和阴影值
+
 ### 项目结构
 
 ```
@@ -57,7 +73,7 @@ app/
 ├── api/                # API 路由
 │   ├── chat/                    # 聊天 API 路由
 │   └── test/                    # 测试 API 路由
-├── styles/             # 模块化样式系统
+├── styles/             # 模块化样式系统 [详细文档 → app/styles/AGENTS.md]
 │   ├── base/                    # 基础样式（reset、变量）
 │   ├── components/              # 组件样式
 │   ├── layout/                  # 布局样式
@@ -157,11 +173,32 @@ pnpm format               # 使用 Prettier 格式化所有代码
 | --------------- | -------------------------- | ------------------------------------- |
 | **React 组件**  | `app/components/AGENTS.md` | 所有 UI 组件的详细 API 和使用规范     |
 | **React Hooks** | `app/hooks/AGENTS.md`      | 统一存储 Hooks 与 Socket.IO 通讯 Hook |
+| **样式系统**    | `app/styles/AGENTS.md`     | 设计令牌、Material Design 规范、最佳实践 |
 | **XML 工具集**  | `app/lib/AGENTS.md`        | DrawIO XML 操作、存储层架构完整文档   |
 | **类型定义**    | `app/types/AGENTS.md`      | TypeScript 类型的完整说明             |
 | **桌面应用**    | `electron/AGENTS.md`       | Electron 配置、安全策略和调试指南     |
 
 ## 最近更新
+
+### 2025-11-12 版本管理 UI Material Design 优化
+
+- **设计系统规范化**:
+  - 统一圆角至 4px/8px/12px 三档标准
+  - 建立 Material Design 标准阴影层级（4层：1/2/4/8）
+  - 添加标准间距系统（4px 基准）
+  - 修正动画变量命名（duration 替代错误的 transition-slow）
+- **版本组件优化**:
+  - 移除干扰性动画（脉冲、浮动、上移效果）
+  - 统一徽章样式规范（Latest/关键帧/差异）
+  - 扁平化背景设计，去除渐变效果
+  - 对话框使用 Material Design 标准背景模糊（4px）
+- **样式系统文档**:
+  - 创建 `app/styles/AGENTS.md` 完整设计系统文档
+  - 记录所有设计令牌、使用场景和最佳实践
+  - 包含 Tailwind CSS v4 + HeroUI v3 集成指南
+- **相关文件**:
+  - `app/styles/base/variables.css` - 核心设计令牌
+  - `app/styles/components/version-*.css` - 版本管理组件样式
 
 ### 2025-11 统一存储架构重构
 

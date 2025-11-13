@@ -2,25 +2,31 @@
    版本管理 - WIP 指示器样式
    ================================ */
 
-/* WIP 指示器卡片 */
 .wip-indicator {
-  border-color: var(--primary-color);
-  background: linear-gradient(
-    135deg,
-    rgba(51, 136, 187, 0.05) 0%,
-    rgba(51, 136, 187, 0.02) 100%
-  );
-  transition: all var(--transition-normal) var(--ease-out-cubic);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-light);
+  background: var(--background, #ffffff);
+  box-shadow: var(--shadow-1);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .wip-indicator:hover {
-  box-shadow: 0 4px 12px rgba(51, 136, 187, 0.15);
-  transform: translateY(-1px);
+  border-color: var(--primary-color);
+  box-shadow: var(--shadow-2);
 }
 
-/* ================================
-   WIP 图标容器
-   ================================ */
+.wip-indicator__body {
+  padding: var(--spacing-compact-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-compact-md);
+}
+
+.wip-indicator__top {
+  display: flex;
+  gap: var(--spacing-compact-md);
+  align-items: flex-start;
+}
 
 .wip-icon {
   display: flex;
@@ -28,70 +34,100 @@
   justify-content: center;
   width: 2.5rem;
   height: 2.5rem;
-  border-radius: 0.75rem;
-  background: rgba(51, 136, 187, 0.1);
+  border-radius: var(--radius);
+  background: var(--primary-light);
+  color: var(--primary-color);
+  box-shadow: var(--shadow-1);
   flex-shrink: 0;
 }
 
-.wip-icon svg {
-  color: var(--primary-color);
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
 /* ================================
-   WIP 徽章样式
+   WIP 徽章与标题
    ================================ */
 
-.wip-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.125rem 0.5rem;
-  border-radius: 0.375rem;
-  background: var(--primary-color);
-  color: white;
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.025em;
-}
-
-/* ================================
-   WIP 卡片内容布局
-   ================================ */
-
-.wip-indicator .flex {
-  display: flex;
-}
-
-.wip-indicator .flex-1 {
+.wip-indicator__titles {
   flex: 1;
   min-width: 0;
 }
 
-.wip-indicator h3 {
-  margin: 0;
-  font-size: 1rem;
+.wip-indicator__status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.wip-badge {
+  display: inline-flex;
+  align-items: center;
+  height: var(--badge-height-compact);
+  padding: var(--badge-padding-compact);
+  border-radius: var(--radius-sm);
+  background: var(--primary-color);
+  color: white;
+  font-size: var(--font-size-compact-xs);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.wip-indicator__label {
+  font-size: var(--font-size-compact-md);
   font-weight: 600;
   color: var(--text-primary);
 }
 
-.wip-indicator p {
-  margin: 0;
-  font-size: 0.875rem;
+.wip-indicator__dot {
+  width: 0.3rem;
+  height: 0.3rem;
+  border-radius: 999px;
+  background: var(--border-primary);
+}
+
+.wip-indicator__version {
+  font-size: var(--font-size-compact-sm);
+  font-weight: 500;
   color: var(--text-secondary);
-  line-height: 1.4;
+}
+
+.wip-indicator__description {
+  margin: 0.3rem 0 0;
+  font-size: var(--font-size-compact-sm);
+  color: var(--text-secondary);
+  line-height: 1.5;
 }
 
 /* ================================
-   WIP 时间信息样式
+   WIP 元信息
    ================================ */
 
-.wip-indicator .text-xs {
-  font-size: 0.75rem;
-  color: var(--text-tertiary);
+.wip-indicator__meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--spacing-compact-sm);
+  padding-top: var(--spacing-compact-sm);
+  border-top: 1px solid var(--border-light);
 }
 
-.wip-indicator .text-xs svg {
+.wip-indicator__meta-item {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: var(--font-size-compact-sm);
+  color: var(--text-secondary);
+}
+
+.wip-indicator__meta-item svg {
   width: 0.875rem;
   height: 0.875rem;
-  animation: none;
+  color: var(--primary-color);
+}
+
+@media (max-width: 480px) {
+  .wip-indicator__top {
+    flex-direction: column;
+  }
+
+  .wip-indicator__meta {
+    grid-template-columns: 1fr;
+  }
 }

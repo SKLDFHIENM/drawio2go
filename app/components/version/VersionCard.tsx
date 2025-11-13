@@ -1,8 +1,8 @@
 "use client";
 
 import React from "react";
-import { Button, Card, Separator } from "@heroui/react";
-import { Clock, Key, GitBranch, RotateCcw, Download } from "lucide-react";
+import { Button, Card, Disclosure } from "@heroui/react";
+import { Clock, Key, GitBranch, RotateCcw, Download, ChevronDown } from "lucide-react";
 import { materializeVersionXml } from "@/app/lib/storage/xml-version-engine";
 import { useStorageXMLVersions } from "@/app/hooks/useStorageXMLVersions";
 import type { XMLVersion } from "@/app/lib/storage/types";
@@ -11,15 +11,27 @@ interface VersionCardProps {
   version: XMLVersion;
   isLatest?: boolean;
   onRestore?: (versionId: string) => void;
+  defaultExpanded?: boolean;
 }
 
 /**
- * 版本卡片组件
- * 显示单个历史版本的详细信息，包括版本号、时间、类型标记等
+ * 版本卡片组件 - 紧凑折叠模式
+ * 默认显示折叠视图(版本号+徽章+时间),点击展开查看完整信息
  */
-export function VersionCard({ version, isLatest, onRestore }: VersionCardProps) {
+export function VersionCard({ version, isLatest, onRestore, defaultExpanded = false }: VersionCardProps) {
   const [isExporting, setIsExporting] = React.useState(false);
+  const [isExpanded, setIsExpanded] = React.useState(defaultExpanded);
   const { getXMLVersion } = useStorageXMLVersions();
+
+  const versionLabel = `v${version.semantic_version}`;
+  const diffLabel = version.is_keyframe
+    ? "关键帧快照"
+    : `Diff 链 +${version.diff_chain_depth}`;
+  const diffIcon = version.is_keyframe ? (
+    <Key className="w-3.5 h-3.5" />
+  ) : (
+    <GitBranch className="w-3.5 h-3.5" />
+  );
 
   // 格式化创建时间
   const createdAt = new Date(version.created_at).toLocaleString("zh-CN", {
@@ -69,74 +81,98 @@ export function VersionCard({ version, isLatest, onRestore }: VersionCardProps) 
   };
 
   return (
-    <Card.Root className="version-card" variant="secondary">
-      <Card.Content className="py-3 px-4">
-        {/* 版本号和标记 */}
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <span className="version-number">v{version.semantic_version}</span>
-            {isLatest && <span className="latest-badge">最新</span>}
-            {version.is_keyframe ? (
-              <span className="keyframe-badge">
-                <Key className="w-3 h-3" />
-                关键帧
-              </span>
-            ) : (
-              <span className="diff-badge">
-                <GitBranch className="w-3 h-3" />
-                Diff +{version.diff_chain_depth}
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* 版本名称（如果存在且不同于版本号） */}
-        {version.name && version.name !== version.semantic_version && (
-          <h4 className="font-medium text-sm mb-1">{version.name}</h4>
-        )}
-
-        {/* 版本描述（如果存在） */}
-        {version.description && (
-          <p className="text-xs text-gray-600 mb-2 line-clamp-2">
-            {version.description}
-          </p>
-        )}
-
-        <Separator className="my-2" />
-
-        {/* 底部信息和操作 */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5 text-xs text-gray-500">
-            <Clock className="w-3.5 h-3.5" />
-            <span>{createdAt}</span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {/* 导出按钮 */}
-            <Button
-              size="sm"
-              variant="ghost"
-              onPress={handleExport}
-              isDisabled={isExporting}
-              className="button-icon"
+    <Card.Root
+      className={`version-card${isLatest ? " version-card--latest" : ""}${isExpanded ? " version-card--expanded" : " version-card--collapsed"}`}
+      variant="secondary"
+    >
+      <Card.Content className="version-card__content">
+        <Disclosure isExpanded={isExpanded} onExpandedChange={setIsExpanded}>
+          {/* 折叠状态的紧凑视图 - 始终显示 */}
+          <Disclosure.Heading>
+            <button
+              type="button"
+              className="version-card__trigger"
+              onClick={() => setIsExpanded(!isExpanded)}
             >
-              <Download className="w-3.5 h-3.5" />
-            </Button>
+              <div className="version-card__compact-view">
+                <div className="version-card__compact-left">
+                  <span className="version-number">{versionLabel}</span>
+                  {isLatest && <span className="latest-badge">最新</span>}
+                  {version.is_keyframe ? (
+                    <span className="keyframe-badge">
+                      <Key className="w-2.5 h-2.5" />
+                      关键帧
+                    </span>
+                  ) : (
+                    <span className="diff-badge">
+                      <GitBranch className="w-2.5 h-2.5" />
+                      Diff +{version.diff_chain_depth}
+                    </span>
+                  )}
+                </div>
+                <div className="version-card__compact-right">
+                  <span className="version-card__time">
+                    <Clock className="w-3 h-3" />
+                    {createdAt}
+                  </span>
+                  <ChevronDown className={`version-card__chevron${isExpanded ? " rotated" : ""}`} />
+                </div>
+              </div>
+            </button>
+          </Disclosure.Heading>
 
-            {/* 回滚按钮 */}
-            {onRestore && (
-              <Button
-                size="sm"
-                variant="secondary"
-                onPress={handleRestore}
-                className="button-small-optimized"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                回滚
-              </Button>
-            )}
-          </div>
-        </div>
+          {/* 展开状态的完整内容 */}
+          <Disclosure.Content>
+            <div className="version-card__expanded-content">
+              {version.name && version.name !== version.semantic_version && (
+                <h4 className="version-card__name">{version.name}</h4>
+              )}
+
+              {version.description && (
+                <p className="version-card__description">
+                  {version.description}
+                </p>
+              )}
+
+              <div className="version-card__meta">
+                <div className="version-card__meta-item">
+                  {diffIcon}
+                  <span>{diffLabel}</span>
+                </div>
+                <div className="version-card__meta-item">
+                  <Clock className="w-3 h-3" />
+                  <span>{createdAt}</span>
+                </div>
+              </div>
+
+              <div className="version-card__actions">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onPress={handleExport}
+                  isDisabled={isExporting}
+                  className="button-icon"
+                  aria-label={`导出 ${versionLabel}`}
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  导出
+                </Button>
+
+                {onRestore && (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onPress={handleRestore}
+                    className="button-small-optimized"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    回滚
+                  </Button>
+                )}
+              </div>
+            </div>
+          </Disclosure.Content>
+        </Disclosure>
       </Card.Content>
     </Card.Root>
   );

@@ -70,10 +70,13 @@ export function VersionSidebar({
   // 如果没有选择项目，显示空状态
   if (!projectUuid) {
     return (
-      <div className="version-sidebar">
-        <div className="empty-state">
-          <History className="w-12 h-12 text-gray-400" />
-          <p className="text-gray-500 mt-4">请先选择一个项目</p>
+      <div className="version-sidebar version-sidebar--empty">
+        <div className="empty-state-card">
+          <History className="empty-state-card__icon" />
+          <p className="empty-state-card__title">尚未选择项目</p>
+          <p className="empty-state-card__description">
+            选择一个项目后即可查看快照、关键帧与 Diff 历史
+          </p>
         </div>
       </div>
     );
@@ -84,21 +87,28 @@ export function VersionSidebar({
     return (
       <div className="version-sidebar">
         <div className="sidebar-header">
-          <div className="flex items-center gap-2">
-            <History className="w-5 h-5" />
-            <h2 className="text-lg font-semibold">版本管理</h2>
+          <div className="sidebar-header__info">
+            <div className="sidebar-header__icon">
+              <History className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold">版本管理</h2>
+              <p className="sidebar-header__description">
+                快照历史加载失败，请重试
+              </p>
+            </div>
           </div>
-        </div>
-        <div className="empty-state">
-          <p className="text-red-500">{error}</p>
           <Button
             size="sm"
             variant="secondary"
             onPress={loadVersions}
-            className="mt-4"
+            className="version-sidebar__retry"
           >
             重试
           </Button>
+        </div>
+        <div className="empty-state-card">
+          <p className="empty-state-card__description text-red-500">{error}</p>
         </div>
       </div>
     );
@@ -108,20 +118,29 @@ export function VersionSidebar({
     <div className="version-sidebar">
       {/* 顶部标题和操作按钮 */}
       <div className="sidebar-header">
-        <div className="flex items-center gap-2">
-          <History className="w-5 h-5" />
-          <h2 className="text-lg font-semibold">版本管理</h2>
+        <div className="sidebar-header__info">
+          <div className="sidebar-header__icon">
+            <History className="w-5 h-5" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold">版本管理</h2>
+            <p className="sidebar-header__description">
+              追踪关键帧与 Diff 链，快速回溯历史
+            </p>
+          </div>
         </div>
-        <Button
-          size="sm"
-          variant="primary"
-          onPress={() => setShowCreateDialog(true)}
-          className="button-primary"
-          isDisabled={isLoading}
-        >
-          <Save className="w-4 h-4" />
-          保存版本
-        </Button>
+        <div className="sidebar-header__actions">
+          <Button
+            size="sm"
+            variant="primary"
+            onPress={() => setShowCreateDialog(true)}
+            className="button-primary version-sidebar__cta"
+            isDisabled={isLoading}
+          >
+            <Save className="w-4 h-4" />
+            保存版本
+          </Button>
+        </div>
       </div>
 
       {/* 滚动内容区域 */}

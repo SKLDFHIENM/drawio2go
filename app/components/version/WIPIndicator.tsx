@@ -1,8 +1,8 @@
 "use client";
 
 import React from "react";
-import { Card, Separator } from "@heroui/react";
-import { Activity, Clock } from "lucide-react";
+import { Card } from "@heroui/react";
+import { Activity, Clock, Sparkles } from "lucide-react";
 import { WIP_VERSION } from "@/app/lib/storage/constants";
 import type { XMLVersion } from "@/app/lib/storage/types";
 
@@ -44,26 +44,39 @@ export function WIPIndicator({ versions }: WIPIndicatorProps) {
     minute: "2-digit",
   });
 
+  const wipSemver =
+    wipVersion.semantic_version === WIP_VERSION
+      ? "草稿序列"
+      : `v${wipVersion.semantic_version}`;
+
   return (
     <Card.Root className="wip-indicator" variant="secondary">
-      <Card.Content className="py-4 px-4">
-        <div className="flex items-start gap-3">
+      <Card.Content className="wip-indicator__body">
+        <div className="wip-indicator__top">
           <div className="wip-icon">
             <Activity className="w-5 h-5" />
           </div>
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <h3 className="font-semibold text-base">活跃工作区 (WIP)</h3>
-              <span className="wip-badge">v{WIP_VERSION}</span>
+          <div className="wip-indicator__titles">
+            <div className="wip-indicator__status">
+              <span className="wip-badge">WIP</span>
+              <span className="wip-indicator__label">活跃工作区</span>
+              <span className="wip-indicator__dot" />
+              <span className="wip-indicator__version">{wipSemver}</span>
             </div>
-            <p className="text-sm text-gray-600 mb-2">
-              当前正在编辑的内容，所有修改实时保存于此
+            <p className="wip-indicator__description">
+              当前正在编辑的内容将实时保存在此草稿中
             </p>
-            <Separator className="my-2" />
-            <div className="flex items-center gap-2 text-xs text-gray-500">
-              <Clock className="w-3.5 h-3.5" />
-              <span>最后更新：{lastModified}</span>
-            </div>
+          </div>
+        </div>
+
+        <div className="wip-indicator__meta">
+          <div className="wip-indicator__meta-item">
+            <Clock className="w-3.5 h-3.5" />
+            <span>最后更新 · {lastModified}</span>
+          </div>
+          <div className="wip-indicator__meta-item">
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>实时保存已开启</span>
           </div>
         </div>
       </Card.Content>
