@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Button } from "@heroui/react";
+import { Button, Skeleton } from "@heroui/react";
 import { WIPIndicator } from "./version/WIPIndicator";
 import { VersionTimeline } from "./version/VersionTimeline";
 import { CreateVersionDialog } from "./version/CreateVersionDialog";
@@ -146,16 +146,28 @@ export function VersionSidebar({
 
       {/* 滚动内容区域 */}
       <div className="sidebar-content">
-        {/* WIP 指示器 */}
-        <WIPIndicator projectUuid={projectUuid} versions={versions} />
-
-        {/* 版本时间线 */}
-        <VersionTimeline
-          projectUuid={projectUuid}
-          versions={versions}
-          onVersionRestore={onVersionRestore}
-          onVersionCreated={handleVersionCreated}
-        />
+        {isLoading ? (
+          <div className="space-y-4">
+            <Skeleton className="h-28 rounded-xl" />
+            <VersionTimeline
+              projectUuid={projectUuid}
+              versions={versions}
+              onVersionRestore={onVersionRestore}
+              onVersionCreated={handleVersionCreated}
+              isLoading
+            />
+          </div>
+        ) : (
+          <>
+            <WIPIndicator projectUuid={projectUuid} versions={versions} />
+            <VersionTimeline
+              projectUuid={projectUuid}
+              versions={versions}
+              onVersionRestore={onVersionRestore}
+              onVersionCreated={handleVersionCreated}
+            />
+          </>
+        )}
       </div>
 
       {/* 创建版本对话框 */}

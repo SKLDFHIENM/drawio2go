@@ -71,6 +71,14 @@
   border-radius: 999px;
 }
 
+.timeline-list--skeleton {
+  padding-left: 0;
+}
+
+.timeline-list--skeleton::before {
+  display: none;
+}
+
 /* ================================
    时间线空状态
    ================================ */

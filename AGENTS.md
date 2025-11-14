@@ -188,6 +188,19 @@ pnpm format               # 使用 Prettier 格式化所有代码
 
 ## 最近更新
 
+### 2025-11-14 HeroUI 复杂组件迁移
+
+- **HeroUI Alert**：聊天输入区的 `ErrorBanner` 改为 HeroUI `Alert` 复合组件，移除自定义 `.error-banner` 样式并提供刷新按钮操作。
+- **Skeleton 占位**：ProjectSelector、MessageList、Version Timeline/WIP 等加载态统一接入 HeroUI `Skeleton`，避免再显示纯文字的 loading EmptyState。
+- **统一侧栏 Tabs**：`UnifiedSidebar` 切换至 HeroUI `Tabs` 结构，`sidebar-tabs` 自定义样式删除，新增 `sidebar-tab-strip/sidebar-tab-item` 等类来适配 HeroUI 复合组件。
+- **版本侧边栏体验**：版本时间线在加载阶段展示骨架屏，卡片列表与 Header 样式保持一致。
+- **相关文件**：
+  - `app/components/chat/ErrorBanner.tsx`, `app/components/chat/MessageList.tsx`
+  - `app/components/ProjectSelector.tsx`, `app/components/UnifiedSidebar.tsx`
+  - `app/components/VersionSidebar.tsx`, `app/components/version/VersionTimeline.tsx`
+  - `app/styles/layout/sidebar.css`, `app/styles/components/version-timeline.css`, `app/styles/utilities/components.css`
+  - `.claude/task/v0.2/heroui/milestone-4-complex-components.md`
+
 ### 2025-11-13 顶栏与侧栏交互重构
 
 - **顶栏统一操作区**:
@@ -195,11 +208,11 @@ pnpm format               # 使用 Prettier 格式化所有代码
   - 工程切换按钮置于中间并支持全宽点击区域
   - 加载/保存按钮靠右，新增图标按钮可一键收起/展开侧栏
 - **统一侧栏多 Tab 化**:
-  - 聊天/设置/版本切换采用紧凑 Tab，固定在侧栏顶部
+  - 聊天/设置/版本切换采用紧凑 Tab，固定在侧栏顶部（2025-11-14 起基于 HeroUI `Tabs` 实现）
   - 侧栏宽度记忆与拖拽逻辑保持不变，可在 Tabs 间即时切换
 - **布局同步**:
   - 左侧工作区在侧栏展开时自动预留宽度，顶栏与编辑器对齐
-  - 相关样式迁移到 `top-bar` 与 `sidebar-tabs` 新类，移除底栏布局
+  - 相关样式已迁移到 `top-bar` 与新版 `sidebar-tab-*` 类，移除底栏布局
 - **相关文件**:
   - `app/components/TopBar.tsx`
   - `app/components/UnifiedSidebar.tsx`
@@ -315,4 +328,4 @@ pnpm format               # 使用 Prettier 格式化所有代码
 
 ---
 
-_最后更新: 2025-11-13_
+_最后更新: 2025-11-14_

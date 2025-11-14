@@ -26,7 +26,12 @@ export default function Home() {
     switchProject,
   } = useCurrentProject();
 
-  const { projects, createProject, getAllProjects } = useStorageProjects();
+  const {
+    projects,
+    createProject,
+    getAllProjects,
+    loading: projectsLoading,
+  } = useStorageProjects();
 
   const { saveXML, getAllXMLVersions, rollbackToVersion } =
     useStorageXMLVersions();
@@ -369,6 +374,7 @@ export default function Home() {
         currentProjectId={currentProject?.uuid || null}
         onSelectProject={handleSelectProject}
         projects={projects}
+        isLoading={projectsLoading}
         onCreateProject={handleCreateProject}
       />
     </main>

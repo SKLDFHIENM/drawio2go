@@ -8,6 +8,7 @@ import {
   Label,
   TextField,
   Description,
+  Skeleton,
 } from "@heroui/react";
 import { FolderOpen, Plus, Check } from "lucide-react";
 import type { Project } from "../lib/storage/types";
@@ -18,6 +19,7 @@ interface ProjectSelectorProps {
   currentProjectId: string | null;
   onSelectProject: (projectId: string) => void;
   projects: Project[];
+  isLoading: boolean;
   onCreateProject: (name: string, description?: string) => void;
 }
 
@@ -27,6 +29,7 @@ export default function ProjectSelector({
   currentProjectId,
   onSelectProject,
   projects,
+  isLoading,
   onCreateProject,
 }: ProjectSelectorProps) {
   const [showNewProjectForm, setShowNewProjectForm] = useState(false);
@@ -69,6 +72,8 @@ export default function ProjectSelector({
 
   if (!isOpen) return null;
 
+  const skeletonItems = Array.from({ length: 3 });
+
   return (
     <div className="modal-overlay" onClick={handleOverlayClick}>
       <div
@@ -85,46 +90,64 @@ export default function ProjectSelector({
 
         {/* 工程列表 */}
         <div className="flex flex-col gap-3 max-h-[60vh] overflow-y-auto pr-2">
-          {projects.map((project) => {
-            const isActive = project.uuid === currentProjectId;
-            return (
-              <Card.Root
-                key={project.uuid}
-                className={`cursor-pointer transition-all ${
-                  isActive
-                    ? "border-2 border-[#3388BB] bg-[#3388BB]/5"
-                    : "border border-gray-200 hover:border-[#3388BB]/50 hover:shadow-md"
-                }`}
-                onClick={() => handleProjectSelect(project.uuid)}
-              >
-                <Card.Content className="p-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-lg font-semibold text-[#3388BB]">
-                          {project.name}
-                        </h3>
-                        {isActive && (
-                          <Check size={20} className="text-[#3388BB]" />
+          {isLoading &&
+            skeletonItems.map((_, index) => (
+              <Skeleton
+                key={`project-skeleton-${index}`}
+                className="h-20 rounded-xl"
+              />
+            ))}
+
+          {!isLoading && projects.length === 0 && (
+            <div className="empty-state-card text-center">
+              <p className="empty-state-card__title">暂无工程</p>
+              <p className="empty-state-card__description">
+                点击下方按钮新建第一个工程
+              </p>
+            </div>
+          )}
+
+          {!isLoading &&
+            projects.map((project) => {
+              const isActive = project.uuid === currentProjectId;
+              return (
+                <Card.Root
+                  key={project.uuid}
+                  className={`cursor-pointer transition-all ${
+                    isActive
+                      ? "border-2 border-[#3388BB] bg-[#3388BB]/5"
+                      : "border border-gray-200 hover:border-[#3388BB]/50 hover:shadow-md"
+                  }`}
+                  onClick={() => handleProjectSelect(project.uuid)}
+                >
+                  <Card.Content className="p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="text-lg font-semibold text-[#3388BB]">
+                            {project.name}
+                          </h3>
+                          {isActive && (
+                            <Check size={20} className="text-[#3388BB]" />
+                          )}
+                        </div>
+                        {project.description && (
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            {project.description}
+                          </p>
                         )}
-                      </div>
-                      {project.description && (
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          {project.description}
+                        <p className="text-xs text-gray-400 mt-2">
+                          创建于:{" "}
+                          {new Date(project.created_at).toLocaleDateString(
+                            "zh-CN",
+                          )}
                         </p>
-                      )}
-                      <p className="text-xs text-gray-400 mt-2">
-                        创建于:{" "}
-                        {new Date(project.created_at).toLocaleDateString(
-                          "zh-CN",
-                        )}
-                      </p>
+                      </div>
                     </div>
-                  </div>
-                </Card.Content>
-              </Card.Root>
-            );
-          })}
+                  </Card.Content>
+                </Card.Root>
+              );
+            })}
         </div>
 
         {/* 新建工程表单 */}
