@@ -1,5 +1,10 @@
 # DrawIO2Go - AI 代理开发指南
 
+重要的事情说三遍：
+!重要：目前项目还未上线，处于内部开发阶段，不需要考虑兼容旧代码，直接执行破坏性更新
+!重要：目前项目还未上线，处于内部开发阶段，不需要考虑兼容旧代码，直接执行破坏性更新
+!重要：目前项目还未上线，处于内部开发阶段，不需要考虑兼容旧代码，直接执行破坏性更新
+
 ## 项目概述
 
 基于 Electron + Next.js + HeroUI 构建的跨平台 DrawIO 编辑器应用。
@@ -14,18 +19,42 @@
 - **语言**: TypeScript
 - **主题**: 现代扁平化设计，Material Design风格 (#3388BB 蓝色主题)
 
+### 设计系统规范
+
+> 详细文档请参考 `app/styles/AGENTS.md`
+
+**设计令牌（Design Tokens）**:
+
+- **圆角**: 4px (小) / 8px (标准) / 12px (大)
+- **间距**: 4px 基准（4/8/16/24/32px）
+- **阴影**: Material Design 4 层阴影系统
+- **动画**: 150ms (快) / 200ms (标准) / 300ms (慢)
+
+**核心原则**:
+
+- ✅ 使用 CSS 变量 (`var(--radius)`, `var(--shadow-2)`)
+- ✅ 扁平化设计，避免渐变和复杂效果
+- ✅ 简单交互反馈，避免干扰性动画（脉冲、浮动）
+- ❌ 禁止硬编码颜色、尺寸和阴影值
+
 ### 项目结构
 
 ```
 app/
 ├── components/         # React 组件库 [详细文档 → app/components/AGENTS.md]
 │   ├── DrawioEditorNative.tsx    # DrawIO 编辑器（原生 iframe + PostMessage）
-│   ├── BottomBar.tsx             # 底部工具栏
+│   ├── TopBar.tsx                # 顶栏组件
 │   ├── UnifiedSidebar.tsx        # 统一侧边栏容器
 │   ├── SettingsSidebar.tsx       # 设置侧边栏
 │   ├── ChatSidebar.tsx           # 聊天侧边栏主组件（@ai-sdk/react）
+│   ├── VersionSidebar.tsx        # 版本侧边栏主组件
 │   ├── chat/                     # 聊天组件模块化架构（12个子组件）
-│   └── settings/                 # 设置相关子组件
+│   ├── settings/                 # 设置相关子组件
+│   └── version/                  # 版本管理子组件
+│       ├── WIPIndicator.tsx      # WIP 工作区指示器
+│       ├── VersionCard.tsx       # 版本卡片（折叠式）
+│       ├── VersionTimeline.tsx   # 版本时间线
+│       └── CreateVersionDialog.tsx # 创建版本对话框
 ├── lib/                # 工具库 [详细文档 → app/lib/AGENTS.md]
 │   ├── drawio-tools.ts          # DrawIO XML 操作工具集
 │   ├── drawio-ai-tools.ts       # DrawIO AI 工具调用接口
@@ -52,7 +81,7 @@ app/
 ├── api/                # API 路由
 │   ├── chat/                    # 聊天 API 路由
 │   └── test/                    # 测试 API 路由
-├── styles/             # 模块化样式系统
+├── styles/             # 模块化样式系统 [详细文档 → app/styles/AGENTS.md]
 │   ├── base/                    # 基础样式（reset、变量）
 │   ├── components/              # 组件样式
 │   ├── layout/                  # 布局样式
@@ -148,15 +177,80 @@ pnpm format               # 使用 Prettier 格式化所有代码
 
 ## 子包文档导航
 
-| 模块            | 路径                       | 主要内容                              |
-| --------------- | -------------------------- | ------------------------------------- |
-| **React 组件**  | `app/components/AGENTS.md` | 所有 UI 组件的详细 API 和使用规范     |
-| **React Hooks** | `app/hooks/AGENTS.md`      | 统一存储 Hooks 与 Socket.IO 通讯 Hook |
-| **XML 工具集**  | `app/lib/AGENTS.md`        | DrawIO XML 操作、存储层架构完整文档   |
-| **类型定义**    | `app/types/AGENTS.md`      | TypeScript 类型的完整说明             |
-| **桌面应用**    | `electron/AGENTS.md`       | Electron 配置、安全策略和调试指南     |
+| 模块            | 路径                       | 主要内容                                 |
+| --------------- | -------------------------- | ---------------------------------------- |
+| **React 组件**  | `app/components/AGENTS.md` | 所有 UI 组件的详细 API 和使用规范        |
+| **React Hooks** | `app/hooks/AGENTS.md`      | 统一存储 Hooks 与 Socket.IO 通讯 Hook    |
+| **样式系统**    | `app/styles/AGENTS.md`     | 设计令牌、Material Design 规范、最佳实践 |
+| **XML 工具集**  | `app/lib/AGENTS.md`        | DrawIO XML 操作、存储层架构完整文档      |
+| **类型定义**    | `app/types/AGENTS.md`      | TypeScript 类型的完整说明                |
+| **桌面应用**    | `electron/AGENTS.md`       | Electron 配置、安全策略和调试指南        |
 
 ## 最近更新
+
+### 2025-11-13 顶栏与侧栏交互重构
+
+- **顶栏统一操作区**:
+  - 选区指示器移至最左侧，实时展示对象数量
+  - 工程切换按钮置于中间并支持全宽点击区域
+  - 加载/保存按钮靠右，新增图标按钮可一键收起/展开侧栏
+- **统一侧栏多 Tab 化**:
+  - 聊天/设置/版本切换采用紧凑 Tab，固定在侧栏顶部
+  - 侧栏宽度记忆与拖拽逻辑保持不变，可在 Tabs 间即时切换
+- **布局同步**:
+  - 左侧工作区在侧栏展开时自动预留宽度，顶栏与编辑器对齐
+  - 相关样式迁移到 `top-bar` 与 `sidebar-tabs` 新类，移除底栏布局
+- **相关文件**:
+  - `app/components/TopBar.tsx`
+  - `app/components/UnifiedSidebar.tsx`
+  - `app/page.tsx`
+  - `app/styles/layout/container.css`, `app/styles/layout/sidebar.css`
+
+### 2025-11-13 版本管理 UI 现代化外观升级
+
+- **版本侧边栏现代化**:
+  - 新增信息描述区：History 图标 + 标题 + 副标题说明
+  - 空状态卡片优化：History 图标 + 引导文案
+  - 悬浮 CTA 按钮：Save 图标 + "保存版本" 主色按钮
+  - 顶部 Header 采用信息区 + 操作按钮分栏布局
+- **WIP 指示器卡片式升级**:
+  - 卡片式信息区：Activity 图标 + WIP 徽章 + 版本号
+  - 元数据行：实时保存状态 + 最后更新时间
+  - 三段式布局：`wip-indicator__body/top/meta` 结构
+- **历史版本时间线优化**:
+  - 主轴 + 节点视觉：CSS `::before` 绘制时间线
+  - 紧凑折叠卡片：默认折叠显示版本号+徽章+时间
+  - 版本卡片分栏：操作按钮右上排列，底部元信息展示
+  - Disclosure 折叠组件：点击展开查看完整信息
+- **文本语义化变量**:
+  - 新增 `--text-primary/secondary/tertiary` 颜色变量
+  - 统一全局文本色彩引用规范
+- **相关文件**:
+  - `app/components/VersionSidebar.tsx` - 版本侧边栏主组件
+  - `app/components/version/WIPIndicator.tsx` - WIP 指示器
+  - `app/components/version/VersionCard.tsx` - 版本卡片
+  - `app/components/version/VersionTimeline.tsx` - 版本时间线
+  - `app/styles/components/version-*.css` - 版本管理样式
+
+### 2025-11-12 版本管理 UI Material Design 优化
+
+- **设计系统规范化**:
+  - 统一圆角至 4px/8px/12px 三档标准
+  - 建立 Material Design 标准阴影层级（4层：1/2/4/8）
+  - 添加标准间距系统（4px 基准）
+  - 修正动画变量命名（duration 替代错误的 transition-slow）
+- **版本组件优化**:
+  - 移除干扰性动画（脉冲、浮动、上移效果）
+  - 统一徽章样式规范（Latest/关键帧/差异）
+  - 扁平化背景设计，去除渐变效果
+  - 对话框使用 Material Design 标准背景模糊（4px）
+- **样式系统文档**:
+  - 创建 `app/styles/AGENTS.md` 完整设计系统文档
+  - 记录所有设计令牌、使用场景和最佳实践
+  - 包含 Tailwind CSS v4 + HeroUI v3 集成指南
+- **相关文件**:
+  - `app/styles/base/variables.css` - 核心设计令牌
+  - `app/styles/components/version-*.css` - 版本管理组件样式
 
 ### 2025-11 统一存储架构重构
 
@@ -179,14 +273,14 @@ pnpm format               # 使用 Prettier 格式化所有代码
   - `app/lib/tool-executor.ts` - 工具路由
   - `app/hooks/useDrawioSocket.ts` - 前端 Hook
 
-### 2025-11 底部选区状态显示
+### 2025-11 顶栏选区状态显示
 
-- **Electron**: 主进程向 DrawIO iframe 注入监听器，实时通过 postMessage 回传选中对象数量，底部工具栏在 GitHub 按钮右侧展示为 `选中了X个对象`
-- **Web**: 受浏览器沙箱限制，底部状态文案显示 `网页无法使用该功能`
+- **Electron**: 主进程向 DrawIO iframe 注入监听器，实时通过 postMessage 回传选中对象数量，顶栏左侧状态区域展示为 `选中了X个对象`
+- **Web**: 受浏览器沙箱限制，顶栏状态文案显示 `网页无法使用该功能`
 - **相关文件**:
   - `electron/main.js`、`electron/preload.js` - 注入与 IPC 通道
   - `app/components/DrawioEditorNative.tsx` - 处理选区消息
-  - `app/components/BottomBar.tsx` - 显示状态文案
+  - `app/components/TopBar.tsx` - 显示状态文案
   - `app/page.tsx` - 组合状态数据
 
 ### 2025-11 聊天组件模块化架构
@@ -221,4 +315,4 @@ pnpm format               # 使用 Prettier 格式化所有代码
 
 ---
 
-_最后更新: 2025-11-07_
+_最后更新: 2025-11-13_

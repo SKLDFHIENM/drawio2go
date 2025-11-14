@@ -1,0 +1,198 @@
+/* ================================
+   版本管理 - 侧边栏容器布局
+   ================================ */
+
+/* 版本侧边栏主容器 */
+.version-sidebar {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--background, #ffffff);
+  border-left: 1px solid var(--border-light);
+  box-shadow: var(--shadow-sidebar);
+}
+
+.version-sidebar--empty {
+  justify-content: center;
+  padding: var(--spacing-xl);
+}
+
+/* ================================
+   侧边栏头部区域
+   ================================ */
+
+.version-sidebar .sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-compact-lg);
+  border-bottom: 1px solid var(--border-light);
+  background: var(--background, #ffffff);
+  z-index: 10;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+}
+
+.version-sidebar .sidebar-header h2 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.sidebar-header__info {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-compact-md);
+}
+
+.sidebar-header__icon {
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--radius);
+  background: var(--primary-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary-color);
+  box-shadow: var(--shadow-1);
+}
+
+.sidebar-header__description {
+  margin: 0.2rem 0 0;
+  font-size: var(--font-size-compact-sm);
+  color: var(--text-secondary);
+}
+
+.sidebar-header__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.version-sidebar__cta {
+  min-width: 9rem;
+  font-weight: 600;
+  box-shadow: var(--shadow-1);
+}
+
+.version-sidebar__retry {
+  font-weight: 500;
+}
+
+/* ================================
+   侧边栏内容区域（可滚动）
+   ================================ */
+
+.version-sidebar .sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--spacing-compact-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-compact-lg);
+  background: var(--bg-primary);
+}
+
+/* 自定义滚动条 */
+.version-sidebar .sidebar-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.version-sidebar .sidebar-content::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+.version-sidebar .sidebar-content::-webkit-scrollbar-thumb {
+  background: var(--border-primary);
+  border-radius: 3px;
+}
+
+.version-sidebar .sidebar-content::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-color);
+}
+
+/* ================================
+   空状态样式
+   ================================ */
+
+.version-sidebar .empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: var(--spacing-xl);
+  text-align: center;
+}
+
+.version-sidebar .empty-state p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.empty-state-card {
+  width: 100%;
+  max-width: 320px;
+  padding: var(--spacing-xl);
+  border-radius: var(--radius-lg);
+  background: var(--primary-light);
+  border: 1px dashed var(--border-primary);
+  text-align: center;
+  box-shadow: var(--shadow-1);
+}
+
+.empty-state-card__icon {
+  width: 3rem;
+  height: 3rem;
+  border-radius: var(--radius);
+  margin: 0 auto var(--spacing-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(51, 136, 187, 0.12);
+  color: var(--primary-color);
+}
+
+.empty-state-card__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.empty-state-card__description {
+  margin-top: var(--spacing-sm);
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* ================================
+   响应式布局
+   ================================ */
+
+@media (max-width: 400px) {
+  .version-sidebar .sidebar-header {
+    flex-direction: column;
+    gap: var(--spacing-md);
+    align-items: stretch;
+  }
+
+  .version-sidebar .sidebar-content {
+    padding: var(--spacing-md);
+    gap: var(--spacing-md);
+  }
+
+  .sidebar-header__actions {
+    width: 100%;
+  }
+
+  .version-sidebar__cta,
+  .version-sidebar__retry {
+    width: 100%;
+  }
+}

@@ -1,0 +1,392 @@
+/* ================================
+   版本管理 - 时间线容器
+   ================================ */
+
+.version-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-compact-md);
+}
+
+/* ================================
+   时间线头部
+   ================================ */
+
+.timeline-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.timeline-header h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.timeline-description {
+  margin: 0.35rem 0 0;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.timeline-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--spacing-sm);
+  height: 1.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--primary-light);
+  color: var(--primary-color);
+  border: 1px solid var(--border-primary);
+  white-space: nowrap;
+}
+
+/* ================================
+   时间线列表
+   ================================ */
+
+.timeline-list {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-compact-md);
+  padding-left: 1.25rem;
+}
+
+.timeline-list::before {
+  content: "";
+  position: absolute;
+  top: 0.625rem;
+  bottom: 0.625rem;
+  left: 0.45rem;
+  width: 2px;
+  background: var(--border-primary);
+  border-radius: 999px;
+}
+
+/* ================================
+   时间线空状态
+   ================================ */
+
+.version-timeline-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xl);
+}
+
+.empty-state-small {
+  text-align: center;
+  padding: var(--spacing-lg);
+  border-radius: var(--radius-lg);
+  background: var(--bg-secondary);
+  border: 1px dashed var(--border-primary);
+  box-shadow: var(--shadow-1);
+}
+
+.empty-state-small p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.empty-state-small p:first-of-type {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.empty-state-small p + p {
+  margin-top: 0.35rem;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.empty-state-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  margin: 0 auto var(--spacing-sm);
+  border-radius: 999px;
+  background: rgba(51, 136, 187, 0.12);
+  color: var(--primary-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ================================
+   版本卡片 - 基础样式
+   ================================ */
+
+.version-card {
+  position: relative;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-light);
+  background: var(--background, #ffffff);
+  box-shadow: var(--shadow-1);
+  transition:
+    transform var(--transition-fast),
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+  cursor: pointer;
+  overflow: visible;
+}
+
+.version-card::before {
+  content: "";
+  position: absolute;
+  left: -1rem;
+  top: 1.2rem;
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 999px;
+  background: var(--background, #ffffff);
+  border: 2px solid var(--primary-color);
+  box-shadow: 0 0 0 3px var(--bg-primary);
+}
+
+.version-card:hover {
+  border-color: var(--primary-color);
+  box-shadow: var(--shadow-2);
+  transform: translateX(2px) scale(1.01);
+}
+
+.version-card--latest {
+  border-color: var(--primary-color);
+  box-shadow: var(--shadow-2);
+}
+
+.version-card--latest::before {
+  background: var(--primary-color);
+}
+
+/* 折叠状态样式 */
+.version-card--collapsed .version-card__content {
+  padding: var(--card-padding-compact-collapsed);
+}
+
+/* 展开状态样式 */
+.version-card--expanded .version-card__content {
+  padding: var(--card-padding-compact);
+}
+
+.version-card__content {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* ================================
+   折叠卡片 - Trigger 按钮
+   ================================ */
+
+.version-card__trigger {
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+  display: block;
+}
+
+/* ================================
+   折叠卡片 - 紧凑视图（始终显示）
+   ================================ */
+
+.version-card__compact-view {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-compact-sm);
+  min-height: 2.5rem;
+}
+
+.version-card__compact-left {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.version-card__compact-right {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-compact-sm);
+  flex-shrink: 0;
+}
+
+.version-card__time {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: var(--font-size-compact-xs);
+  color: var(--text-secondary);
+}
+
+.version-card__chevron {
+  width: 1rem;
+  height: 1rem;
+  color: var(--text-secondary);
+  transition: transform var(--transition-normal);
+  flex-shrink: 0;
+}
+
+.version-card__chevron.rotated {
+  transform: rotate(180deg);
+}
+
+/* ================================
+   折叠卡片 - 展开内容区
+   ================================ */
+
+.version-card__expanded-content {
+  padding-top: var(--spacing-compact-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-compact-sm);
+}
+
+.version-card__name {
+  margin: 0;
+  font-size: var(--font-size-compact-md);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.version-card__description {
+  margin: 0;
+  font-size: var(--font-size-compact-sm);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.version-card__meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--spacing-compact-sm);
+  padding-top: var(--spacing-compact-sm);
+  border-top: 1px solid var(--border-light);
+}
+
+.version-card__meta-item {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: var(--font-size-compact-xs);
+  color: var(--text-secondary);
+}
+
+.version-card__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-compact-sm);
+  padding-top: var(--spacing-compact-sm);
+  border-top: 1px solid var(--border-light);
+}
+
+/* ================================
+   版本号样式
+   ================================ */
+
+.version-number {
+  font-size: var(--font-size-compact-md);
+  font-weight: 700;
+  color: var(--primary-color);
+  letter-spacing: 0.03em;
+}
+
+/* ================================
+   版本卡片 - 徽章样式（紧凑）
+   ================================ */
+
+.latest-badge,
+.keyframe-badge,
+.diff-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  height: var(--badge-height-compact);
+  padding: var(--badge-padding-compact);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-compact-xs);
+  font-weight: 600;
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.latest-badge {
+  background: var(--success-color);
+  color: white;
+}
+
+.keyframe-badge {
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--warning-color);
+}
+
+.keyframe-badge svg {
+  width: 0.625rem;
+  height: 0.625rem;
+}
+
+.diff-badge {
+  background: rgba(139, 92, 246, 0.1);
+  color: var(--info-color);
+}
+
+.diff-badge svg {
+  width: 0.625rem;
+  height: 0.625rem;
+}
+
+/* ================================
+   版本卡片 - 工具类
+   ================================ */
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.button-small-optimized {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.65rem;
+  height: auto;
+  min-height: 1.75rem;
+}
+
+.button-small-optimized svg {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+@media (max-width: 480px) {
+  .timeline-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .timeline-chip {
+    align-self: flex-start;
+  }
+
+  .version-card {
+    margin-left: 0.5rem;
+  }
+
+  .version-card__meta {
+    grid-template-columns: 1fr;
+  }
+}

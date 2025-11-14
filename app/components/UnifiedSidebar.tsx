@@ -2,16 +2,23 @@
 
 import { useState, useEffect, useRef } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
+import { History, MessageSquare, Settings } from "lucide-react";
 import ChatSidebar from "./ChatSidebar";
 import SettingsSidebar from "./SettingsSidebar";
+import { VersionSidebar } from "./VersionSidebar";
 import { useStorageSettings } from "@/app/hooks/useStorageSettings";
+
+export type SidebarTab = "chat" | "settings" | "version";
 
 interface UnifiedSidebarProps {
   isOpen: boolean;
-  activeSidebar: "none" | "settings" | "chat";
+  activeTab: SidebarTab;
+  onTabChange: (tab: SidebarTab) => void;
   onClose: () => void;
   onSettingsChange?: (settings: { defaultPath: string }) => void;
   currentProjectId?: string;
+  projectUuid?: string | null;
+  onVersionRestore?: (versionId: string) => void;
 }
 
 const MIN_WIDTH = 300;
@@ -19,12 +26,25 @@ const MAX_WIDTH = 3000;
 
 type SidebarPointerEvent = ReactPointerEvent<HTMLDivElement>;
 
+const TAB_ITEMS: Array<{
+  key: SidebarTab;
+  label: string;
+  Icon: typeof MessageSquare;
+}> = [
+  { key: "chat", label: "聊天", Icon: MessageSquare },
+  { key: "settings", label: "设置", Icon: Settings },
+  { key: "version", label: "版本", Icon: History },
+];
+
 export default function UnifiedSidebar({
   isOpen,
-  activeSidebar,
+  activeTab,
+  onTabChange,
   onClose,
   onSettingsChange,
   currentProjectId,
+  projectUuid,
+  onVersionRestore,
 }: UnifiedSidebarProps) {
   // 存储 Hook
   const { getSetting, setSetting } = useStorageSettings();
@@ -125,21 +145,42 @@ export default function UnifiedSidebar({
         onPointerCancel={handlePointerUp}
       />
 
-      {/* 根据 activeSidebar 渲染不同内容 */}
-      {activeSidebar === "settings" && (
-        <SettingsSidebar
-          isOpen={true}
-          onClose={onClose}
-          onSettingsChange={onSettingsChange}
-        />
-      )}
-      {activeSidebar === "chat" && (
-        <ChatSidebar
-          isOpen={true}
-          onClose={onClose}
-          currentProjectId={currentProjectId}
-        />
-      )}
+      <div className="sidebar-tabs">
+        {TAB_ITEMS.map(({ key, label, Icon }) => (
+          <button
+            key={key}
+            type="button"
+            className={`sidebar-tab ${activeTab === key ? "active" : ""}`}
+            onClick={() => onTabChange(key)}
+          >
+            <Icon size={16} />
+            <span>{label}</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="sidebar-panel-wrapper">
+        {activeTab === "settings" && (
+          <SettingsSidebar
+            isOpen={true}
+            onClose={onClose}
+            onSettingsChange={onSettingsChange}
+          />
+        )}
+        {activeTab === "chat" && (
+          <ChatSidebar
+            isOpen={true}
+            onClose={onClose}
+            currentProjectId={currentProjectId}
+          />
+        )}
+        {activeTab === "version" && (
+          <VersionSidebar
+            projectUuid={projectUuid || null}
+            onVersionRestore={onVersionRestore}
+          />
+        )}
+      </div>
     </div>
   );
 }

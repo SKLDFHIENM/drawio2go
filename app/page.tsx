@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 // import DrawioEditor from "./components/DrawioEditor";
 import DrawioEditorNative from "./components/DrawioEditorNative"; // 使用原生 iframe 实现
-import BottomBar from "./components/BottomBar";
-import UnifiedSidebar from "./components/UnifiedSidebar";
+import TopBar from "./components/TopBar";
+import UnifiedSidebar, { type SidebarTab } from "./components/UnifiedSidebar";
 import ProjectSelector from "./components/ProjectSelector";
 import { useDrawioSocket } from "./hooks/useDrawioSocket";
 import { DrawioSelectionInfo } from "./types/drawio-tools";
@@ -13,6 +13,7 @@ import { useCurrentProject } from "./hooks/useCurrentProject";
 import { useStorageProjects } from "./hooks/useStorageProjects";
 import { useStorageXMLVersions } from "./hooks/useStorageXMLVersions";
 import { useDrawioEditor } from "./hooks/useDrawioEditor";
+import { WIP_VERSION } from "./lib/storage/constants";
 
 export default function Home() {
   // 存储 Hook
@@ -27,7 +28,8 @@ export default function Home() {
 
   const { projects, createProject, getAllProjects } = useStorageProjects();
 
-  const { saveXML } = useStorageXMLVersions();
+  const { saveXML, getAllXMLVersions, rollbackToVersion } =
+    useStorageXMLVersions();
 
   // DrawIO 编辑器 Hook
   const { editorRef, loadProjectXml, replaceWithXml } = useDrawioEditor(
@@ -36,9 +38,8 @@ export default function Home() {
 
   const [diagramXml, setDiagramXml] = useState<string>("");
   const [settings, setSettings] = useState({ defaultPath: "" });
-  const [activeSidebar, setActiveSidebar] = useState<
-    "none" | "settings" | "chat"
-  >("none");
+  const [sidebarTab, setSidebarTab] = useState<SidebarTab>("chat");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectionInfo, setSelectionInfo] = useState<DrawioSelectionInfo>({
     count: 0,
     cells: [],
@@ -50,14 +51,42 @@ export default function Home() {
   // 初始化 Socket.IO 连接
   const { isConnected } = useDrawioSocket();
 
+  // 确保项目有 WIP 版本
+  const ensureWIPVersion = useCallback(
+    async (projectUuid: string) => {
+      try {
+        const versions = await getAllXMLVersions(projectUuid);
+        const wipVersion = versions.find(
+          (v) => v.semantic_version === WIP_VERSION,
+        );
+
+        if (!wipVersion) {
+          const defaultXml =
+            '<mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/></root></mxGraphModel>';
+          await saveXML(defaultXml, projectUuid);
+          console.log("✅ 已创建 WIP 版本");
+        }
+      } catch (error) {
+        console.error("❌ 创建 WIP 版本失败:", error);
+      }
+    },
+    [getAllXMLVersions, saveXML],
+  );
+
   // 加载当前工程的 XML
   useEffect(() => {
     if (currentProject && !projectLoading) {
+      // 确保 WIP 版本存在
+      ensureWIPVersion(currentProject.uuid).catch((error) => {
+        console.error("初始化 WIP 版本失败:", error);
+      });
+
+      // 加载工程 XML
       loadProjectXml().catch((error) => {
         console.error("加载工程 XML 失败:", error);
       });
     }
-  }, [currentProject, projectLoading, loadProjectXml]);
+  }, [currentProject, projectLoading, loadProjectXml, ensureWIPVersion]);
 
   // 初始化环境检测
   useEffect(() => {
@@ -102,6 +131,8 @@ export default function Home() {
         await saveXML(xml, currentProject.uuid);
         // 更新 diagramXml 用于手动保存功能
         setDiagramXml(xml);
+        // 触发 WIP 更新事件
+        window.dispatchEvent(new Event("wip-updated"));
       } catch (error) {
         console.error("自动保存失败:", error);
         // 可以在这里添加用户提示，但不中断编辑流程
@@ -199,14 +230,38 @@ export default function Home() {
     setSettings(newSettings);
   };
 
-  // 切换设置侧栏
-  const handleToggleSettings = () => {
-    setActiveSidebar((prev) => (prev === "settings" ? "none" : "settings"));
+  const handleToggleSidebarVisibility = () => {
+    setIsSidebarOpen((prev) => !prev);
   };
 
-  // 切换聊天侧栏
-  const handleToggleChat = () => {
-    setActiveSidebar((prev) => (prev === "chat" ? "none" : "chat"));
+  const handleSidebarTabChange = (tab: SidebarTab) => {
+    setSidebarTab(tab);
+    if (!isSidebarOpen) {
+      setIsSidebarOpen(true);
+    }
+  };
+
+  // 版本回滚处理
+  const handleVersionRestore = async (versionId: string) => {
+    if (!currentProject) return;
+
+    try {
+      console.log(`🔄 开始回滚到版本 ${versionId}`);
+
+      // 执行回滚操作（将历史版本覆盖到 WIP）
+      await rollbackToVersion(currentProject.uuid, versionId);
+
+      // 重新加载 WIP 到编辑器
+      await loadProjectXml();
+
+      // 触发版本更新事件
+      window.dispatchEvent(new Event("version-updated"));
+
+      console.log("✅ 版本回滚成功");
+    } catch (error) {
+      console.error("❌ 版本回滚失败:", error);
+      alert("版本回滚失败");
+    }
   };
 
   // 工程选择器处理
@@ -240,8 +295,19 @@ export default function Home() {
     }
   };
 
+  const selectionLabelText = isElectronEnv
+    ? `选中了${selectionInfo.count}个对象${
+        selectionInfo.cells.length > 0
+          ? ` (IDs: ${selectionInfo.cells
+              .map((c) => c.id)
+              .slice(0, 3)
+              .join(", ")}${selectionInfo.cells.length > 3 ? "..." : ""})`
+          : ""
+      }`
+    : "网页无法使用该功能";
+
   return (
-    <main className="main-container">
+    <main className={`main-container ${isSidebarOpen ? "sidebar-open" : ""}`}>
       {/* Socket.IO 连接状态指示器 */}
       {!isConnected && (
         <div
@@ -262,9 +328,19 @@ export default function Home() {
         </div>
       )}
 
+      <TopBar
+        selectionLabel={selectionLabelText}
+        currentProjectName={currentProject?.name}
+        onOpenProjectSelector={handleOpenProjectSelector}
+        onLoad={handleLoad}
+        onSave={handleManualSave}
+        isSidebarOpen={isSidebarOpen}
+        onToggleSidebar={handleToggleSidebarVisibility}
+      />
+
       {/* DrawIO 编辑器区域 */}
       <div
-        className={`editor-container ${activeSidebar !== "none" ? "sidebar-open" : ""}`}
+        className={`editor-container ${isSidebarOpen ? "sidebar-open" : ""}`}
       >
         <DrawioEditorNative
           ref={editorRef}
@@ -276,36 +352,14 @@ export default function Home() {
 
       {/* 统一侧拉栏 */}
       <UnifiedSidebar
-        isOpen={activeSidebar !== "none"}
-        activeSidebar={activeSidebar}
-        onClose={() => setActiveSidebar("none")}
+        isOpen={isSidebarOpen}
+        activeTab={sidebarTab}
+        onClose={() => setIsSidebarOpen(false)}
+        onTabChange={handleSidebarTabChange}
         onSettingsChange={handleSettingsChange}
         currentProjectId={currentProject?.uuid}
-      />
-
-      {/* 底部工具栏 */}
-      <BottomBar
-        onToggleSettings={handleToggleSettings}
-        onToggleChat={handleToggleChat}
-        onSave={handleManualSave}
-        onLoad={handleLoad}
-        activeSidebar={activeSidebar}
-        currentProjectName={currentProject?.name}
-        onOpenProjectSelector={handleOpenProjectSelector}
-        selectionLabel={
-          isElectronEnv
-            ? `选中了${selectionInfo.count}个对象${
-                selectionInfo.cells.length > 0
-                  ? ` (IDs: ${selectionInfo.cells
-                      .map((c) => c.id)
-                      .slice(0, 3)
-                      .join(
-                        ", ",
-                      )}${selectionInfo.cells.length > 3 ? "..." : ""})`
-                  : ""
-              }`
-            : "网页无法使用该功能"
-        }
+        projectUuid={currentProject?.uuid}
+        onVersionRestore={handleVersionRestore}
       />
 
       {/* 工程选择器 */}

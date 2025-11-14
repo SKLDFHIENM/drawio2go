@@ -1,0 +1,44 @@
+/* ================================
+   版本管理 - 动画效果
+   ================================ */
+
+/* 淡入动画 - 用于对话框遮罩层 */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* 滑入动画 - 用于对话框容器 */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 脉冲动画 - 用于 WIP 指示器图标 */
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* 过渡效果变量 */
+:root {
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.2s ease;
+  --transition-slow: 0.3s ease;
+  --ease-out-cubic: cubic-bezier(0.33, 1, 0.68, 1);
+}
