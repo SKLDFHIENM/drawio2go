@@ -87,17 +87,19 @@
     value={projectName}
     onChange={(e) => setProjectName(e.target.value)}
   />
+  ```
 
 // 新代码
 <TextField isRequired>
-  <Label>工程名称</Label>
-  <Input
-    value={newProjectName}
-    onChange={(event) => setNewProjectName(event.target.value)}
-  />
-  <Description>创建工程时必填</Description>
+<Label>工程名称</Label>
+<Input
+value={newProjectName}
+onChange={(event) => setNewProjectName(event.target.value)}
+/>
+<Description>创建工程时必填</Description>
 </TextField>
-```
+
+````
 
 - [ ] **项目路径输入框（不适用）**
   - 当前 ProjectSelector 仅提供“新建工程”名称 + 描述输入，路径选择在别处处理，因此保持现状
@@ -112,7 +114,7 @@
     />
     <Description>选择 DrawIO 文件所在目录</Description>
   </TextField>
-  ```
+````
 
 - [ ] **移除硬编码边框颜色**
   - TODO：工程卡片仍使用品牌色十六进制，待迁移为 CSS 变量或主题 token

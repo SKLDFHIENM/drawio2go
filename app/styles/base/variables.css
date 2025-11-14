@@ -63,7 +63,11 @@
   --gray-bg: rgba(156, 163, 175, 0.04);
 
   /* 边框颜色 */
-  --border-primary: color-mix(in oklch, var(--accent, #3388bb) 35%, transparent);
+  --border-primary: color-mix(
+    in oklch,
+    var(--accent, #3388bb) 35%,
+    transparent
+  );
   --border-light: color-mix(in oklch, var(--accent, #3388bb) 20%, transparent);
   --border-hover: color-mix(in oklch, var(--accent, #3388bb) 45%, transparent);
 
@@ -105,7 +109,11 @@
 [data-theme="dark"],
 .dark {
   /* 深色模式下的颜色覆盖 */
-  --primary-light: color-mix(in oklch, var(--accent, #3388bb) 22%, var(--background, #0f1b27));
+  --primary-light: color-mix(
+    in oklch,
+    var(--accent, #3388bb) 22%,
+    var(--background, #0f1b27)
+  );
   --shadow-sidebar: -2px 0 8px rgba(51, 136, 187, 0.15);
   --text-primary: rgba(248, 250, 252, 0.95);
   --text-secondary: rgba(248, 250, 252, 0.7);

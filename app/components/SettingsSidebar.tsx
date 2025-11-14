@@ -135,18 +135,10 @@ export default function SettingsSidebar({
 
       {hasChanges && (
         <div className="floating-actions">
-          <Button
-            variant="ghost"
-            size="sm"
-            onPress={handleCancel}
-          >
+          <Button variant="ghost" size="sm" onPress={handleCancel}>
             取消
           </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            onPress={handleSave}
-          >
+          <Button variant="primary" size="sm" onPress={handleSave}>
             保存
           </Button>
         </div>

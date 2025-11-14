@@ -172,11 +172,7 @@ export function VersionCard({
                 </Button>
 
                 {onRestore && (
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onPress={handleRestore}
-                  >
+                  <Button size="sm" variant="secondary" onPress={handleRestore}>
                     <RotateCcw className="w-3.5 h-3.5" />
                     回滚
                   </Button>

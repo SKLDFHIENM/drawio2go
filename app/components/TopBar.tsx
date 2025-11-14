@@ -28,17 +28,19 @@ export default function TopBar({
         {selectionLabel || "暂无选区信息"}
       </div>
 
-      {onOpenProjectSelector && (
-        <Button
-          variant="secondary"
-          size="sm"
-          className="top-bar-project"
-          onPress={onOpenProjectSelector}
-        >
-          <FolderOpen size={16} />
-          <span className="truncate">{currentProjectName}</span>
-        </Button>
-      )}
+      <div className="top-bar-center">
+        {onOpenProjectSelector && (
+          <Button
+            variant="secondary"
+            size="sm"
+            className="top-bar-project"
+            onPress={onOpenProjectSelector}
+          >
+            <FolderOpen size={16} />
+            <span className="truncate">{currentProjectName}</span>
+          </Button>
+        )}
+      </div>
 
       <div className="top-bar-actions">
         {onLoad && (

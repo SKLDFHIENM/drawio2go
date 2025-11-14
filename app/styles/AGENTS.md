@@ -242,7 +242,8 @@ app/styles/
 
   ```html
   <html class="light" data-theme="drawio2go">
-  <html class="dark" data-theme="drawio2go-dark">
+    <html class="dark" data-theme="drawio2go-dark"></html>
+  </html>
   ```
 
 - `@theme inline` 已将 `--color-background`、`--color-accent`、`--radius` 等暴露给 Tailwind，故可直接使用 `bg-background`、`text-foreground`、`rounded-lg` 等工具类。
@@ -397,7 +398,8 @@ import { Button, Card } from '@heroui/react'
 
   ```html
   <html class="light" data-theme="drawio2go">
-  <html class="dark" data-theme="drawio2go-dark">
+    <html class="dark" data-theme="drawio2go-dark"></html>
+  </html>
   ```
 
 - 颜色、圆角、阴影全部放在 `drawio2go.css` 中按 data-theme 维护；其他自定义变量（如 `--shadow-sidebar`）可继续在 `variables.css` 里使用 `.dark` 选择器做补丁。

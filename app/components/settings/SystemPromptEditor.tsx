@@ -75,21 +75,13 @@ export default function SystemPromptEditor({
             />
           </TextField>
           <div className="modal-actions">
-            <Button
-              variant="ghost"
-              size="sm"
-              onPress={handleClose}
-            >
+            <Button variant="ghost" size="sm" onPress={handleClose}>
               取消
             </Button>
             <Button variant="secondary" size="sm" onPress={handleReset}>
               恢复默认
             </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onPress={handleSave}
-            >
+            <Button variant="primary" size="sm" onPress={handleSave}>
               保存
             </Button>
           </div>

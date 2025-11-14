@@ -33,13 +33,13 @@
 
 ### 1. 定义 Button 迁移映射规则
 
-| 旧样式类                   | HeroUI 替代方案                                                | 说明                                       |
-| -------------------------- | -------------------------------------------------------------- | ------------------------------------------ |
-| `.button-primary`          | `<Button variant="primary">`                                 | 品牌主操作（填充背景）                     |
-| `.button-secondary`        | `<Button variant="secondary">`                               | 次级操作（浅色/描边背景）                 |
-| `.chat-icon-button`        | `<Button variant="tertiary" isIconOnly aria-label="...">`   | 图标按钮，保持最小视觉噪声                |
-| `.chat-send-button`        | `<Button variant="primary" size="sm">`（取消态使用 `variant="danger"`） | 聊天发送/取消按钮                         |
-| `.floating-actions button` | 取消：`<Button variant="ghost">` / 保存：`<Button variant="primary">`   | 悬浮保存条，区分次要/主要操作             |
+| 旧样式类                   | HeroUI 替代方案                                                         | 说明                          |
+| -------------------------- | ----------------------------------------------------------------------- | ----------------------------- |
+| `.button-primary`          | `<Button variant="primary">`                                            | 品牌主操作（填充背景）        |
+| `.button-secondary`        | `<Button variant="secondary">`                                          | 次级操作（浅色/描边背景）     |
+| `.chat-icon-button`        | `<Button variant="tertiary" isIconOnly aria-label="...">`               | 图标按钮，保持最小视觉噪声    |
+| `.chat-send-button`        | `<Button variant="primary" size="sm">`（取消态使用 `variant="danger"`） | 聊天发送/取消按钮             |
+| `.floating-actions button` | 取消：`<Button variant="ghost">` / 保存：`<Button variant="primary">`   | 悬浮保存条，区分次要/主要操作 |
 
 > 说明：当前项目锁定 `@heroui/react@3.0.0-beta.1`，该版本仅提供 `primary / secondary / tertiary / ghost / danger / danger-soft`
 > 六种 `variant`。因此本次迁移通过上表映射实现了文档中“solid/bordered/light/flat”对视觉层级的要求。
@@ -72,7 +72,11 @@
     aria-label={isSidebarOpen ? "收起侧栏" : "展开侧栏"}
     onPress={onToggleSidebar}
   >
-    {isSidebarOpen ? <PanelRightClose size={18} /> : <PanelRightOpen size={18} />}
+    {isSidebarOpen ? (
+      <PanelRightClose size={18} />
+    ) : (
+      <PanelRightOpen size={18} />
+    )}
   </Button>
   ```
 
@@ -91,7 +95,7 @@
     onPress={canCancel ? onCancel : undefined}
   >
     {canCancel ? "取消" : "发送"}
-  </Button>
+  </Button>;
   ```
 
 - [x] **停止状态复用**

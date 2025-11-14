@@ -209,7 +209,11 @@ export function CreateVersionDialog({
         {/* 对话框内容 */}
         <div className="dialog-content">
           {/* 版本号输入 */}
-          <TextField className="w-full" isRequired isInvalid={!!validationError}>
+          <TextField
+            className="w-full"
+            isRequired
+            isInvalid={!!validationError}
+          >
             <Label>版本号 *</Label>
             <div className="flex gap-2 mt-2">
               <Input
@@ -273,11 +277,7 @@ export function CreateVersionDialog({
 
         {/* 对话框底部 */}
         <div className="dialog-footer">
-          <Button
-            variant="secondary"
-            onPress={onClose}
-            isDisabled={isCreating}
-          >
+          <Button variant="secondary" onPress={onClose} isDisabled={isCreating}>
             取消
           </Button>
           <Button
