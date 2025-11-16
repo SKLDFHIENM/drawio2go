@@ -3,6 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import React from "react";
+import { createPortal } from "react-dom";
 import {
   Button,
   Card,
@@ -77,6 +78,7 @@ export function VersionCompare({
   isOpen,
   onClose,
 }: VersionCompareProps) {
+  const [isPortalReady, setIsPortalReady] = React.useState(false);
   const [pagePairs, setPagePairs] = React.useState<PagePair[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -93,6 +95,11 @@ export function VersionCompare({
     offsetX: number;
     offsetY: number;
   } | null>(null);
+
+  React.useEffect(() => {
+    setIsPortalReady(true);
+    return () => setIsPortalReady(false);
+  }, []);
 
   const currentPair = React.useMemo(() => {
     if (!pagePairs.length) return null;
@@ -336,9 +343,9 @@ export function VersionCompare({
     };
   }, [isOpen]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !isPortalReady) return null;
 
-  return (
+  return createPortal(
     <div
       className="version-compare__overlay"
       role="dialog"
@@ -668,6 +675,7 @@ export function VersionCompare({
           </Button>
         </Card.Footer>
       </Card.Root>
-    </div>
+    </div>,
+    document.body,
   );
 }

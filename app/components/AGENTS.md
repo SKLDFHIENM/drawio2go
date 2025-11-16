@@ -122,6 +122,7 @@ interface VersionCompareProps {
 - **同步控制**: 统一缩放/平移、键盘左右切页、Ctrl/Cmd+滚轮缩放、0 重置
 - **缺页提示**: 页面数量不一致或缺少 `pages_svg` 时显示占位和警告文案
 - **页面跳转**: Select 下拉快速跳页，Footer 展示当前页名称与计数
+- **全屏弹层**: 通过 React Portal 挂载到 `document.body`，弹层覆盖整个页面，不再受侧边栏宽度限制
 
 ##### 交互提示
 
