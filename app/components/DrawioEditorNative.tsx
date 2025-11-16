@@ -106,10 +106,14 @@ const DrawioEditorNative = forwardRef<DrawioEditorRef, DrawioEditorNativeProps>(
     const autosaveReceivedRef = useRef(false); // 是否收到 autosave 事件
     const autosaveTimerRef = useRef<NodeJS.Timeout | null>(null); // autosave 监测定时器
     const initializationCompleteRef = useRef(false); // 标记初始化是否完成
-    const loadResolversRef = useRef<Array<() => void>>([]); // load 回调队列
     const pendingExportsRef = useRef<Map<string, PendingExportEntry[]>>(
       new Map(),
     ); // export 回调队列
+
+    // 统一的加载队列：包含 xml 内容和 resolve 回调
+    const pendingLoadQueueRef = useRef<
+      Array<{ xml: string | undefined; resolve: () => void }>
+    >([]);
 
     const settleExport = (format: string, payload: string) => {
       const normalizedFormat = (format || "xml").toLowerCase();
@@ -144,39 +148,76 @@ const DrawioEditorNative = forwardRef<DrawioEditorRef, DrawioEditorNativeProps>(
     };
 
     const flushPendingLoads = () => {
-      loadResolversRef.current.forEach((resolve) => resolve());
-      loadResolversRef.current = [];
+      pendingLoadQueueRef.current.forEach(({ resolve }) => resolve());
+      pendingLoadQueueRef.current = [];
     };
 
     // 构建 DrawIO URL
     const drawioUrl = `https://embed.diagrams.net/?embed=1&proto=json&spin=1&ui=kennedy&libraries=1&saveAndExit=1&noSaveBtn=1&noExitBtn=1`;
 
+    // 已发送等待响应的 load 回调队列（与 pendingLoadQueueRef 分开管理）
+    const sentLoadResolversRef = useRef<Array<() => void>>([]);
+
+    const dispatchLoadCommand = useCallback(
+      (xml: string | undefined, resolve?: () => void) => {
+        if (!iframeRef.current || !iframeRef.current.contentWindow) {
+          console.warn("⚠️ iframe 未就绪，无法发送 load 命令");
+          resolve?.();
+          return;
+        }
+
+        const loadData = {
+          action: "load",
+          xml: xml || "",
+          autosave: true,
+        };
+        console.log("📤 发送 load 命令（完全加载）");
+        if (resolve) {
+          sentLoadResolversRef.current.push(resolve);
+        }
+        iframeRef.current.contentWindow.postMessage(
+          JSON.stringify(loadData),
+          "*",
+        );
+      },
+      [],
+    );
+
+    const replayPendingLoads = useCallback(() => {
+      if (pendingLoadQueueRef.current.length === 0) {
+        return;
+      }
+
+      const queuedLoads = [...pendingLoadQueueRef.current];
+      pendingLoadQueueRef.current = [];
+
+      console.log(
+        `⏩ 回放 ${queuedLoads.length} 个待执行的 load 请求`,
+      );
+
+      queuedLoads.forEach(({ xml, resolve }) => {
+        dispatchLoadCommand(xml, resolve);
+      });
+    }, [dispatchLoadCommand]);
+
     // 首次加载图表（使用 load 动作）
     const loadDiagram = useCallback(
       (xml: string | undefined, skipReadyCheck = false) => {
         return new Promise<void>((resolve) => {
-          if (
-            iframeRef.current &&
-            iframeRef.current.contentWindow &&
-            (isReady || skipReadyCheck)
-          ) {
-            const loadData = {
-              action: "load",
-              xml: xml || "",
-              autosave: true,
-            };
-            console.log("📤 发送 load 命令（完全加载）");
-            loadResolversRef.current.push(resolve);
-            iframeRef.current.contentWindow.postMessage(
-              JSON.stringify(loadData),
-              "*",
-            );
-          } else {
-            resolve();
+          const iframeWindow =
+            iframeRef.current && iframeRef.current.contentWindow;
+          const canSend = iframeWindow && (isReady || skipReadyCheck);
+
+          if (canSend) {
+            dispatchLoadCommand(xml, resolve);
+            return;
           }
+
+          console.log("⏳ DrawIO 尚未就绪，已缓存 load 请求");
+          pendingLoadQueueRef.current.push({ xml, resolve });
         });
       },
-      [isReady],
+      [dispatchLoadCommand, isReady],
     );
 
     // 导出当前图表的 XML（返回 Promise）
@@ -326,6 +367,7 @@ const DrawioEditorNative = forwardRef<DrawioEditorRef, DrawioEditorNativeProps>(
           if (data.event === "init") {
             console.log("✅ DrawIO iframe 初始化成功！");
             setIsReady(true);
+            replayPendingLoads();
 
             // 先导出当前 DrawIO 的 XML，用于对比
             console.log("🔍 请求 export 以获取 DrawIO 当前 XML");
@@ -376,7 +418,7 @@ const DrawioEditorNative = forwardRef<DrawioEditorRef, DrawioEditorNativeProps>(
                 if (normalizedExported !== normalizedInitial) {
                   console.log("🔄 检测到 XML 不同，执行 load 操作");
                   console.log(
-                    `  - 存储 XML 长度: ${normalizedInitial.length} 字符`,
+                    `  - 期望 XML 长度: ${normalizedInitial.length} 字符`,
                   );
                   console.log(
                     `  - DrawIO XML 长度: ${normalizedExported.length} 字符`,
@@ -404,7 +446,7 @@ const DrawioEditorNative = forwardRef<DrawioEditorRef, DrawioEditorNativeProps>(
             }
           } else if (data.event === "load") {
             console.log("✅ DrawIO 已加载内容");
-            const resolver = loadResolversRef.current.shift();
+            const resolver = sentLoadResolversRef.current.shift();
             resolver?.();
           } else if (data.event === "drawio-selection") {
             // 处理选区信息

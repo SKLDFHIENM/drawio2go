@@ -67,7 +67,8 @@
       "Bash(git -C /home/aaa/Code/drawio2go diff *)",
       "Bash(git -C /home/aaa/Code/drawio2go status *)",
       "Bash(git -C /home/aaa/Code/drawio2go ls-files:*)",
-      "Bash(git -C /home/aaa/Code/drawio2go add *)"
+      "Bash(git -C /home/aaa/Code/drawio2go add *)",
+      "Bash(git diff:*)"
     ],
     "deny": [],
     "ask": []

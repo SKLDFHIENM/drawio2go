@@ -16,23 +16,26 @@ export function useDrawioEditor(projectId?: string) {
 
   /**
    * 从存储加载当前工程的 XML 到编辑器
+   * @returns 加载的 XML 内容，如果没有 projectId 则返回空字符串
    */
-  const loadProjectXml = useCallback(async () => {
+  const loadProjectXml = useCallback(async (): Promise<string> => {
     if (!projectId) {
-      console.warn("⚠️ 未提供 projectId，跳过加载");
-      return;
+      console.warn("⚠️ 未提供 projectId，返回空 XML");
+      return "";
     }
 
     try {
       console.log(`📂 正在加载工程 ${projectId} 的 XML...`);
-      const xml = await getCurrentXML(projectId);
+      const xml = (await getCurrentXML(projectId)) ?? "";
 
       if (editorRef.current) {
-        editorRef.current.loadDiagram(xml || "");
+        editorRef.current.loadDiagram(xml);
         console.log("✅ XML 已加载到编辑器");
       } else {
         console.warn("⚠️ 编辑器引用不可用");
       }
+
+      return xml;
     } catch (error) {
       console.error("❌ 加载 XML 失败:", error);
       throw error;

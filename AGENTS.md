@@ -194,6 +194,13 @@ pnpm format               # 使用 Prettier 格式化所有代码
 
 ## 最近更新
 
+### 2025-11-16 DrawIO 初始化加载修复
+
+- **阻塞加载修复**：修复 e33efb5 之后 DrawIO iframe 一直显示加载动画的问题。现在在存储层加载 WIP XML 后会立即同步到 `DrawioEditorNative` 的 `initialXml`，并在 `init` 阶段通过挂起的 `load` 队列强制下发。
+- **加载队列**：`DrawioEditorNative` 增加 `pendingLoadQueue`，在 iframe 未 ready 时缓存 load 请求，`init` 后自动回放，避免再次出现空白/卡死。
+- **状态对齐**：`useDrawioEditor` 的 `loadProjectXml` 返回已加载的 XML，`app/page.tsx` 使用它更新 `diagramXml`，保证手动保存、回滚等场景的状态一致。
+- **相关文件**：`app/components/DrawioEditorNative.tsx`, `app/hooks/useDrawioEditor.ts`, `app/page.tsx`
+
 ### 2025-11-16 多页面 SVG 查看器（里程碑5）
 
 - **PageSVGViewer 上线**：新增全屏多页浏览器，支持懒加载 `pages_svg`、键盘快捷键、Ctrl/Cmd 滚轮缩放、拖拽平移
