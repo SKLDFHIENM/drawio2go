@@ -11,7 +11,7 @@ import { useStorageXMLVersions } from "./useStorageXMLVersions";
  * 提供高层次的编辑器操作接口
  */
 export function useDrawioEditor(projectId?: string) {
-  const editorRef = useRef<DrawioEditorRef>(null);
+  const editorRef = useRef<DrawioEditorRef | null>(null);
   const { saveXML, getCurrentXML } = useStorageXMLVersions();
 
   /**

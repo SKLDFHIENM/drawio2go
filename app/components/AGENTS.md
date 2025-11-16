@@ -18,6 +18,7 @@
 interface VersionSidebarProps {
   projectUuid: string | null; // 项目 UUID
   onVersionRestore?: (versionId: string) => void; // 版本回滚回调
+  editorRef: React.RefObject<DrawioEditorRef | null>; // 透传原生编辑器实例，供创建版本时导出 SVG
 }
 ```
 
@@ -27,6 +28,7 @@ interface VersionSidebarProps {
 - **空状态卡片**: 未选择项目时显示引导信息
 - **自动刷新**: 监听 `version-updated` 事件自动重新加载版本列表
 - **错误处理**: 加载失败时显示错误状态和重试按钮
+- **版本反馈**: 成功创建版本后显示 HeroUI `Alert`，提示页数与 SVG 导出结果（4 秒自动消失）
 
 #### version/WIPIndicator.tsx - WIP 工作区指示器
 
@@ -107,17 +109,19 @@ interface CreateVersionDialogProps {
   projectUuid: string;
   isOpen: boolean;
   onClose: () => void;
-  onVersionCreated?: () => void;
+  onVersionCreated?: (result: CreateHistoricalVersionResult) => void; // 返回版本 ID、页数、SVG 状态
+  editorRef: React.RefObject<DrawioEditorRef | null>; // 必填，提供导出 XML/SVG 能力
 }
 ```
 
 ##### 特性
 
-- **模态对话框**: HeroUI v3 Modal 组件
-- **表单验证**: 版本号、名称、描述输入
+- **模态对话框**: HeroUI v3 Modal 组件，导出期间禁止关闭
+- **表单验证**: 版本号实时校验 + 节流重名检查
 - **自动版本号**: 基于现有版本自动建议下一个版本号
-- **异步保存**: 调用存储层 API 创建版本快照
-- **事件通知**: 创建成功后触发 `version-updated` 事件
+- **SVG 进度**: 通过 `editorRef` + `exportAllPagesSVG` 显示“第 X/Y 页”进度，禁用提交直到完成
+- **异步保存**: 调用存储层 API 创建版本快照并写入 `preview_svg/pages_svg`
+- **成功提示**: 展示页数 + SVG 状态的成功文案，1.4 秒后自动关闭对话框
 
 ---
 

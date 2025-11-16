@@ -485,6 +485,7 @@ export default function Home() {
         currentProjectId={currentProject?.uuid}
         projectUuid={currentProject?.uuid}
         onVersionRestore={handleVersionRestore}
+        editorRef={editorRef}
       />
 
       {/* 工程选择器 */}

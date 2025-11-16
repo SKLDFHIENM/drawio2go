@@ -14,20 +14,21 @@
 
 ### 1. 修改 useStorageXMLVersions Hook
 
-- [ ] 在 `createHistoricalVersion` 函数中添加 `editorRef` 参数
+- [x] 在 `createHistoricalVersion` 函数中添加 `editorRef` 参数
   ```typescript
   const createHistoricalVersion = async (
     projectUuid: string,
     semanticVersion: string,
     description?: string,
     editorRef?: React.RefObject<DrawioEditorRef>  // 新增
-  ): Promise<string>
+    options?: CreateHistoricalVersionOptions,  // 新增进度回调
+  ): Promise<CreateHistoricalVersionResult>  // 返回详细结果
   ```
-- [ ] 实现 SVG 导出逻辑
-  - [ ] 检查 `editorRef` 是否可用
-  - [ ] 导出完整 XML：`await editorRef.current.exportDiagram()`
-  - [ ] 导出所有页面 SVG：`await exportAllPagesSVG(editorRef.current, fullXml)`
-  - [ ] 准备存储数据：
+- [x] 实现 SVG 导出逻辑
+  - [x] 检查 `editorRef` 是否可用
+  - [x] 导出完整 XML：`await editorRef.current.exportDiagram()`
+  - [x] 导出所有页面 SVG：`await exportAllPagesSVG(editorRef.current, fullXml)`
+  - [x] 准备存储数据：
     ```typescript
     const previewSvg = new Blob([allPagesSVG[0].svg], {
       type: "image/svg+xml",
@@ -36,7 +37,7 @@
     const pageCount = allPagesSVG.length;
     const pageNames = JSON.stringify(allPagesSVG.map((p) => p.name));
     ```
-- [ ] 更新 `storage.createXMLVersion` 调用，传入新字段
+- [x] 更新 `storage.createXMLVersion` 调用，传入新字段
   ```typescript
   await storage.createXMLVersion({
     // ... 现有字段 ...
@@ -46,61 +47,66 @@
     page_names: pageNames,
   });
   ```
-- [ ] 添加错误处理
-  - SVG 导出失败时的降级处理
+- [x] 添加错误处理
+  - SVG 导出失败时的降级处理（仍然保存版本，但不写入 SVG）
   - 记录错误日志
-- [ ] 添加导出进度回调（可选）
+- [x] 添加导出进度回调（`options.onExportProgress`）
 
 ### 2. 更新 CreateVersionDialog 组件
 
-- [ ] 添加 `editorRef` 属性
+- [x] 添加 `editorRef` 属性
   ```typescript
   interface CreateVersionDialogProps {
     projectUuid: string;
     isOpen: boolean;
     onClose: () => void;
-    onVersionCreated?: () => void;
+    onVersionCreated?: (result: CreateHistoricalVersionResult) => void; // 接收结果
     editorRef: React.RefObject<DrawioEditorRef>; // 新增，必需
   }
   ```
-- [ ] 在 `handleCreate` 中传递 `editorRef`
+- [x] 在 `handleCreate` 中传递 `editorRef`
   ```typescript
-  await createHistoricalVersion(
+  const result = await createHistoricalVersion(
     projectUuid,
     versionNumber.trim(),
     description.trim() || undefined,
     editorRef, // 传递编辑器引用
+    { onExportProgress: (progress) => setExportProgress(...) }
   );
   ```
-- [ ] 添加导出进度状态
+- [x] 添加导出进度状态
   ```typescript
-  const [exportProgress, setExportProgress] = useState({
-    current: 0,
-    total: 0,
-  });
+  const [exportProgress, setExportProgress] = useState<{
+    current: number;
+    total: number;
+    name?: string;
+  } | null>(null);
   ```
-- [ ] 在 UI 中显示导出进度
+- [x] 在 UI 中显示导出进度
   ```typescript
-  {exportProgress.total > 0 && (
-    <div className="text-sm text-gray-500">
-      正在导出第 {exportProgress.current}/{exportProgress.total} 页...
+  {isCreating && exportProgress?.total && (
+    <div className="text-sm text-blue-700">
+      正在导出第 {exportProgress.current}/{exportProgress.total} 页
+      {exportProgress.name && `（${exportProgress.name}）`}...
     </div>
   )}
   ```
-- [ ] 禁用提交按钮直到导出完成
+- [x] 禁用提交按钮和对话框关闭直到导出完成
+- [x] 添加成功消息并自动关闭（1.4秒延迟）
 
 ### 3. 更新 CreateVersionDialog 的调用点
 
-- [ ] 找到所有使用 `CreateVersionDialog` 的父组件
-- [ ] 确保传递 `editorRef` 属性
-- [ ] 验证 `editorRef.current` 在调用时已初始化
+- [x] 找到所有使用 `CreateVersionDialog` 的父组件（`VersionSidebar`）
+- [x] 确保传递 `editorRef` 属性（通过 `VersionSidebar` → `UnifiedSidebar` → `page.tsx`）
+- [x] 验证 `editorRef.current` 在调用时已初始化（通过可选链和降级处理）
 
 ### 4. 优化用户体验
 
-- [ ] 添加加载状态指示器
-- [ ] 多页面时显示"正在处理..."提示
-- [ ] 导出失败时显示友好的错误信息
-- [ ] 成功后显示成功提示（包含页面数量）
+- [x] 添加加载状态指示器（`isCreating` 状态控制）
+- [x] 多页面时显示"正在处理..."提示（显示当前页/总页数 + 页面名称）
+- [x] 导出失败时显示友好的错误信息（降级处理 + 警告提示）
+- [x] 成功后显示成功提示（包含页面数量 + SVG 状态）
+- [x] 在 `VersionSidebar` 中添加 HeroUI `Alert` 反馈（4秒自动消失）
 
 ### 5. 测试
 
@@ -129,5 +135,30 @@
 
 ## 🔗 依赖关系
 
-- 依赖 **里程碑1** 完成（使用 `exportAllPagesSVG` 工具函数）
-- 依赖 **里程碑2** 完成（数据库 schema 已更新）
+- 依赖 **里程碑1** 完成（使用 `exportAllPagesSVG` 工具函数）✅
+- 依赖 **里程碑2** 完成（数据库 schema 已更新）✅
+
+---
+
+## 📊 当前进度（更新于 2025-11-16）
+
+### ✅ 已完成（代码实现）
+
+- **100%** 所有代码任务已完成并暂存
+- Hook、组件、调用链、用户体验优化全部实现
+- 文档（AGENTS.md）已同步更新
+
+### 🧪 待测试
+
+- 单页/多页图表版本创建
+- SVG 导出降级处理
+- 编辑器未初始化场景
+- 数据完整性验证
+
+### 🎁 额外实现的功能
+
+- ✨ 返回 `CreateHistoricalVersionResult` 类型（包含 `versionId`、`pageCount`、`svgAttached`）
+- ✨ 进度显示包含页面名称（`exportProgress.name`）
+- ✨ `VersionSidebar` 中添加成功/警告 `Alert` 反馈（4秒自动消失）
+- ✨ 成功后自动延迟关闭对话框（1.4秒）
+- ✨ 优先从编辑器实时导出 XML（而非仅使用存储的 WIP XML）

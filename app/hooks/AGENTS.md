@@ -219,42 +219,67 @@ function ChatManager() {
 
 ### 5. useStorageXMLVersions
 
-**XML 版本管理 Hook** - 管理 DrawIO XML 的版本历史
+**XML 版本管理 Hook** - 管理 DrawIO XML/WIP 草稿、历史版本与 SVG 资源
 
-#### 特性
+#### 可用方法
 
-- **版本列表**: 获取指定项目的所有版本
-- **版本操作**:
-  - `saveXMLVersion`: 保存新版本
-  - `getLatestXML`: 获取最新版本
-  - `getXMLByVersion`: 获取指定版本
-  - `deleteVersion`: 删除版本
-- **版本结构**:
-  - `project_uuid`: 关联项目
-  - `semantic_version`: 当前固定为 `latest`
-  - `source_version_id`: 父版本 UUID，关键帧统一使用 `00000000-0000-0000-0000-000000000000`
-  - `is_keyframe` / `diff_chain_depth`: 关键帧标志与距最近关键帧的链长（>10 自动刷新关键帧）
-  - `xml_content`: 关键帧存储完整 XML，Diff 存储 `diff-match-patch` 字符串
-  - `metadata`: JSON 预留字段（当前写入 `null`，后续扩展）
-  - `created_at`: 创建时间
+```typescript
+const {
+  loading,
+  error,
+  saveXML, // 保存或更新 WIP (0.0.0)
+  getCurrentXML,
+  getAllXMLVersions,
+  getXMLVersion,
+  createHistoricalVersion,
+  rollbackToVersion,
+  getRecommendedVersion,
+  validateVersion,
+  isVersionExists,
+} = useStorageXMLVersions();
+```
+
+- `saveXML(xml, projectUuid, previewImage?)`: 将最新编辑内容写入 WIP 关键帧，并同步页面计数/名称。
+- `createHistoricalVersion(projectUuid, semanticVersion, description?, editorRef?, options?)`: 从 WIP 生成历史版本。
+  - `editorRef`: 建议传入 `DrawioEditorNative` 的 ref，以实时导出 XML + 全页 SVG；缺失时自动退回到存储中的 WIP XML，仅不写入 SVG 字段。
+  - `options.onExportProgress(progress)`: 回调 `index/total/name`，便于 UI 显示“第 X/Y 页”进度。
+  - 返回 `Promise<CreateHistoricalVersionResult>`，包含 `versionId`、`pageCount`、`svgAttached`。
+- `rollbackToVersion(projectUuid, versionId)`: 将指定历史版本回写为 WIP。
+- `getRecommendedVersion(projectUuid)`: 按语义化版本自动 +1（缺少历史版本时返回 `1.0.0`）。
+- `validateVersion(version)`: 仅允许 `x.y.z` 或 `x.y.z.h`，排除 `0.0.0`。
+- `isVersionExists(projectUuid, version)`: 防止重复版本号。
 
 #### 使用示例
 
 ```typescript
 import { useStorageXMLVersions } from "@/hooks";
+import type { DrawioEditorRef } from "@/app/components/DrawioEditorNative";
 
-function VersionControl() {
-  const { versions, saveXMLVersion, getLatestXML } = useStorageXMLVersions();
+function SnapshotDialog({ projectUuid, editorRef }: {
+  projectUuid: string;
+  editorRef: React.RefObject<DrawioEditorRef | null>;
+}) {
+  const { createHistoricalVersion } = useStorageXMLVersions();
 
-  const handleSave = async (xml: string) => {
-    await saveXMLVersion({
-      project_uuid: "default",
-      semantic_version: "v1.0.0",
-      xml_content: xml,
-    });
+  const handleSubmit = async () => {
+    const result = await createHistoricalVersion(
+      projectUuid,
+      "1.2.0",
+      "迭代 UI",
+      editorRef,
+      {
+        onExportProgress: (progress) => {
+          console.log(`正在导出第 ${progress.index + 1}/${progress.total} 页`);
+        },
+      },
+    );
+
+    console.log(
+      `版本 ${result.versionId} 已创建，共 ${result.pageCount} 页，SVG 写入：${result.svgAttached}`,
+    );
   };
 
-  return <div>{/* UI */}</div>;
+  return <button onClick={handleSubmit}>保存版本</button>;
 }
 ```
 

@@ -1,17 +1,22 @@
 "use client";
 
 import React from "react";
-import { Button, Skeleton } from "@heroui/react";
+import { Alert, Button, Skeleton } from "@heroui/react";
 import { WIPIndicator } from "./version/WIPIndicator";
 import { VersionTimeline } from "./version/VersionTimeline";
 import { CreateVersionDialog } from "./version/CreateVersionDialog";
-import { useStorageXMLVersions } from "@/app/hooks/useStorageXMLVersions";
+import {
+  useStorageXMLVersions,
+  type CreateHistoricalVersionResult,
+} from "@/app/hooks/useStorageXMLVersions";
 import { History, Save } from "lucide-react";
 import type { XMLVersion } from "@/app/lib/storage/types";
+import type { DrawioEditorRef } from "@/app/components/DrawioEditorNative";
 
 interface VersionSidebarProps {
   projectUuid: string | null;
   onVersionRestore?: (versionId: string) => void;
+  editorRef: React.RefObject<DrawioEditorRef | null>;
 }
 
 /**
@@ -21,11 +26,19 @@ interface VersionSidebarProps {
 export function VersionSidebar({
   projectUuid,
   onVersionRestore,
+  editorRef,
 }: VersionSidebarProps) {
   const [showCreateDialog, setShowCreateDialog] = React.useState(false);
   const [versions, setVersions] = React.useState<XMLVersion[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [creationFeedback, setCreationFeedback] = React.useState<{
+    message: string;
+    tone: "success" | "warning";
+  } | null>(null);
+  const feedbackTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   const { getAllXMLVersions } = useStorageXMLVersions();
 
@@ -62,11 +75,35 @@ export function VersionSidebar({
       window.removeEventListener("version-updated", handleVersionUpdate);
   }, [loadVersions]);
 
+  React.useEffect(() => {
+    return () => {
+      if (feedbackTimerRef.current) {
+        clearTimeout(feedbackTimerRef.current);
+      }
+    };
+  }, []);
+
   // 版本创建后重新加载列表
-  const handleVersionCreated = React.useCallback(() => {
-    setShowCreateDialog(false);
-    loadVersions();
-  }, [loadVersions]);
+  const handleVersionCreated = React.useCallback(
+    (result?: CreateHistoricalVersionResult) => {
+      loadVersions();
+
+      if (result) {
+        const tone = result.svgAttached ? "success" : "warning";
+        const message = result.svgAttached
+          ? `已保存 ${result.pageCount} 页版本，并缓存 SVG 预览。`
+          : `版本已保存（${result.pageCount} 页），但 SVG 导出失败已自动降级。`;
+        setCreationFeedback({ message, tone });
+        if (feedbackTimerRef.current) {
+          clearTimeout(feedbackTimerRef.current);
+        }
+        feedbackTimerRef.current = setTimeout(() => {
+          setCreationFeedback(null);
+        }, 4000);
+      }
+    },
+    [loadVersions],
+  );
 
   // 如果没有选择项目，显示空状态
   if (!projectUuid) {
@@ -146,6 +183,22 @@ export function VersionSidebar({
 
       {/* 滚动内容区域 */}
       <div className="sidebar-content">
+        {creationFeedback && (
+          <Alert
+            status={creationFeedback.tone === "success" ? "success" : "warning"}
+            className="mb-4"
+          >
+            <Alert.Indicator />
+            <Alert.Content>
+              <Alert.Title>
+                {creationFeedback.tone === "success"
+                  ? "版本已保存"
+                  : "已降级保存"}
+              </Alert.Title>
+              <Alert.Description>{creationFeedback.message}</Alert.Description>
+            </Alert.Content>
+          </Alert>
+        )}
         {isLoading ? (
           <div className="space-y-4">
             <Skeleton className="h-28 rounded-xl" />
@@ -176,6 +229,7 @@ export function VersionSidebar({
         isOpen={showCreateDialog}
         onClose={() => setShowCreateDialog(false)}
         onVersionCreated={handleVersionCreated}
+        editorRef={editorRef}
       />
     </div>
   );
