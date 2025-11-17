@@ -67,8 +67,6 @@ contextBridge.exposeInMainWorld("electronStorage", {
     ipcRenderer.invoke("storage:deleteConversation", id),
   getConversationsByProject: (projectUuid) =>
     ipcRenderer.invoke("storage:getConversationsByProject", projectUuid),
-  getConversationsByXMLVersion: (xmlVersionId) =>
-    ipcRenderer.invoke("storage:getConversationsByXMLVersion", xmlVersionId),
 
   // Messages
   getMessagesByConversation: (conversationId) =>

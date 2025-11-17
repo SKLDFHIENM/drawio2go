@@ -82,6 +82,9 @@ interface SmartDiffStats {
 
 - **current-project.ts**: 当前工程 ID 持久化工具
 - **xml-version-engine.ts**: XML 版本恢复引擎（Diff 重放）
+- **page-metadata-validators.ts**: `page_count` / `page_names` / SVG Blob 校验与规范化的共享工具，IndexedDB 与 SQLite 实现必须调用保持一致行为
+- **migrations/indexeddb/**: IndexedDB v1 迁移脚本（当前仅 `v1.ts`），`IndexedDBStorage.initialize()` 会在 `upgrade` 回调内执行，禁止再删除/重建 Object Store
+- **electron/storage/migrations/**: Electron 端 SQLite 迁移脚本（当前为 `v1.js`），主进程 `SQLiteManager` 初始化时自动运行并写入 `user_version`
 
 ## DrawIO Socket.IO 调用流程
 
@@ -295,6 +298,8 @@ abstract class StorageAdapter {
 }
 ```
 
+> ⚠️ **2025-11-17 更新**：`getConversationsByXMLVersion` 已彻底移除，所有对话必须通过 `getConversationsByProject(projectUuid)` 查询。前端 Hook（`useStorageConversations`）和 Electron IPC 不再暴露 XML 版本维度查询，避免跨端行为不一致。
+
 ### 辅助工具
 
 #### current-project.ts - 当前工程 ID 持久化
@@ -395,6 +400,12 @@ const xml = await restoreXMLFromVersion("version-uuid", storage);
 - **数据库名称**: `drawio2go`
 - **对象存储**: 每个表对应一个对象存储（Object Store）
 - **索引**: 为查询字段创建索引提升性能
+
+### 数据库迁移机制（2025-11-17 生效）
+
+- **Web (IndexedDB)**: `app/lib/storage/migrations/indexeddb/` 维护版本化脚本，当前 `v1` 负责创建 `settings/projects/xml_versions/conversations/messages` 及其索引。`IndexedDBStorage.initialize()` 的 `openDB(..., { upgrade })` 仅调用迁移脚本，不再删除已有 Object Store。
+- **Electron (SQLite)**: 主进程 `SQLiteManager` 在初始化时调用 `electron/storage/migrations/runSQLiteMigrations()`，根据 `pragma user_version` 依次执行 `v1` 脚本并写回最新版本号。
+- **版本策略**: 现有结构视为 v1，后续 schema 升级只需新增迁移文件并递增版本号，无需强制清库。IndexedDB/SQLite 的升级逻辑必须保持幂等。
 
 ### 架构决策
 

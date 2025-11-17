@@ -124,9 +124,6 @@ declare global {
       getConversationsByProject: (
         projectUuid: string,
       ) => Promise<Conversation[]>;
-      getConversationsByXMLVersion: (
-        xmlVersionId: string,
-      ) => Promise<Conversation[]>;
 
       // Messages
       getMessagesByConversation: (conversationId: string) => Promise<Message[]>;

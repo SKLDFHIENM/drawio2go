@@ -521,13 +521,6 @@ ipcMain.handle(
   },
 );
 
-ipcMain.handle(
-  "storage:getConversationsByXMLVersion",
-  async (event, xmlVersionId) => {
-    return storageManager.getConversationsByXMLVersion(xmlVersionId);
-  },
-);
-
 // Messages
 ipcMain.handle(
   "storage:getMessagesByConversation",
