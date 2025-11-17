@@ -284,12 +284,7 @@ export function VersionCompare({
     return () => {
       cancelled = true;
     };
-  }, [
-    isOpen,
-    currentVersionA,
-    currentVersionB,
-    loadVersionSVGFields,
-  ]);
+  }, [isOpen, currentVersionA, currentVersionB, loadVersionSVGFields]);
 
   const currentName = React.useMemo(() => {
     if (!currentPair) return "-";
