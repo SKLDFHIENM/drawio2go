@@ -121,6 +121,13 @@ export type UpdateConversationInput = Partial<
   Omit<Conversation, "id" | "created_at">
 >;
 
+/**
+ * 对话导出项，包含消息列表
+ */
+export type ConversationExportItem = Conversation & {
+  messages: Message[];
+};
+
 // ==================== Messages ====================
 
 /**
@@ -139,10 +146,14 @@ export interface Message {
   tool_invocations?: string; // JSON 序列化的工具调用记录
   model_name?: string | null; // 发送消息时使用的模型
   xml_version_id?: string; // 关联的 XML 版本 ID
+  sequence_number?: number; // 会话内的顺序序号，单调递增
   created_at: number;
 }
 
 /**
  * 创建消息时的输入类型
  */
-export type CreateMessageInput = Omit<Message, "created_at">;
+export type CreateMessageInput = Omit<Message, "created_at"> & {
+  created_at?: number;
+  createdAt?: number;
+};

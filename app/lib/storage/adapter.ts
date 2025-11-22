@@ -188,6 +188,18 @@ export interface StorageAdapter {
   deleteConversation(id: string): Promise<void>;
 
   /**
+   * 批量删除对话（级联删除消息）
+   * @param ids 对话 ID 列表
+   */
+  batchDeleteConversations(ids: string[]): Promise<void>;
+
+  /**
+   * 导出指定对话为 JSON Blob
+   * @param ids 对话 ID 列表
+   */
+  exportConversations(ids: string[]): Promise<Blob>;
+
+  /**
    * 获取工程的所有对话
    * @param projectUuid 工程 UUID
    * @returns 对话数组（按更新时间倒序）
@@ -199,7 +211,7 @@ export interface StorageAdapter {
   /**
    * 获取对话的所有消息
    * @param conversationId 对话 ID
-   * @returns 消息数组（按创建时间正序）
+   * @returns 消息数组（按 sequence_number 正序，缺失时回退 created_at）
    */
   getMessagesByConversation(conversationId: string): Promise<Message[]>;
 

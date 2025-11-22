@@ -343,6 +343,18 @@ export class SQLiteStorage implements StorageAdapter {
     await window.electronStorage!.deleteConversation(id);
   }
 
+  async batchDeleteConversations(ids: string[]): Promise<void> {
+    await this.ensureElectron();
+    if (!ids || ids.length === 0) return;
+    await window.electronStorage!.batchDeleteConversations(ids);
+  }
+
+  async exportConversations(ids: string[]): Promise<Blob> {
+    await this.ensureElectron();
+    const json = await window.electronStorage!.exportConversations(ids);
+    return new Blob([json], { type: "application/json" });
+  }
+
   async getConversationsByProject(
     projectUuid: string,
   ): Promise<Conversation[]> {

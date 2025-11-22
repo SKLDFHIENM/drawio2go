@@ -129,6 +129,8 @@ declare global {
         updates: UpdateConversationInput,
       ) => Promise<void>;
       deleteConversation: (id: string) => Promise<void>;
+      batchDeleteConversations: (ids: string[]) => Promise<void>;
+      exportConversations: (ids: string[]) => Promise<string>;
       getConversationsByProject: (
         projectUuid: string,
       ) => Promise<Conversation[]>;
@@ -152,5 +154,7 @@ declare module "xpath" {
     node: Node | Document,
   ): XPathValue | XPathValue[];
 }
+
+declare module "pako";
 
 export {};

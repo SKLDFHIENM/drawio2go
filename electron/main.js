@@ -521,6 +521,14 @@ ipcMain.handle("storage:deleteConversation", async (event, id) => {
   return storageManager.deleteConversation(id);
 });
 
+ipcMain.handle("storage:batchDeleteConversations", async (_event, ids) => {
+  return storageManager.batchDeleteConversations(ids);
+});
+
+ipcMain.handle("storage:exportConversations", async (_event, ids) => {
+  return storageManager.exportConversations(ids);
+});
+
 ipcMain.handle(
   "storage:getConversationsByProject",
   async (event, projectUuid) => {

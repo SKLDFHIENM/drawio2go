@@ -18,6 +18,40 @@ const SQLITE_DB_FILE = "drawio2go.db";
 class SQLiteManager {
   constructor() {
     this.db = null;
+    this.incrementSequenceStmt = null;
+    this.ensureSequenceFloorStmt = null;
+  }
+
+  _getIncrementSequenceStmt() {
+    if (!this.incrementSequenceStmt) {
+      this.incrementSequenceStmt = this.db.prepare(`
+        INSERT INTO conversation_sequences (conversation_id, last_sequence)
+        VALUES (?, 1)
+        ON CONFLICT(conversation_id) DO UPDATE SET last_sequence = last_sequence + 1
+        RETURNING last_sequence
+      `);
+    }
+    return this.incrementSequenceStmt;
+  }
+
+  _getEnsureSequenceFloorStmt() {
+    if (!this.ensureSequenceFloorStmt) {
+      this.ensureSequenceFloorStmt = this.db.prepare(`
+        INSERT INTO conversation_sequences (conversation_id, last_sequence)
+        VALUES (?, ?)
+        ON CONFLICT(conversation_id) DO UPDATE SET last_sequence = MAX(last_sequence, excluded.last_sequence)
+      `);
+    }
+    return this.ensureSequenceFloorStmt;
+  }
+
+  _getNextSequenceNumber(conversationId) {
+    const row = this._getIncrementSequenceStmt().get(conversationId);
+    return row?.last_sequence || 1;
+  }
+
+  _ensureSequenceFloor(conversationId, sequenceNumber) {
+    this._getEnsureSequenceFloorStmt().run(conversationId, sequenceNumber);
   }
 
   /**
@@ -520,6 +554,69 @@ class SQLiteManager {
     this.db.prepare("DELETE FROM conversations WHERE id = ?").run(id);
   }
 
+  batchDeleteConversations(ids = []) {
+    if (!Array.isArray(ids) || ids.length === 0) return;
+    const placeholders = ids.map(() => "?").join(",");
+    const tx = this.db.transaction((conversationIds) => {
+      this.db
+        .prepare(
+          `DELETE FROM messages WHERE conversation_id IN (${placeholders})`,
+        )
+        .run(...conversationIds);
+      this.db
+        .prepare(`DELETE FROM conversations WHERE id IN (${placeholders})`)
+        .run(...conversationIds);
+    });
+
+    try {
+      tx(ids);
+    } catch (error) {
+      console.error("[SQLiteManager] 批量删除对话失败，已回滚", {
+        ids,
+        error,
+      });
+      throw error;
+    }
+  }
+
+  exportConversations(ids = []) {
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return JSON.stringify({
+        version: "1.1",
+        exportedAt: new Date().toISOString(),
+        conversations: [],
+      });
+    }
+
+    const placeholders = ids.map(() => "?").join(",");
+    const conversations = this.db
+      .prepare(
+        `SELECT * FROM conversations WHERE id IN (${placeholders}) ORDER BY updated_at DESC`,
+      )
+      .all(...ids);
+
+    const messageStmt = this.db.prepare(
+      `SELECT * FROM messages
+       WHERE conversation_id = ?
+       ORDER BY COALESCE(sequence_number, created_at) ASC, created_at ASC`,
+    );
+
+    const exportItems = conversations.map((conv) => ({
+      ...conv,
+      messages: messageStmt.all(conv.id),
+    }));
+
+    return JSON.stringify(
+      {
+        version: "1.1",
+        exportedAt: new Date().toISOString(),
+        conversations: exportItems,
+      },
+      null,
+      2,
+    );
+  }
+
   getConversationsByProject(projectUuid) {
     return this.db
       .prepare(
@@ -533,30 +630,69 @@ class SQLiteManager {
   getMessagesByConversation(conversationId) {
     return this.db
       .prepare(
-        "SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at ASC",
+        `SELECT * FROM messages
+         WHERE conversation_id = ?
+         ORDER BY COALESCE(sequence_number, created_at) ASC, created_at ASC`,
       )
       .all(conversationId);
   }
 
   createMessage(message) {
-    const now = Date.now();
-    this.db
-      .prepare(
-        `
-        INSERT INTO messages (id, conversation_id, role, content, tool_invocations, model_name, xml_version_id, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    const createdAt =
+      typeof message.created_at === "number"
+        ? message.created_at
+        : typeof message.createdAt === "number"
+          ? message.createdAt
+          : Date.now();
+
+    const upsertStmt = this.db.prepare(
+      `
+        INSERT INTO messages (id, conversation_id, role, content, tool_invocations, model_name, xml_version_id, sequence_number, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+          conversation_id = excluded.conversation_id,
+          role = excluded.role,
+          content = excluded.content,
+          tool_invocations = excluded.tool_invocations,
+          model_name = excluded.model_name,
+          xml_version_id = excluded.xml_version_id,
+          sequence_number = excluded.sequence_number
       `,
-      )
-      .run(
-        message.id,
-        message.conversation_id,
-        message.role,
-        message.content,
-        message.tool_invocations || null,
-        message.model_name || null,
-        message.xml_version_id || null,
-        now,
-      );
+    );
+
+    try {
+      // 单条写入仍使用事务，确保与批量行为一致
+      const runInTx = this.db.transaction((msg) => {
+        const sequenceNumber =
+          typeof msg.sequence_number === "number"
+            ? msg.sequence_number
+            : this._getNextSequenceNumber(msg.conversation_id);
+
+        if (typeof msg.sequence_number === "number") {
+          this._ensureSequenceFloor(msg.conversation_id, sequenceNumber);
+        }
+
+        upsertStmt.run(
+          msg.id,
+          msg.conversation_id,
+          msg.role,
+          msg.content,
+          msg.tool_invocations || null,
+          msg.model_name || null,
+          msg.xml_version_id || null,
+          sequenceNumber,
+          createdAt,
+        );
+      });
+
+      runInTx(message);
+    } catch (error) {
+      console.error("[SQLiteManager] 创建/更新消息失败，已回滚", {
+        id: message?.id,
+        error,
+      });
+      throw error;
+    }
 
     return this.db
       .prepare("SELECT * FROM messages WHERE id = ?")
@@ -568,15 +704,47 @@ class SQLiteManager {
   }
 
   createMessages(messages) {
-    const now = Date.now();
-    const insertStmt = this.db.prepare(`
-      INSERT INTO messages (id, conversation_id, role, content, tool_invocations, model_name, xml_version_id, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    const upsertStmt = this.db.prepare(`
+      INSERT INTO messages (id, conversation_id, role, content, tool_invocations, model_name, xml_version_id, sequence_number, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        conversation_id = excluded.conversation_id,
+        role = excluded.role,
+        content = excluded.content,
+        tool_invocations = excluded.tool_invocations,
+        model_name = excluded.model_name,
+        xml_version_id = excluded.xml_version_id,
+        sequence_number = excluded.sequence_number
     `);
 
+    const selectByIdStmt = this.db.prepare(
+      "SELECT * FROM messages WHERE id = ?",
+    );
+
     const transaction = this.db.transaction((msgs) => {
+      const defaultTimestamp = Date.now();
+
       for (const msg of msgs) {
-        insertStmt.run(
+        const createdAt =
+          typeof msg.created_at === "number"
+            ? msg.created_at
+            : typeof msg.createdAt === "number"
+              ? msg.createdAt
+              : defaultTimestamp;
+
+        const providedSequence =
+          typeof msg.sequence_number === "number" ? msg.sequence_number : null;
+
+        const sequenceNumber =
+          providedSequence !== null
+            ? providedSequence
+            : this._getNextSequenceNumber(msg.conversation_id);
+
+        if (providedSequence !== null) {
+          this._ensureSequenceFloor(msg.conversation_id, sequenceNumber);
+        }
+
+        upsertStmt.run(
           msg.id,
           msg.conversation_id,
           msg.role,
@@ -584,17 +752,23 @@ class SQLiteManager {
           msg.tool_invocations || null,
           msg.model_name || null,
           msg.xml_version_id || null,
-          now,
+          sequenceNumber,
+          createdAt,
         );
       }
     });
 
-    transaction(messages);
+    try {
+      transaction(messages);
+    } catch (error) {
+      console.error("[SQLiteManager] 批量创建/更新消息失败，已回滚", {
+        ids: messages?.map((m) => m.id),
+        error,
+      });
+      throw error;
+    }
 
-    // 返回创建的消息
-    return messages.map((msg) =>
-      this.db.prepare("SELECT * FROM messages WHERE id = ?").get(msg.id),
-    );
+    return messages.map((msg) => selectByIdStmt.get(msg.id));
   }
 
   /**
@@ -604,6 +778,8 @@ class SQLiteManager {
     if (this.db) {
       this.db.close();
       this.db = null;
+      this.incrementSequenceStmt = null;
+      this.ensureSequenceFloorStmt = null;
     }
   }
 }

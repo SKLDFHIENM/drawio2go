@@ -374,6 +374,11 @@ pnpm format               # 使用 Prettier 格式化所有代码
 
 - **对话 API**：`getConversationsByXMLVersion` 全面下线，所有会话按 `project_uuid` 维度查询，前端 Hook 与 Electron IPC 均已同步。
 - **页面元数据校验**：新增 `app/lib/storage/page-metadata-validators.ts`，统一 `page_count`、`page_names` 解析规则与 SVG Blob（8MB）体积校验，IndexedDB/SQLite 复用同一逻辑。
-- **迁移体系**：IndexedDB 初始化通过 `storage/migrations/indexeddb/v1.ts` 执行幂等迁移，SQLite 主进程通过 `electron/storage/migrations/` 自动执行 v1 迁移并更新 `user_version`，禁止再删除/重建存储。
+- **迁移体系**：
+  - 数据库版本统一为 v1（包含所有表结构）
+  - IndexedDB 通过 `storage/migrations/indexeddb/v1.ts` 执行幂等迁移
+  - SQLite 通过 `electron/storage/migrations/v1.js` 自动执行迁移并更新 `user_version`
+  - v1 已包含完整表结构（含 sequence_number 字段和 conversation_sequences 表）
+  - 禁止删除/重建存储，仅通过迁移脚本更新
 
-_最后更新: 2025-11-17_
+_最后更新: 2025-11-22_
