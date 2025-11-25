@@ -182,8 +182,10 @@ export async function persistHistoricalVersion(
     throw new Error("无法计算历史版本数据");
   }
 
-  const finalPageNames = options?.pageNamesOverride ?? context.pageMetadata.pageNames;
-  const finalPageCount = finalPageNames?.length ?? context.pageMetadata.pageCount;
+  const finalPageNames =
+    options?.pageNamesOverride ?? context.pageMetadata.pageNames;
+  const finalPageCount =
+    finalPageNames?.length ?? context.pageMetadata.pageCount;
 
   if (!finalPageCount || finalPageCount < 1) {
     throw new Error("未能解析到有效的页面数据，无法创建版本");

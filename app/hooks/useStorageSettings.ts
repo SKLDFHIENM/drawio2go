@@ -49,19 +49,6 @@ export function useStorageSettings() {
   );
 
   /**
-   * 删除设置
-   */
-  const deleteSetting = useCallback(async (key: string): Promise<void> => {
-    await runStorageTask(
-      async () => {
-        const storage = await getStorage();
-        await storage.deleteSetting(key);
-      },
-      { setLoading, setError },
-    );
-  }, []);
-
-  /**
    * 获取所有设置
    */
   const getAllSettings = useCallback(async () => {
@@ -149,7 +136,6 @@ export function useStorageSettings() {
     error,
     getSetting,
     setSetting,
-    deleteSetting,
     getAllSettings,
     getLLMConfig,
     saveLLMConfig,

@@ -1,8 +1,8 @@
-import { DOMParser, XMLSerializer } from "@xmldom/xmldom";
 import { select } from "xpath";
 
 import { executeToolOnClient } from "./tool-executor";
 import { normalizeDiagramXml } from "./drawio-xml-utils";
+import { getDomParser, getXmlSerializer } from "./dom-parser-cache";
 import type {
   DrawioEditBatchRequest,
   DrawioEditBatchResult,
@@ -19,21 +19,20 @@ import type {
 } from "@/app/types/drawio-tools";
 import type { GetXMLResult, ReplaceXMLResult } from "@/app/types/drawio-tools";
 
-let cachedParser: DOMParser | null = null;
-let cachedSerializer: XMLSerializer | null = null;
-
 function ensureParser(): DOMParser {
-  if (!cachedParser) {
-    cachedParser = new DOMParser();
+  const parser = getDomParser();
+  if (!parser) {
+    throw new Error("当前环境不支持 DOMParser");
   }
-  return cachedParser;
+  return parser;
 }
 
 function ensureSerializer(): XMLSerializer {
-  if (!cachedSerializer) {
-    cachedSerializer = new XMLSerializer();
+  const serializer = getXmlSerializer();
+  if (!serializer) {
+    throw new Error("当前环境不支持 XMLSerializer");
   }
-  return cachedSerializer;
+  return serializer;
 }
 
 export async function executeDrawioRead(
@@ -224,7 +223,7 @@ function parseXml(xml: string): Document {
 }
 
 function convertNodeToResult(node: Node): DrawioQueryResult | null {
-  const serializer = new XMLSerializer();
+  const serializer = ensureSerializer();
   const matchedXPath = buildXPathForNode(node);
 
   switch (node.nodeType) {
@@ -470,7 +469,7 @@ function setTextContent(
 }
 
 function createElementFromXml(document: Document, xml: string): Element {
-  const parser = new DOMParser();
+  const parser = ensureParser();
   const fragment = parser.parseFromString(xml, "text/xml");
   const parseErrors = fragment.getElementsByTagName("parsererror");
   if (parseErrors.length > 0) {

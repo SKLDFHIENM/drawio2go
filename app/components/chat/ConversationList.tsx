@@ -89,7 +89,9 @@ export default function ConversationList({
                   <span className="history-card__dot" aria-hidden>
                     •
                   </span>
-                  <span>创建 {formatConversationDate(conv.created_at, "date")}</span>
+                  <span>
+                    创建 {formatConversationDate(conv.created_at, "date")}
+                  </span>
                 </div>
               </div>
             </div>

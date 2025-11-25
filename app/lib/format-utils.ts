@@ -49,8 +49,6 @@ export function formatConversationDate(
   mode: "date" | "datetime" = "datetime",
 ): string {
   const options =
-    mode === "date"
-      ? CONVERSATION_DATE_OPTIONS
-      : CONVERSATION_DATETIME_OPTIONS;
+    mode === "date" ? CONVERSATION_DATE_OPTIONS : CONVERSATION_DATETIME_OPTIONS;
   return new Date(timestamp).toLocaleString("zh-CN", options);
 }

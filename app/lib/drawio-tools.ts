@@ -13,11 +13,12 @@ import { materializeVersionXml } from "./storage/xml-version-engine";
 import { WIP_VERSION } from "./storage/constants";
 import { resolveCurrentProjectUuid } from "./storage/current-project";
 import { createDefaultDiagramXml } from "./storage/default-diagram-xml";
+import { validateXMLFormat } from "./drawio-xml-utils";
 import {
-  normalizeDiagramXml,
-  validateXMLFormat,
-} from "./drawio-xml-utils";
-import { persistWipVersion } from "./storage/writers";
+  persistWipVersion,
+  prepareXmlContext,
+  type XmlContext,
+} from "./storage/writers";
 
 // 内存快照：记录替换前的 XML，用于合并失败时回滚
 let _drawioXmlSnapshot: string | null = null;
@@ -28,10 +29,12 @@ let _drawioXmlSnapshot: string | null = null;
  * @param decodedXml - 已解码的 XML 内容
  * @throws {Error} 当前项目不存在时抛出错误
  */
-async function saveDrawioXMLInternal(decodedXml: string): Promise<void> {
+async function saveDrawioXMLInternal(
+  xmlOrContext: string | XmlContext,
+): Promise<void> {
   const storage = await getStorage();
   const projectUuid = await resolveCurrentProjectUuid(storage);
-  await persistWipVersion(projectUuid, decodedXml, {
+  await persistWipVersion(projectUuid, xmlOrContext, {
     name: "WIP",
     description: "活跃工作区",
   });
@@ -50,12 +53,12 @@ export async function saveDrawioXML(xml: string): Promise<void> {
   }
 
   try {
-    const decodedXml = normalizeDiagramXml(xml);
-    const validation = validateXMLFormat(decodedXml);
+    const context = prepareXmlContext(xml);
+    const validation = validateXMLFormat(context.normalizedXml);
     if (!validation.valid) {
       throw new Error(validation.error || "XML 格式验证失败");
     }
-    await saveDrawioXMLInternal(decodedXml);
+    await saveDrawioXMLInternal(context);
   } catch (error) {
     console.error("[DrawIO Tools] 保存 XML 失败:", error);
     throw error instanceof Error ? error : new Error(String(error));
@@ -104,11 +107,10 @@ export async function getDrawioXML(): Promise<GetXMLResult> {
     const resolvedXml = await materializeVersionXml(latestVersion, (id) =>
       storage.getXMLVersion(id, projectUuid),
     );
-    const decodedXml = normalizeDiagramXml(resolvedXml);
 
     return {
       success: true,
-      xml: decodedXml,
+      xml: resolvedXml,
     };
   } catch (error) {
     console.error("[DrawIO Tools] 读取 XML 失败:", error);
@@ -220,8 +222,8 @@ export async function replaceDrawioXML(
     }
 
     // 2) 现有验证逻辑
-    const decodedXml = normalizeDiagramXml(drawio_xml);
-    const validation = validateXMLFormat(decodedXml);
+    const context = prepareXmlContext(drawio_xml);
+    const validation = validateXMLFormat(context.normalizedXml);
     if (!validation.valid) {
       return {
         success: false,
@@ -231,12 +233,12 @@ export async function replaceDrawioXML(
     }
 
     // 3) 保存到存储
-    await saveDrawioXMLInternal(decodedXml);
+    await saveDrawioXMLInternal(context);
 
     // 4) 通知编辑器加载新 XML
     window.dispatchEvent(
       new CustomEvent("ai-xml-replaced", {
-        detail: { xml: decodedXml, requestId, isRollback },
+        detail: { xml: context.normalizedXml, requestId, isRollback },
       }),
     );
 
@@ -244,7 +246,7 @@ export async function replaceDrawioXML(
       return {
         success: true,
         message: "XML 已替换",
-        xml: decodedXml,
+        xml: context.normalizedXml,
       };
     }
 
@@ -289,7 +291,7 @@ export async function replaceDrawioXML(
     return {
       success: true,
       message: "XML 已替换",
-      xml: decodedXml,
+      xml: context.normalizedXml,
     };
   } catch (error) {
     return {

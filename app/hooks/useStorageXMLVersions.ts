@@ -22,14 +22,21 @@ import {
   getParentVersion,
   isSubVersion,
 } from "@/app/lib/version-utils";
-import { normalizeDiagramXml } from "@/app/lib/drawio-xml-utils";
-import { runStorageTask } from "@/app/lib/utils";
+import { runStorageTask, withTimeout } from "@/app/lib/utils";
 import {
   persistHistoricalVersion,
   persistWipVersion,
   prepareXmlContext,
 } from "@/app/lib/storage/writers";
 import { materializeVersionXml } from "@/app/lib/storage/xml-version-engine";
+
+const DEFAULT_STORAGE_TIMEOUT = 8000;
+const DEFAULT_TIMEOUT_MESSAGE = "存储请求超时（8秒），请稍后重试";
+
+const withStorageTimeout = <T>(
+  promise: Promise<T>,
+  message: string = DEFAULT_TIMEOUT_MESSAGE,
+) => withTimeout(promise, DEFAULT_STORAGE_TIMEOUT, message);
 
 /**
  * XML 版本管理 Hook
@@ -67,6 +74,11 @@ export function useStorageXMLVersions() {
   const subscribersRef = useRef<
     Map<string, Set<(versions: XMLVersion[]) => void>>
   >(new Map());
+  const resolveStorage = useCallback(
+    () =>
+      withStorageTimeout(getStorage(), "获取存储实例超时（8秒），请稍后重试"),
+    [],
+  );
 
   const updateVersionsCache = useCallback(
     (projectUuid: string, versions: XMLVersion[]) => {
@@ -94,13 +106,15 @@ export function useStorageXMLVersions() {
       projectUuid: string,
       storage?: Awaited<ReturnType<typeof getStorage>>,
     ) => {
-      const resolvedStorage = storage ?? (await getStorage());
-      const versions =
-        await resolvedStorage.getXMLVersionsByProject(projectUuid);
+      const resolvedStorage = storage ?? (await resolveStorage());
+      const versions = await withStorageTimeout(
+        resolvedStorage.getXMLVersionsByProject(projectUuid),
+        "加载版本列表超时（8秒），请重试",
+      );
       updateVersionsCache(projectUuid, versions);
       return { storage: resolvedStorage, versions };
     },
-    [updateVersionsCache],
+    [resolveStorage, updateVersionsCache],
   );
 
   const subscribeVersions = useCallback(
@@ -126,6 +140,7 @@ export function useStorageXMLVersions() {
           })
           .catch((error) => {
             console.error("[useStorageXMLVersions] 初始化订阅失败", error);
+            setError(error as Error);
             if (active && onError) {
               onError(error);
             }
@@ -155,6 +170,7 @@ export function useStorageXMLVersions() {
       if (!projectUuid) return;
       loadVersionsForProject(projectUuid).catch((error) => {
         console.error("[useStorageXMLVersions] 刷新版本缓存失败", error);
+        setError(error as Error);
       });
     };
 
@@ -227,9 +243,12 @@ export function useStorageXMLVersions() {
           );
           const latest = wipVersion || versions[0];
           const resolved = await materializeVersionXml(latest, (id) =>
-            storage.getXMLVersion(id, projectUuid),
+            withStorageTimeout(
+              storage.getXMLVersion(id, projectUuid),
+              "加载版本内容超时（8秒），请重试",
+            ),
           );
-          return normalizeDiagramXml(resolved);
+          return resolved;
         },
         { setLoading, setError },
       );
@@ -284,7 +303,7 @@ export function useStorageXMLVersions() {
     async (id: string, projectUuid?: string): Promise<XMLVersion | null> => {
       return runStorageTask(
         async () => {
-          const storage = await getStorage();
+          const storage = await resolveStorage();
           const resolvedProjectUuid =
             projectUuid ?? versionsCacheRef.current?.projectUuid;
 
@@ -294,12 +313,15 @@ export function useStorageXMLVersions() {
             );
           }
 
-          return await storage.getXMLVersion(id, resolvedProjectUuid);
+          return await withStorageTimeout(
+            storage.getXMLVersion(id, resolvedProjectUuid),
+            "获取版本信息超时（8秒），请重试",
+          );
         },
         { setLoading, setError },
       );
     },
-    [],
+    [resolveStorage],
   );
 
   const getXMLVersionSVGData = useCallback(
@@ -317,7 +339,7 @@ export function useStorageXMLVersions() {
 
       return runStorageTask(
         async () => {
-          const storage = await getStorage();
+          const storage = await resolveStorage();
           const resolvedProjectUuid =
             projectUuid ?? versionsCacheRef.current?.projectUuid;
           if (!resolvedProjectUuid) {
@@ -325,9 +347,9 @@ export function useStorageXMLVersions() {
               "安全错误：未提供项目 ID，无法获取版本 SVG 数据以避免跨项目数据泄露",
             );
           }
-          const svgData = await storage.getXMLVersionSVGData(
-            id,
-            resolvedProjectUuid,
+          const svgData = await withStorageTimeout(
+            storage.getXMLVersionSVGData(id, resolvedProjectUuid),
+            "加载版本 SVG 数据超时（8秒），请重试",
           );
           if (svgData) {
             svgCacheRef.current.set(id, svgData);
@@ -343,7 +365,7 @@ export function useStorageXMLVersions() {
         { setError },
       );
     },
-    [],
+    [resolveStorage],
   );
 
   /**
@@ -397,7 +419,9 @@ export function useStorageXMLVersions() {
               if (exportedXml && exportedXml.trim().length > 0) {
                 wipXml = exportedXml;
               } else {
-                console.warn("⚠️ 实时导出 XML 为空，改用存储的 WIP XML");
+                console.warn(
+                  "[useStorageXMLVersions] 实时导出 XML 为空，改用存储的 WIP XML",
+                );
               }
             }
           } catch (exportErr) {
@@ -435,7 +459,7 @@ export function useStorageXMLVersions() {
             } catch (err) {
               exportError = err as Error;
               console.warn(
-                "⚠️ 导出 SVG 失败，已降级为仅存储 XML，错误:",
+                "[useStorageXMLVersions] 导出 SVG 失败，已降级为仅存储 XML，错误:",
                 exportError,
               );
             }
@@ -456,7 +480,9 @@ export function useStorageXMLVersions() {
           await loadVersionsForProject(projectUuid, storage);
 
           if (exportError) {
-            console.info("已完成版本创建，但 SVG 未包含在记录中（导出失败）");
+            console.info(
+              "[useStorageXMLVersions] 版本已保存，但 SVG 未包含在记录中（导出失败）",
+            );
           }
 
           return {
@@ -483,11 +509,11 @@ export function useStorageXMLVersions() {
     async (projectUuid: string, versionId: string): Promise<string> => {
       return runStorageTask(
         async () => {
-          const storage = await getStorage();
+          const storage = await resolveStorage();
 
-          const targetVersion = await storage.getXMLVersion(
-            versionId,
-            projectUuid,
+          const targetVersion = await withStorageTimeout(
+            storage.getXMLVersion(versionId, projectUuid),
+            "获取目标版本超时（8秒），请重试",
           );
           if (!targetVersion) {
             throw new Error("目标版本不存在");
@@ -506,7 +532,10 @@ export function useStorageXMLVersions() {
           }
 
           const targetXml = await materializeVersionXml(targetVersion, (id) =>
-            storage.getXMLVersion(id, projectUuid),
+            withStorageTimeout(
+              storage.getXMLVersion(id, projectUuid),
+              "加载版本内容超时（8秒），请重试",
+            ),
           );
 
           const wipVersionId = await saveXML(
@@ -522,7 +551,7 @@ export function useStorageXMLVersions() {
         { setLoading, setError },
       );
     },
-    [saveXML],
+    [resolveStorage, saveXML],
   );
 
   /**

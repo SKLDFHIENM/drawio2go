@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { getStorage, DEFAULT_PROJECT_UUID } from "@/app/lib/storage";
 import type { Project } from "@/app/lib/storage";
-import { runStorageTask } from "@/app/lib/utils";
+import { generateProjectUUID, runStorageTask } from "@/app/lib/utils";
 
 /**
  * 工程管理 Hook
@@ -71,7 +71,7 @@ export function useStorageProjects() {
       return runStorageTask(
         async () => {
           const storage = await getStorage();
-          const uuid = `project-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+          const uuid = generateProjectUUID();
           const now = Date.now();
 
           const newProject: Project = {
