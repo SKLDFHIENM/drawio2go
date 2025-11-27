@@ -26,6 +26,7 @@ import type { Conversation } from "@/app/lib/storage";
 import { DEFAULT_LLM_CONFIG, normalizeLLMConfig } from "@/app/lib/config-utils";
 import {
   createChatSessionService,
+  fingerprintMessage,
   type ChatSessionService,
 } from "@/app/lib/chat-session-service";
 
@@ -375,6 +376,7 @@ export default function ChatSidebar({
   // ========== useChat 集成 ==========
   const {
     messages,
+    setMessages,
     sendMessage,
     status,
     stop,
@@ -406,12 +408,46 @@ export default function ChatSidebar({
     },
   });
 
+  // 使用 ref 缓存 setMessages，避免因为引用变化导致依赖效应重复执行
+  const setMessagesRef = useRef(setMessages);
+
+  useEffect(() => {
+    setMessagesRef.current = setMessages;
+  }, [setMessages]);
+
   const isChatStreaming = status === "submitted" || status === "streaming";
 
   const displayMessages = useMemo(
     () => messages.map(ensureMessageMetadata),
     [messages, ensureMessageMetadata],
   );
+
+  useEffect(() => {
+    const targetConversationId = activeConversationId;
+    if (!targetConversationId) return;
+    if (isChatStreaming) return;
+
+    const cached = conversationMessages[targetConversationId];
+    if (!cached) return;
+
+    setMessagesRef.current?.((current) => {
+      // 再次校验状态与会话，避免切换时覆盖流式消息
+      if (isChatStreaming || activeConversationId !== targetConversationId) {
+        return current;
+      }
+
+      const cachedFingerprints = cached.map(fingerprintMessage);
+      const currentFingerprints = current.map(fingerprintMessage);
+
+      const isSame =
+        cachedFingerprints.length === currentFingerprints.length &&
+        cachedFingerprints.every(
+          (fp, index) => fp === currentFingerprints[index],
+        );
+
+      return isSame ? current : cached;
+    });
+  }, [activeConversationId, conversationMessages, isChatStreaming]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

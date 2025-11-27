@@ -28,6 +28,8 @@ export const TOOL_STATUS_META: Record<string, ToolStatusMeta> = {
   "input-available": { label: "等待执行", Icon: Wrench, tone: "pending" },
   "output-available": { label: "成功", Icon: CheckCircle2, tone: "success" },
   "output-error": { label: "失败", Icon: AlertTriangle, tone: "error" },
+  call: { label: "等待执行", Icon: Wrench, tone: "pending" },
+  result: { label: "成功", Icon: CheckCircle2, tone: "success" },
   default: { label: "未知状态", Icon: Info, tone: "pending" },
 };
 
