@@ -15,15 +15,37 @@ export interface LLMConfig {
   maxToolRounds: number;
 }
 
-export type ToolInvocationState = "call" | "result";
+export type ToolInvocationState =
+  | "input-streaming"
+  | "input-available"
+  | "output-available"
+  | "output-error"
+  | "call"
+  | "result";
+
+export type ToolInvocationType =
+  | "tool-call"
+  | "tool-result"
+  | "dynamic-tool"
+  | "tool-invocation"
+  | `tool-${string}`;
 
 export interface ToolInvocation {
-  toolCallId: string;
-  toolName: string;
-  args: Record<string, unknown>;
-  state: ToolInvocationState;
-  result?: unknown;
-  xmlVersionId?: number; // 关联的 XML 版本 ID
+  type: ToolInvocationType;
+  toolCallId?: string;
+  toolName?: string;
+  state?: ToolInvocationState;
+  input?: unknown;
+  output?: unknown;
+  errorText?: string;
+  providerExecuted?: boolean;
+  preliminary?: boolean;
+  dynamic?: boolean;
+  invalid?: boolean;
+  toolInvocation?: unknown;
+  rawInput?: unknown;
+  xmlVersionId?: string; // 关联的 XML 版本 ID
+  [key: string]: unknown;
 }
 
 export interface ChatMessage {

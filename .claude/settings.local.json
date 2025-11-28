@@ -73,7 +73,8 @@
       "Bash(pnpm vitest:*)",
       "Bash(pnpm run lint)",
       "Bash(pnpm test:*)",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(pnpm build:*)"
     ],
     "deny": [],
     "ask": []
