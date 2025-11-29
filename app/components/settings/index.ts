@@ -5,6 +5,7 @@
 // 子组件
 export { default as SettingsNav } from "./SettingsNav";
 export { default as FileSettingsPanel } from "./FileSettingsPanel";
+export { default as GeneralSettingsPanel } from "./GeneralSettingsPanel";
 export { default as LLMSettingsPanel } from "./LLMSettingsPanel";
 export { VersionSettingsPanel } from "./VersionSettingsPanel";
 export { default as SystemPromptEditor } from "./SystemPromptEditor";

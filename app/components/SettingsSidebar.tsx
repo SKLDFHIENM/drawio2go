@@ -6,9 +6,9 @@ import { LLMConfig } from "@/app/types/chat";
 import { DEFAULT_LLM_CONFIG, normalizeLLMConfig } from "@/app/lib/config-utils";
 import { useStorageSettings } from "@/app/hooks/useStorageSettings";
 import SettingsNav, { type SettingsTab } from "./settings/SettingsNav";
-import FileSettingsPanel from "./settings/FileSettingsPanel";
 import LLMSettingsPanel from "./settings/LLMSettingsPanel";
 import { VersionSettingsPanel } from "./settings/VersionSettingsPanel";
+import { GeneralSettingsPanel } from "@/app/components/settings";
 
 interface SettingsSidebarProps {
   isOpen: boolean;
@@ -19,7 +19,7 @@ interface SettingsSidebarProps {
 export default function SettingsSidebar({
   onSettingsChange,
 }: SettingsSidebarProps) {
-  const [activeTab, setActiveTab] = useState<SettingsTab>("file");
+  const [activeTab, setActiveTab] = useState<SettingsTab>("general");
 
   const {
     getLLMConfig,
@@ -99,16 +99,8 @@ export default function SettingsSidebar({
     savedVersionSettings,
   ]);
 
-  // 选择文件夹
-  const handleSelectFolder = async () => {
-    if (typeof window !== "undefined" && window.electron) {
-      const result = await window.electron.selectFolder();
-      if (result) {
-        setDefaultPath(result);
-      }
-    } else {
-      alert("文件夹选择功能仅在 Electron 环境下可用");
-    }
+  const handleDefaultPathChange = (path: string) => {
+    setDefaultPath(path);
   };
 
   // 保存设置
@@ -154,11 +146,10 @@ export default function SettingsSidebar({
         <SettingsNav activeTab={activeTab} onTabChange={setActiveTab} />
 
         <div className="settings-content">
-          {activeTab === "file" && (
-            <FileSettingsPanel
+          {activeTab === "general" && (
+            <GeneralSettingsPanel
               defaultPath={defaultPath}
-              onChange={setDefaultPath}
-              onBrowse={handleSelectFolder}
+              onDefaultPathChange={handleDefaultPathChange}
             />
           )}
 

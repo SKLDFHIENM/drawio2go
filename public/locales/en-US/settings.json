@@ -1,1 +1,21 @@
-{}
+{
+  "nav": {
+    "general": "General",
+    "llm": "LLM Config",
+    "version": "Version Settings"
+  },
+  "general": {
+    "title": "General Settings",
+    "description": "Language, file paths, and basic configuration",
+    "language": {
+      "label": "Language / 语言",
+      "description": "Switch interface display language"
+    },
+    "defaultPath": {
+      "label": "Default File Path",
+      "placeholder": "/home/user/drawio",
+      "selectButton": "Select Directory",
+      "description": "Default directory for saving new projects"
+    }
+  }
+}

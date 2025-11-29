@@ -1,12 +1,14 @@
 "use client";
 
 import { Button } from "@heroui/react";
-import { Folder, Bot, GitBranch } from "lucide-react";
+import { Settings, Bot, GitBranch } from "lucide-react";
+
+import { useAppTranslation } from "@/app/i18n/hooks";
 
 /**
  * 设置标签类型
  */
-export type SettingsTab = "file" | "llm" | "version";
+export type SettingsTab = "general" | "llm" | "version";
 
 interface SettingsNavProps {
   activeTab: SettingsTab;
@@ -21,23 +23,25 @@ export default function SettingsNav({
   activeTab,
   onTabChange,
 }: SettingsNavProps) {
+  const { t } = useAppTranslation("settings");
+
   return (
     <div className="settings-nav">
       <Button
         variant="tertiary"
         isIconOnly
-        className={`settings-nav-item ${activeTab === "file" ? "active" : ""}`}
-        onPress={() => onTabChange("file")}
-        aria-label="文件配置"
+        className={`settings-nav-item ${activeTab === "general" ? "active" : ""}`}
+        onPress={() => onTabChange("general")}
+        aria-label={t("nav.general", { defaultValue: "General" })}
       >
-        <Folder size={24} />
+        <Settings size={24} />
       </Button>
       <Button
         variant="tertiary"
         isIconOnly
         className={`settings-nav-item ${activeTab === "llm" ? "active" : ""}`}
         onPress={() => onTabChange("llm")}
-        aria-label="LLM 配置"
+        aria-label={t("nav.llm", { defaultValue: "LLM" })}
       >
         <Bot size={24} />
       </Button>
@@ -46,7 +50,7 @@ export default function SettingsNav({
         isIconOnly
         className={`settings-nav-item ${activeTab === "version" ? "active" : ""}`}
         onPress={() => onTabChange("version")}
-        aria-label="版本"
+        aria-label={t("nav.version", { defaultValue: "Version" })}
       >
         <GitBranch size={24} />
       </Button>

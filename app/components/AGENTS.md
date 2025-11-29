@@ -162,6 +162,16 @@
 - 卡片样式：`Card.Root` + `Card.Content`，激活项加粗边框 + Check 图标
 - 模态关闭时重置表单
 
+### 8. LanguageSwitcher.tsx - 语言切换器
+
+**Props**: `className?`
+
+**核心功能**:
+
+- HeroUI Select 复合组件，使用 `ListBox.Item` + `Select.Trigger`
+- 读取 `i18n.language` 显示当前语言，调用 `i18n.changeLanguage` 即时切换
+- 语言选项来自 `localeDisplayNames`，支持 en-US / zh-CN，文案源自 settings 命名空间
+
 ---
 
 ## HeroUI v3 使用规范

@@ -120,12 +120,10 @@ describe("replaceDrawioXML - 回滚错误处理", () => {
 
   it("场景 1：回滚成功 - 快照可用且写入成功", async () => {
     const { getStorage } = await import("../storage/storage-factory");
-    const { resolveCurrentProjectUuid } = await import(
-      "../storage/current-project"
-    );
-    const { materializeVersionXml } = await import(
-      "../storage/xml-version-engine"
-    );
+    const { resolveCurrentProjectUuid } =
+      await import("../storage/current-project");
+    const { materializeVersionXml } =
+      await import("../storage/xml-version-engine");
 
     const mockStorage = createMockStorage();
     vi.mocked(getStorage).mockResolvedValue(
@@ -159,12 +157,10 @@ describe("replaceDrawioXML - 回滚错误处理", () => {
 
   it("场景 2：回滚失败 - 快照未获取", async () => {
     const { getStorage } = await import("../storage/storage-factory");
-    const { resolveCurrentProjectUuid } = await import(
-      "../storage/current-project"
-    );
-    const { materializeVersionXml } = await import(
-      "../storage/xml-version-engine"
-    );
+    const { resolveCurrentProjectUuid } =
+      await import("../storage/current-project");
+    const { materializeVersionXml } =
+      await import("../storage/xml-version-engine");
 
     // 模拟项目不存在，导致快照获取失败
     const mockStorage = {
@@ -232,12 +228,10 @@ describe("replaceDrawioXML - 回滚错误处理", () => {
 
   it("场景 3：回滚失败 - 写入失败（存储不可用）", async () => {
     const { getStorage } = await import("../storage/storage-factory");
-    const { resolveCurrentProjectUuid } = await import(
-      "../storage/current-project"
-    );
-    const { materializeVersionXml } = await import(
-      "../storage/xml-version-engine"
-    );
+    const { resolveCurrentProjectUuid } =
+      await import("../storage/current-project");
+    const { materializeVersionXml } =
+      await import("../storage/xml-version-engine");
 
     // 创建单个 mock 实例，使用 mockResolvedValueOnce 和 mockRejectedValueOnce
     const sharedMockStorage = {

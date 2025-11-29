@@ -1,1 +1,21 @@
-{}
+{
+  "nav": {
+    "general": "通用",
+    "llm": "LLM 配置",
+    "version": "版本设置"
+  },
+  "general": {
+    "title": "通用设置",
+    "description": "语言、文件路径等基础配置",
+    "language": {
+      "label": "语言 / Language",
+      "description": "切换界面显示语言"
+    },
+    "defaultPath": {
+      "label": "默认文件路径",
+      "placeholder": "/home/user/drawio",
+      "selectButton": "选择目录",
+      "description": "新建项目时默认保存的目录"
+    }
+  }
+}
