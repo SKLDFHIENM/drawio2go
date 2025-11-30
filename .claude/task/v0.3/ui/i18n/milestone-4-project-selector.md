@@ -32,6 +32,7 @@
 - ✅ 新建项目按钮
 
 **术语统一**:
+
 - "工程" → "项目" (Project)
 - 所有中文文本统一为"项目"术语
 
@@ -158,10 +159,12 @@ export default function ProjectSelector({...}) {
 
 ```tsx
 // 改造前
-选择工程
+选择工程;
 
 // 改造后
-{t("selector.title")}
+{
+  t("selector.title");
+}
 ```
 
 5. ✅ 替换空状态提示:

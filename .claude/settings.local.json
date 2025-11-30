@@ -74,7 +74,8 @@
       "Bash(pnpm run lint)",
       "Bash(pnpm test:*)",
       "Bash(done)",
-      "Bash(pnpm build:*)"
+      "Bash(pnpm build:*)",
+      "Bash(echo:*)"
     ],
     "deny": [],
     "ask": []

@@ -1,1 +1,12 @@
-{}
+{
+  "tabs": {
+    "chat": "Chat",
+    "settings": "Settings",
+    "version": "Version"
+  },
+  "aria": {
+    "navigation": "Sidebar Navigation",
+    "tabsList": "Sidebar Options",
+    "resizeHandle": "Resize Sidebar Width"
+  }
+}

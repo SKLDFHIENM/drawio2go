@@ -1,6 +1,13 @@
 "use client";
 
-import { useState, useEffect, useRef, type Key, type RefObject } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  useMemo,
+  type Key,
+  type RefObject,
+} from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { Tabs } from "@heroui/react";
 import { History, MessageSquare, Settings } from "lucide-react";
@@ -9,6 +16,7 @@ import SettingsSidebar from "./SettingsSidebar";
 import { VersionSidebar } from "./VersionSidebar";
 import { SIDEBAR_MIN_WIDTH, SIDEBAR_MAX_WIDTH } from "./constants/sidebar";
 import { useStorageSettings } from "@/app/hooks/useStorageSettings";
+import { useAppTranslation } from "@/app/i18n/hooks";
 import type { DrawioEditorRef } from "@/app/components/DrawioEditorNative";
 
 export type SidebarTab = "chat" | "settings" | "version";
@@ -27,16 +35,6 @@ interface UnifiedSidebarProps {
 
 type SidebarPointerEvent = ReactPointerEvent<HTMLDivElement>;
 
-const TAB_ITEMS: Array<{
-  key: SidebarTab;
-  label: string;
-  Icon: typeof MessageSquare;
-}> = [
-  { key: "chat", label: "聊天", Icon: MessageSquare },
-  { key: "settings", label: "设置", Icon: Settings },
-  { key: "version", label: "版本", Icon: History },
-];
-
 export default function UnifiedSidebar({
   isOpen,
   activeTab,
@@ -48,8 +46,18 @@ export default function UnifiedSidebar({
   onVersionRestore,
   editorRef,
 }: UnifiedSidebarProps) {
+  const { t } = useAppTranslation("sidebar");
   // 存储 Hook
   const { getSetting, setSetting } = useStorageSettings();
+
+  const TAB_ITEMS = useMemo(
+    () => [
+      { key: "chat", label: t("tabs.chat"), Icon: MessageSquare },
+      { key: "settings", label: t("tabs.settings"), Icon: Settings },
+      { key: "version", label: t("tabs.version"), Icon: History },
+    ],
+    [t],
+  );
 
   const [sidebarWidth, setSidebarWidth] = useState(400);
   const [isResizing, setIsResizing] = useState(false);
@@ -78,7 +86,7 @@ export default function UnifiedSidebar({
         sidebarWidthRef.current.toString(),
       );
     } catch (e) {
-      console.error("保存侧栏宽度失败:", e);
+      console.error("Failed to save sidebar width:", e);
     }
   };
 
@@ -96,7 +104,7 @@ export default function UnifiedSidebar({
           applySidebarWidth(width);
         }
       } catch (e) {
-        console.error("加载侧栏宽度失败:", e);
+        console.error("Failed to load sidebar width:", e);
       }
     };
 
@@ -112,7 +120,7 @@ export default function UnifiedSidebar({
     try {
       e.currentTarget.setPointerCapture(e.pointerId);
     } catch (err) {
-      console.warn("无法捕获指针事件:", err);
+      console.warn("Failed to capture pointer event:", err);
     }
   };
 
@@ -129,7 +137,7 @@ export default function UnifiedSidebar({
         e.currentTarget.releasePointerCapture(e.pointerId);
       }
     } catch (err) {
-      console.warn("释放指针捕获失败:", err);
+      console.warn("Failed to release pointer capture:", err);
     }
     await finalizeResize();
   };
@@ -143,7 +151,10 @@ export default function UnifiedSidebar({
     >
       {/* 拖拽分隔条 */}
       <div
-        className="resize-handle"
+        className="resize-handle sidebar-resizer"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label={t("aria.resizeHandle")}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -152,12 +163,15 @@ export default function UnifiedSidebar({
 
       <div className="sidebar-tabs-shell">
         <Tabs
-          aria-label="侧栏导航"
+          aria-label={t("aria.navigation")}
           selectedKey={activeTab}
           onSelectionChange={handleTabSelection}
         >
           <Tabs.ListContainer className="sidebar-tab-strip">
-            <Tabs.List aria-label="侧栏选项" className="sidebar-tab-list">
+            <Tabs.List
+              aria-label={t("aria.tabsList")}
+              className="sidebar-tab-list"
+            >
               {TAB_ITEMS.map(({ key, label, Icon }) => (
                 <Tabs.Tab key={key} id={key} className="sidebar-tab-item">
                   <Icon size={16} />
