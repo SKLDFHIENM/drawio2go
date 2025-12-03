@@ -2,10 +2,12 @@
 
 import { Card, Checkbox, Button } from "@heroui/react";
 import { Eye, MessagesSquare } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
-import { zhCN } from "date-fns/locale";
 import type { Conversation } from "@/app/lib/storage";
-import { formatConversationDate } from "@/app/lib/format-utils";
+import {
+  formatConversationDate,
+  formatRelativeTime,
+} from "@/app/lib/format-utils";
+import { useAppTranslation } from "@/app/i18n/hooks";
 
 interface ConversationListProps {
   conversations: Conversation[];
@@ -24,26 +26,29 @@ export default function ConversationList({
   onPreview,
   onOpenConversation,
 }: ConversationListProps) {
+  const { t, i18n } = useAppTranslation(["chat", "common"]);
+
   if (!conversations || conversations.length === 0) {
     return (
       <div className="history-empty">
         <MessagesSquare size={32} />
-        <p className="history-empty__title">没有匹配的对话</p>
-        <p className="history-empty__hint">尝试调整搜索或日期范围</p>
+        <p className="history-empty__title">{t("history.search.noResults")}</p>
+        <p className="history-empty__hint">{t("errors.noResult")}</p>
       </div>
     );
   }
 
   return (
     <div className="history-list" role="list">
-      {conversations.map((conv) => {
+      {conversations.map((conv, index) => {
+        const fallbackTitle = t("conversations.defaultName", {
+          number: index + 1,
+        });
+        const title = conv.title || fallbackTitle;
         const isSelected = selectedIds.has(conv.id);
-        const relativeTime = formatDistanceToNow(
+        const relativeTime = formatRelativeTime(
           conv.updated_at ?? conv.created_at,
-          {
-            addSuffix: true,
-            locale: zhCN,
-          },
+          t,
         );
 
         return (
@@ -75,22 +80,30 @@ export default function ConversationList({
             >
               {selectionMode && (
                 <Checkbox
-                  aria-label={`选择对话 ${conv.title}`}
+                  aria-label={t("aria.selectConversation", { title })}
                   isSelected={isSelected}
                   onChange={() => onToggleSelect(conv.id)}
                 />
               )}
               <div className="history-card__meta">
-                <div className="history-card__title" title={conv.title}>
-                  {conv.title || "未命名对话"}
+                <div className="history-card__title" title={title}>
+                  {title}
                 </div>
                 <div className="history-card__subtitle">
-                  <span>更新于 {relativeTime}</span>
+                  <span>
+                    {t("conversations.lastUpdated", { time: relativeTime })}
+                  </span>
                   <span className="history-card__dot" aria-hidden>
                     •
                   </span>
                   <span>
-                    创建 {formatConversationDate(conv.created_at, "date")}
+                    {t("conversations.createdAt", {
+                      time: formatConversationDate(
+                        conv.created_at,
+                        "date",
+                        i18n.language,
+                      ),
+                    })}
                   </span>
                 </div>
               </div>
@@ -100,7 +113,7 @@ export default function ConversationList({
                 size="sm"
                 variant="secondary"
                 isIconOnly
-                aria-label="预览对话"
+                aria-label={t("aria.openPreview")}
                 onPress={() => onPreview(conv.id)}
               >
                 <Eye size={16} />

@@ -42,7 +42,7 @@ export interface ChatSessionServiceOptions {
     messages: ChatUIMessage[],
   ) => void;
   onSavingChange?: (saving: boolean) => void;
-  onSaveError?: (error: string | null) => void;
+  onSaveError?: (message: string) => void;
 }
 
 export interface SaveOptions {
@@ -309,10 +309,10 @@ function extractToolFields(part: Record<string, unknown>): {
     (source as { rawInput?: unknown }).rawInput ??
     (source !== part
       ? (part.input ??
-          (part as { args?: unknown }).args ??
-          (part as { parameters?: unknown }).parameters ??
-          (part as { input_arguments?: unknown }).input_arguments ??
-          (part as { rawInput?: unknown }).rawInput)
+        (part as { args?: unknown }).args ??
+        (part as { parameters?: unknown }).parameters ??
+        (part as { input_arguments?: unknown }).input_arguments ??
+        (part as { rawInput?: unknown }).rawInput)
       : undefined);
 
   const output =
@@ -321,8 +321,8 @@ function extractToolFields(part: Record<string, unknown>): {
     (source as { data?: unknown }).data ??
     (source !== part
       ? (part.output ??
-          (part as { result?: unknown }).result ??
-          (part as { data?: unknown }).data)
+        (part as { result?: unknown }).result ??
+        (part as { data?: unknown }).data)
       : undefined);
 
   const errorTextCandidates: unknown[] = [
@@ -362,8 +362,8 @@ function extractToolFields(part: Record<string, unknown>): {
     (source as { callProviderMetadata?: unknown }).callProviderMetadata ??
     (source as { metadata?: unknown }).metadata ??
     (source !== part
-      ? (part as { callProviderMetadata?: unknown }).callProviderMetadata ??
-        (part as { metadata?: unknown }).metadata
+      ? ((part as { callProviderMetadata?: unknown }).callProviderMetadata ??
+        (part as { metadata?: unknown }).metadata)
       : undefined);
 
   const preliminary =
@@ -491,16 +491,6 @@ function buildCanonicalToolPart(
   return canonical;
 }
 
-function serializeToolPart(
-  part: ChatUIMessage["parts"][number],
-): ChatUIMessage["parts"][number] | null {
-  if (!isToolRelatedPart(part)) return null;
-
-  return buildCanonicalToolPart(part, {
-    defaultType: "dynamic-tool",
-  }) as ChatUIMessage["parts"][number] | null;
-}
-
 function normalizeStoredToolPart(
   raw: unknown,
 ): ChatUIMessage["parts"][number] | null {
@@ -512,32 +502,28 @@ function normalizeStoredToolPart(
  * AI SDK 5.0 使用 parts 数组结构
  */
 export function convertMessageToUIMessage(msg: Message): ChatUIMessage {
-  const parts: ChatUIMessage["parts"] = [];
+  let parts: ChatUIMessage["parts"] = [];
 
-  if (msg.content) {
-    parts.push({
-      type: "text",
-      text: msg.content,
-    });
-  }
-
-  if (msg.tool_invocations) {
-    try {
-      const toolInvocations = JSON.parse(msg.tool_invocations);
-      if (Array.isArray(toolInvocations)) {
-        const normalizedParts = toolInvocations
-          .map((invocation) => normalizeStoredToolPart(invocation))
-          .filter((part): part is ChatUIMessage["parts"][number] =>
-            Boolean(part),
-          );
-        parts.push(...normalizedParts);
-      }
-    } catch (error) {
-      console.error(
-        "[chat-session-service] 解析 tool_invocations 失败:",
-        error,
-      );
+  try {
+    const parsedParts = JSON.parse(msg.parts_structure);
+    if (Array.isArray(parsedParts)) {
+      parts = parsedParts
+        .map((part) => {
+          if (isToolRelatedPart(part)) {
+            return normalizeStoredToolPart(part);
+          }
+          return part;
+        })
+        .filter((part): part is ChatUIMessage["parts"][number] =>
+          Boolean(part),
+        );
     }
+  } catch (error) {
+    console.error(
+      "[chat-session-service] 解析 parts_structure 失败:",
+      error,
+      msg.id,
+    );
   }
 
   const metadata: MessageMetadata = {
@@ -555,26 +541,22 @@ export function convertMessageToUIMessage(msg: Message): ChatUIMessage {
 
 /**
  * 将 UIMessage 转换为 CreateMessageInput（用于存储）
- * 提取所有 text parts 合并为 content，保存 tool-invocation parts 为 tool_invocations
+ * 规范化工具 part 为 canonical 格式
  */
 export function convertUIMessageToCreateInput(
   uiMsg: ChatUIMessage,
   conversationId: string,
   xmlVersionId?: string,
 ): CreateMessageInput {
-  const textParts = uiMsg.parts.filter((part) => part.type === "text");
-  const content = textParts
-    .map((part) => ("text" in part ? part.text : ""))
-    .join("\n");
+  // 规范化所有 parts，特别是工具相关的 part
+  const normalizedParts = uiMsg.parts.map((part) => {
+    if (isToolRelatedPart(part)) {
+      return buildCanonicalToolPart(part, { defaultType: "dynamic-tool" });
+    }
+    return part;
+  });
 
-  const toolParts = uiMsg.parts
-    .filter(isToolRelatedPart)
-    .map(serializeToolPart)
-    .filter((part): part is ChatUIMessage["parts"][number] => Boolean(part));
-
-  const tool_invocations =
-    toolParts.length > 0 ? safeJsonStringify(toolParts) : undefined;
-
+  const parts_structure = safeJsonStringify(normalizedParts);
   const metadata = (uiMsg.metadata as MessageMetadata | undefined) ?? {};
   const createdAt =
     typeof metadata.createdAt === "number" ? metadata.createdAt : undefined;
@@ -583,8 +565,7 @@ export function convertUIMessageToCreateInput(
     id: uiMsg.id,
     conversation_id: conversationId,
     role: uiMsg.role as "user" | "assistant" | "system",
-    content,
-    tool_invocations,
+    parts_structure,
     model_name: metadata.modelName ?? null,
     xml_version_id: xmlVersionId,
     created_at: createdAt,
@@ -592,11 +573,17 @@ export function convertUIMessageToCreateInput(
 }
 
 export function fingerprintMessage(message: ChatUIMessage): string {
+  // 指纹忽略时间戳，避免 ensureMessageMetadata 在缺失 createdAt 时注入的临时时间
+  // 导致毫秒级抖动，从而触发无意义的同步循环。
+  const { metadata } = message;
+  const { createdAt: _ignoredCreatedAt, ...restMetadata } =
+    (metadata as MessageMetadata | undefined) ?? {};
+
   return JSON.stringify({
     id: message.id,
     role: message.role,
     parts: message.parts,
-    metadata: message.metadata,
+    metadata: restMetadata,
   });
 }
 
@@ -680,7 +667,7 @@ export function createChatSessionService(
     if (!payload.conversationId) return;
 
     let conversationId = payload.conversationId;
-    onSaveError?.(null);
+    onSaveError?.("");
 
     try {
       if (payload.resolveConversationId) {
@@ -739,7 +726,7 @@ export function createChatSessionService(
       }
 
       onSavingChange?.(false);
-      onSaveError?.(null);
+      onSaveError?.("");
       return;
     }
 
@@ -752,7 +739,7 @@ export function createChatSessionService(
     );
 
     onSavingChange?.(true);
-    onSaveError?.(null);
+    onSaveError?.("");
 
     const maxRetries = 3;
 
@@ -768,7 +755,7 @@ export function createChatSessionService(
         notifyMessagesChange(conversationId, normalizedMessages);
 
         onSavingChange?.(false);
-        onSaveError?.(null);
+        onSaveError?.("");
         pendingSavePayload = null;
         return;
       } catch (error) {
@@ -780,9 +767,10 @@ export function createChatSessionService(
         if (attempt >= maxRetries) {
           const message =
             error instanceof Error ? error.message : "消息保存失败";
+          const userMessage =
+            "消息自动保存失败，将在后台继续重试。请检查存储或网络状态。";
           onSavingChange?.(false);
-          onSaveError?.(message);
-          alert("消息自动保存失败，将在后台继续重试。请检查存储或网络状态。");
+          onSaveError?.(userMessage || message);
         } else {
           await new Promise((resolve) => setTimeout(resolve, 200 * attempt));
         }

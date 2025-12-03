@@ -6,9 +6,14 @@ import { LLMConfig } from "@/app/types/chat";
 import { DEFAULT_LLM_CONFIG, normalizeLLMConfig } from "@/app/lib/config-utils";
 import { useStorageSettings } from "@/app/hooks/useStorageSettings";
 import SettingsNav, { type SettingsTab } from "./settings/SettingsNav";
-import FileSettingsPanel from "./settings/FileSettingsPanel";
 import LLMSettingsPanel from "./settings/LLMSettingsPanel";
 import { VersionSettingsPanel } from "./settings/VersionSettingsPanel";
+import { GeneralSettingsPanel } from "@/app/components/settings";
+import { useAppTranslation } from "@/app/i18n/hooks";
+import { useToast } from "@/app/components/toast";
+import { createLogger } from "@/lib/logger";
+
+const logger = createLogger("SettingsSidebar");
 
 interface SettingsSidebarProps {
   isOpen: boolean;
@@ -19,7 +24,8 @@ interface SettingsSidebarProps {
 export default function SettingsSidebar({
   onSettingsChange,
 }: SettingsSidebarProps) {
-  const [activeTab, setActiveTab] = useState<SettingsTab>("file");
+  const { t } = useAppTranslation("settings");
+  const [activeTab, setActiveTab] = useState<SettingsTab>("general");
 
   const {
     getLLMConfig,
@@ -45,6 +51,7 @@ export default function SettingsSidebar({
   });
 
   const [hasChanges, setHasChanges] = useState(false);
+  const { push } = useToast();
 
   // 加载保存的设置
   useEffect(() => {
@@ -70,16 +77,22 @@ export default function SettingsSidebar({
         setVersionSettings({ autoVersionOnAIEdit });
         setSavedVersionSettings({ autoVersionOnAIEdit });
       } catch (e) {
-        console.error("加载设置失败:", e);
+        logger.error(t("errors.loadFailed"), e);
         setLlmConfig(DEFAULT_LLM_CONFIG);
         setSavedLlmConfig(DEFAULT_LLM_CONFIG);
         setVersionSettings({ autoVersionOnAIEdit: true });
         setSavedVersionSettings({ autoVersionOnAIEdit: true });
+        push({
+          variant: "danger",
+          description: t("toasts.loadFailed", {
+            error: (e as Error)?.message || "unknown",
+          }),
+        });
       }
     };
 
     loadSettings();
-  }, [getDefaultPath, getLLMConfig, getSetting]);
+  }, [getDefaultPath, getLLMConfig, getSetting, push, t]);
 
   // 监听变化，检测是否有修改
   useEffect(() => {
@@ -99,16 +112,8 @@ export default function SettingsSidebar({
     savedVersionSettings,
   ]);
 
-  // 选择文件夹
-  const handleSelectFolder = async () => {
-    if (typeof window !== "undefined" && window.electron) {
-      const result = await window.electron.selectFolder();
-      if (result) {
-        setDefaultPath(result);
-      }
-    } else {
-      alert("文件夹选择功能仅在 Electron 环境下可用");
-    }
+  const handleDefaultPathChange = (path: string) => {
+    setDefaultPath(path);
   };
 
   // 保存设置
@@ -131,8 +136,16 @@ export default function SettingsSidebar({
       if (onSettingsChange) {
         onSettingsChange({ defaultPath });
       }
+
+      push({ variant: "success", description: t("toasts.saveSuccess") });
     } catch (e) {
-      console.error("保存设置失败:", e);
+      logger.error(t("errors.saveFailed"), e);
+      push({
+        variant: "danger",
+        description: t("toasts.saveFailed", {
+          error: (e as Error)?.message || "unknown",
+        }),
+      });
     }
   };
 
@@ -154,11 +167,10 @@ export default function SettingsSidebar({
         <SettingsNav activeTab={activeTab} onTabChange={setActiveTab} />
 
         <div className="settings-content">
-          {activeTab === "file" && (
-            <FileSettingsPanel
+          {activeTab === "general" && (
+            <GeneralSettingsPanel
               defaultPath={defaultPath}
-              onChange={setDefaultPath}
-              onBrowse={handleSelectFolder}
+              onDefaultPathChange={handleDefaultPathChange}
             />
           )}
 
@@ -182,14 +194,14 @@ export default function SettingsSidebar({
         <div className="settings-action-bar" role="status">
           <div className="settings-action-status">
             <span className="status-dot" aria-hidden="true" />
-            <span className="status-text">有未保存的更改</span>
+            <span className="status-text">{t("actionBar.unsavedChanges")}</span>
           </div>
           <div className="settings-action-buttons">
             <Button variant="ghost" size="sm" onPress={handleCancel}>
-              取消
+              {t("actionBar.cancel")}
             </Button>
             <Button variant="primary" size="sm" onPress={handleSave}>
-              保存
+              {t("actionBar.save")}
             </Button>
           </div>
         </div>

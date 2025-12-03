@@ -14,6 +14,7 @@ import {
   TooltipContent,
   TooltipRoot,
 } from "@heroui/react";
+import type { Selection } from "react-aria-components";
 import {
   AlertTriangle,
   ArrowLeftRight,
@@ -36,6 +37,11 @@ import {
 } from "@/app/lib/svg-smart-diff";
 import { useStorageXMLVersions } from "@/app/hooks/useStorageXMLVersions";
 import { formatVersionTimestamp } from "@/app/lib/format-utils";
+import { useAppTranslation } from "@/app/i18n/hooks";
+import { createLogger } from "@/lib/logger";
+import { extractSingleKey, normalizeSelection } from "@/app/lib/select-utils";
+
+const logger = createLogger("VersionCompare");
 
 interface VersionCompareProps {
   versionA: XMLVersion;
@@ -66,17 +72,19 @@ const MIN_SCALE = 0.3;
 const MAX_SCALE = 4;
 const SCALE_STEP = 0.2;
 
-function formatVersionMeta(version: XMLVersion) {
+function formatVersionMeta(version: XMLVersion, locale: string) {
   return `${version.semantic_version} · ${formatVersionTimestamp(
     version.created_at,
     "full",
+    locale,
   )}`;
 }
 
-function formatVersionLabel(version: XMLVersion) {
+function formatVersionLabel(version: XMLVersion, locale: string) {
   return `${version.semantic_version} (${formatVersionTimestamp(
     version.created_at,
     "compact",
+    locale,
   )})`;
 }
 
@@ -92,6 +100,7 @@ export function VersionCompare({
   isOpen,
   onClose,
 }: VersionCompareProps) {
+  const { t: tVersion, i18n } = useAppTranslation("version");
   const [isPortalReady, setIsPortalReady] = React.useState(false);
   const [currentVersionA, setCurrentVersionA] =
     React.useState<XMLVersion>(initialVersionA);
@@ -190,7 +199,10 @@ export function VersionCompare({
               name:
                 typeof item.name === "string" && item.name.trim().length > 0
                   ? item.name
-                  : `Page ${idx + 1}`,
+                  : tVersion("compare.pages.indicator", {
+                      version: "",
+                      count: idx + 1,
+                    }),
               index: typeof item.index === "number" ? item.index : idx,
               svg: item.svg,
             }))
@@ -208,7 +220,7 @@ export function VersionCompare({
         if (cancelled) return;
 
         if (!pagesA.length && !pagesB.length) {
-          throw new Error("两个版本都缺少 pages_svg 数据，无法进行对比");
+          throw new Error(tVersion("compare.errors.missingPagesBoth"));
         }
 
         const indexSet = new Set<number>();
@@ -220,7 +232,12 @@ export function VersionCompare({
           const leftPage = pagesA.find((page) => page.index === pageIndex);
           const rightPage = pagesB.find((page) => page.index === pageIndex);
           const name =
-            leftPage?.name ?? rightPage?.name ?? `Page ${pageIndex + 1}`;
+            leftPage?.name ??
+            rightPage?.name ??
+            tVersion("compare.pages.indicator", {
+              version: "",
+              count: pageIndex + 1,
+            });
           return {
             index: pageIndex,
             name,
@@ -231,28 +248,31 @@ export function VersionCompare({
 
         const warnings: string[] = [];
         if (!resultA.hasPagesSvg) {
-          warnings.push("版本 A 缺少多页 SVG 数据");
+          warnings.push(tVersion("compare.errors.missingPagesA"));
         }
         if (!resultB.hasPagesSvg) {
-          warnings.push("版本 B 缺少多页 SVG 数据");
+          warnings.push(tVersion("compare.errors.missingPagesB"));
         }
         if (pagesA.length !== pagesB.length) {
           warnings.push(
-            `页面数量不一致：A 有 ${pagesA.length} 页，B 有 ${pagesB.length} 页`,
+            tVersion("compare.errors.pageCountMismatch", {
+              countA: pagesA.length,
+              countB: pagesB.length,
+            }),
           );
         } else {
           const mismatch = pagesA.findIndex(
             (page, idx) => page.name !== pagesB[idx]?.name,
           );
           if (mismatch >= 0) {
-            warnings.push("检测到页面名称不一致，已按索引对齐");
+            warnings.push(tVersion("compare.errors.pageNameMismatch"));
           }
         }
 
         setWarning(warnings.length ? warnings.join(" · ") : null);
 
         if (pairs.length === 0) {
-          throw new Error("未解析到有效的 SVG 页面数据");
+          throw new Error(tVersion("compare.errors.noParsedPages"));
         }
 
         const pairsWithDiff = pairs.map((pair) => ({
@@ -263,8 +283,10 @@ export function VersionCompare({
         setCurrentIndex(0);
         setOffset({ x: 0, y: 0 });
       } catch (err) {
-        console.error("加载版本对比失败", err);
-        setError(err instanceof Error ? err.message : "加载失败");
+        logger.error("加载版本对比失败", err);
+        setError(
+          err instanceof Error ? err.message : tVersion("compare.status.error"),
+        );
         setPagePairs([]);
       } finally {
         if (!cancelled) {
@@ -276,7 +298,13 @@ export function VersionCompare({
     return () => {
       cancelled = true;
     };
-  }, [isOpen, currentVersionA, currentVersionB, loadVersionSVGFields]);
+  }, [
+    isOpen,
+    currentVersionA,
+    currentVersionB,
+    loadVersionSVGFields,
+    tVersion,
+  ]);
 
   const currentName = React.useMemo(() => {
     if (!currentPair) return "-";
@@ -341,9 +369,10 @@ export function VersionCompare({
     pointerStart.current = null;
   };
 
-  const handleSelectPage = (value: React.Key | null) => {
-    if (value === null) return;
-    const nextIndex = Number(value);
+  const handleSelectPage = (keys: Selection) => {
+    const key = extractSingleKey(keys);
+    if (key === null) return;
+    const nextIndex = Number(key);
     if (Number.isNaN(nextIndex)) return;
     setCurrentIndex(Math.min(Math.max(nextIndex, 0), pagePairs.length - 1));
     setOffset({ x: 0, y: 0 });
@@ -358,10 +387,8 @@ export function VersionCompare({
   };
 
   // 处理版本选择
-  const handleVersionChange = (
-    target: "A" | "B",
-    versionId: React.Key | null,
-  ) => {
+  const handleVersionChange = (target: "A" | "B", keys: Selection) => {
+    const versionId = extractSingleKey(keys);
     if (versionId === null) return;
     const selectedVersion = versions.find((v) => v.id === String(versionId));
     if (!selectedVersion) return;
@@ -416,7 +443,7 @@ export function VersionCompare({
     return () => {
       document.body.style.overflow = previous;
     };
-  }, [isOpen]);
+  }, [isOpen, tVersion]);
 
   const currentSmartStats = currentPair?.smartDiff?.stats;
   const currentSmartWarnings = currentPair?.smartDiff?.warnings ?? [];
@@ -435,7 +462,10 @@ export function VersionCompare({
       className="version-compare__overlay"
       role="dialog"
       aria-modal="true"
-      aria-label={`版本对比：${formatVersionMeta(currentVersionA)} 对比 ${formatVersionMeta(currentVersionB)}`}
+      aria-label={tVersion("aria.compare.dialog", {
+        versionA: formatVersionMeta(currentVersionA, i18n.language),
+        versionB: formatVersionMeta(currentVersionB, i18n.language),
+      })}
       onClick={onClose}
     >
       <Card.Root
@@ -447,7 +477,7 @@ export function VersionCompare({
           className="version-compare__close-button"
           variant="ghost"
           isIconOnly
-          aria-label="关闭对比"
+          aria-label={tVersion("aria.compare.close")}
           onPress={onClose}
         >
           <X className="w-4 h-4" />
@@ -456,11 +486,15 @@ export function VersionCompare({
         <Card.Header className="version-compare__header">
           {/* 版本 A 选择器 */}
           <Select
-            value={currentVersionA.id}
-            onChange={(key) => handleVersionChange("A", key)}
+            selectedKey={currentVersionA.id}
+            onSelectionChange={(keys) => {
+              const selection = normalizeSelection(keys);
+              if (!selection) return;
+              handleVersionChange("A", selection);
+            }}
             className="version-compare__version-select"
           >
-            <Label>版本 A</Label>
+            <Label>{tVersion("compare.selectors.left")}</Label>
             <Select.Trigger>
               <Select.Value />
               <Select.Indicator />
@@ -471,9 +505,9 @@ export function VersionCompare({
                   <ListBox.Item
                     key={v.id}
                     id={v.id}
-                    textValue={formatVersionLabel(v)}
+                    textValue={formatVersionLabel(v, i18n.language)}
                   >
-                    {formatVersionLabel(v)}
+                    {formatVersionLabel(v, i18n.language)}
                   </ListBox.Item>
                 ))}
               </ListBox>
@@ -485,7 +519,7 @@ export function VersionCompare({
             variant="ghost"
             isIconOnly
             onPress={handleSwapVersions}
-            aria-label="交换版本"
+            aria-label={tVersion("aria.compare.swap")}
             className="version-compare__swap-button"
           >
             <ArrowLeftRight className="w-5 h-5" />
@@ -493,11 +527,15 @@ export function VersionCompare({
 
           {/* 版本 B 选择器 */}
           <Select
-            value={currentVersionB.id}
-            onChange={(key) => handleVersionChange("B", key)}
+            selectedKey={currentVersionB.id}
+            onSelectionChange={(keys) => {
+              const selection = normalizeSelection(keys);
+              if (!selection) return;
+              handleVersionChange("B", selection);
+            }}
             className="version-compare__version-select"
           >
-            <Label>版本 B</Label>
+            <Label>{tVersion("compare.selectors.right")}</Label>
             <Select.Trigger>
               <Select.Value />
               <Select.Indicator />
@@ -508,9 +546,9 @@ export function VersionCompare({
                   <ListBox.Item
                     key={v.id}
                     id={v.id}
-                    textValue={formatVersionLabel(v)}
+                    textValue={formatVersionLabel(v, i18n.language)}
                   >
-                    {formatVersionLabel(v)}
+                    {formatVersionLabel(v, i18n.language)}
                   </ListBox.Item>
                 ))}
               </ListBox>
@@ -535,7 +573,7 @@ export function VersionCompare({
                 isDisabled={scale <= MIN_SCALE}
               >
                 <ZoomOut className="w-4 h-4" />
-                缩小
+                {tVersion("compare.zoom.out")}
               </Button>
               <Button
                 size="sm"
@@ -544,11 +582,11 @@ export function VersionCompare({
                 isDisabled={scale >= MAX_SCALE}
               >
                 <ZoomIn className="w-4 h-4" />
-                放大
+                {tVersion("compare.zoom.in")}
               </Button>
               <Button size="sm" variant="ghost" onPress={resetView}>
                 <RotateCcw className="w-4 h-4" />
-                重置
+                {tVersion("compare.zoom.reset")}
               </Button>
               <span className="version-compare__scale">
                 {Math.round(scale * 100)}%
@@ -561,34 +599,39 @@ export function VersionCompare({
                 variant={layout === "split" ? "primary" : "ghost"}
                 onPress={() => changeLayout("split")}
               >
-                <Columns className="w-4 h-4" /> 左右
+                <Columns className="w-4 h-4" />{" "}
+                {tVersion("compare.layout.split")}
               </Button>
               <Button
                 size="sm"
                 variant={layout === "stack" ? "primary" : "ghost"}
                 onPress={() => changeLayout("stack")}
               >
-                <Rows className="w-4 h-4" /> 上下
+                <Rows className="w-4 h-4" /> {tVersion("compare.layout.stack")}
               </Button>
               <Button
                 size="sm"
                 variant={layout === "overlay" ? "primary" : "ghost"}
                 onPress={() => changeLayout("overlay")}
               >
-                <SplitSquareHorizontal className="w-4 h-4" /> 叠加
+                <SplitSquareHorizontal className="w-4 h-4" />{" "}
+                {tVersion("compare.layout.overlay")}
               </Button>
               <Button
                 size="sm"
                 variant={layout === "smart" ? "primary" : "ghost"}
                 onPress={() => changeLayout("smart")}
               >
-                <Sparkles className="w-4 h-4" /> 智能
+                <Sparkles className="w-4 h-4" />{" "}
+                {tVersion("compare.layout.smart")}
               </Button>
             </div>
 
             {layout === "overlay" && (
               <div className="version-compare__overlay-slider">
-                <label htmlFor="overlayOpacity">叠加透明度</label>
+                <label htmlFor="overlayOpacity">
+                  {tVersion("compare.layout.overlayOpacity")}
+                </label>
                 <input
                   id="overlayOpacity"
                   type="range"
@@ -608,7 +651,7 @@ export function VersionCompare({
             {loading && (
               <div className="version-compare__loading">
                 <Spinner size="sm" />
-                <span>正在加载版本数据…</span>
+                <span>{tVersion("compare.status.loading")}</span>
               </div>
             )}
 
@@ -653,7 +696,7 @@ export function VersionCompare({
                       ) : (
                         <div className="version-compare__placeholder">
                           <Loader2 className="w-5 h-5" />
-                          <span>版本 A 缺少此页面</span>
+                          <span>{tVersion("compare.pageStatus.missingA")}</span>
                         </div>
                       )}
                     </div>
@@ -668,7 +711,7 @@ export function VersionCompare({
                       ) : (
                         <div className="version-compare__placeholder">
                           <Loader2 className="w-5 h-5" />
-                          <span>版本 B 缺少此页面</span>
+                          <span>{tVersion("compare.pageStatus.missingB")}</span>
                         </div>
                       )}
                     </div>
@@ -688,7 +731,7 @@ export function VersionCompare({
                       ) : (
                         <div className="version-compare__placeholder">
                           <Loader2 className="w-5 h-5" />
-                          <span>版本 A 缺少此页面</span>
+                          <span>{tVersion("compare.pageStatus.missingA")}</span>
                         </div>
                       )}
                     </div>
@@ -703,7 +746,7 @@ export function VersionCompare({
                       ) : (
                         <div className="version-compare__placeholder">
                           <Loader2 className="w-5 h-5" />
-                          <span>版本 B 缺少此页面</span>
+                          <span>{tVersion("compare.pageStatus.missingB")}</span>
                         </div>
                       )}
                     </div>
@@ -715,7 +758,7 @@ export function VersionCompare({
                     {currentPair.left && (
                       <img
                         src={createSvgUrl(currentPair.left.svg) || undefined}
-                        alt={`版本 A · ${currentPair.left.name}`}
+                        alt={`${tVersion("compare.selectors.left")} · ${currentPair.left.name}`}
                         className="version-compare__image version-compare__image--overlay"
                         draggable={false}
                       />
@@ -723,7 +766,7 @@ export function VersionCompare({
                     {currentPair.right && (
                       <img
                         src={createSvgUrl(currentPair.right.svg) || undefined}
-                        alt={`版本 B · ${currentPair.right.name}`}
+                        alt={`${tVersion("compare.selectors.right")} · ${currentPair.right.name}`}
                         className="version-compare__image version-compare__image--overlay"
                         style={{ opacity: overlayOpacity }}
                         draggable={false}
@@ -732,13 +775,13 @@ export function VersionCompare({
                     {!currentPair.left && (
                       <div className="version-compare__placeholder">
                         <Loader2 className="w-5 h-5" />
-                        <span>版本 A 缺少此页面</span>
+                        <span>{tVersion("compare.pageStatus.missingA")}</span>
                       </div>
                     )}
                     {!currentPair.right && (
                       <div className="version-compare__placeholder">
                         <Loader2 className="w-5 h-5" />
-                        <span>版本 B 缺少此页面</span>
+                        <span>{tVersion("compare.pageStatus.missingB")}</span>
                       </div>
                     )}
                   </div>
@@ -762,14 +805,14 @@ export function VersionCompare({
                         {smartDiffImageSrc ? (
                           <img
                             src={smartDiffImageSrc || undefined}
-                            alt="智能差异高亮结果"
+                            alt={tVersion("compare.diff.smartResultAlt")}
                             className="smart-diff__image"
                             draggable={false}
                           />
                         ) : (
                           <div className="version-compare__placeholder">
                             <Loader2 className="w-5 h-5" />
-                            <span>暂无可生成的智能差异图</span>
+                            <span>{tVersion("compare.diff.empty")}</span>
                           </div>
                         )}
                       </div>
@@ -777,10 +820,12 @@ export function VersionCompare({
 
                     <div className="smart-diff__insights">
                       <div className="smart-diff__insights-header">
-                        <h3>智能匹配统计</h3>
+                        <h3>{tVersion("compare.diff.statsTitle")}</h3>
                         {smartDiffCoverageLabel && (
                           <span className="smart-diff__coverage-value">
-                            覆盖率 {smartDiffCoverageLabel}
+                            {tVersion("compare.diff.coverage", {
+                              coverage: smartDiffCoverageLabel,
+                            })}
                           </span>
                         )}
                       </div>
@@ -804,19 +849,19 @@ export function VersionCompare({
                       )}
                       <div className="smart-diff__stat-grid">
                         <div className="smart-diff__stat smart-diff__stat--match">
-                          <span>匹配元素</span>
+                          <span>{tVersion("compare.diff.matched")}</span>
                           <strong>{currentSmartStats?.matched ?? 0}</strong>
                         </div>
                         <div className="smart-diff__stat smart-diff__stat--changed">
-                          <span>内容变更</span>
+                          <span>{tVersion("compare.diff.changed")}</span>
                           <strong>{currentSmartStats?.changed ?? 0}</strong>
                         </div>
                         <div className="smart-diff__stat smart-diff__stat--removed">
-                          <span>仅存在于版本 A</span>
+                          <span>{tVersion("compare.diff.onlyA")}</span>
                           <strong>{currentSmartStats?.onlyA ?? 0}</strong>
                         </div>
                         <div className="smart-diff__stat smart-diff__stat--added">
-                          <span>仅存在于版本 B</span>
+                          <span>{tVersion("compare.diff.onlyB")}</span>
                           <strong>{currentSmartStats?.onlyB ?? 0}</strong>
                         </div>
                       </div>
@@ -824,19 +869,19 @@ export function VersionCompare({
                       <div className="smart-diff__legend">
                         <div>
                           <span className="smart-diff__swatch smart-diff__swatch--match" />
-                          已对齐（透明灰）
+                          {tVersion("compare.diff.legendAligned")}
                         </div>
                         <div>
                           <span className="smart-diff__swatch smart-diff__swatch--added" />
-                          版本 B 新增（绿色）
+                          {tVersion("compare.diff.legendAddedB")}
                         </div>
                         <div>
                           <span className="smart-diff__swatch smart-diff__swatch--removed" />
-                          版本 A 独有（红色）
+                          {tVersion("compare.diff.legendOnlyA")}
                         </div>
                         <div>
                           <span className="smart-diff__swatch smart-diff__swatch--changed" />
-                          内容变更（黄色）
+                          {tVersion("compare.diff.legendChanged")}
                         </div>
                       </div>
 
@@ -862,7 +907,9 @@ export function VersionCompare({
           <div className="version-compare__page-meta">
             <TooltipRoot delay={0} closeDelay={0}>
               <span className="version-compare__page-name">{currentName}</span>
-              <TooltipContent>按左右方向键切换页面</TooltipContent>
+              <TooltipContent>
+                {tVersion("compare.pages.shortcut")}
+              </TooltipContent>
             </TooltipRoot>
             <span className="version-compare__counter">
               {pagePairs.length ? currentIndex + 1 : 0} / {pagePairs.length}
@@ -876,7 +923,7 @@ export function VersionCompare({
               onPress={() => setCurrentIndex((prev) => Math.max(0, prev - 1))}
               isDisabled={currentIndex <= 0}
             >
-              上一页
+              {tVersion("compare.pages.previous")}
             </Button>
             <Button
               size="sm"
@@ -888,14 +935,18 @@ export function VersionCompare({
               }
               isDisabled={currentIndex >= pagePairs.length - 1}
             >
-              下一页
+              {tVersion("compare.pages.next")}
             </Button>
 
             <Select
-              aria-label="选择页面"
+              aria-label={tVersion("aria.compare.pageSelect")}
               className="version-compare__select"
-              value={String(currentIndex)}
-              onChange={handleSelectPage}
+              selectedKey={String(currentIndex)}
+              onSelectionChange={(keys) => {
+                const selection = normalizeSelection(keys);
+                if (!selection) return;
+                handleSelectPage(selection);
+              }}
               isDisabled={!pagePairs.length}
             >
               <Select.Trigger className="version-compare__select-trigger">
@@ -922,12 +973,18 @@ export function VersionCompare({
           <div className="version-compare__summary">
             <p>
               {currentVersionA.semantic_version} vs{" "}
-              {currentVersionB.semantic_version} · 共 {pagePairs.length} 页
+              {currentVersionB.semantic_version} ·{" "}
+              {tVersion("compare.pages.indicator", {
+                version: "",
+                count: pagePairs.length,
+              })}
             </p>
             <div className="version-compare__summary-pills">
               {layout === "smart" && currentSmartStats && (
                 <span className="version-compare__pill version-compare__pill--smart">
-                  智能覆盖 {smartDiffCoverageLabel}
+                  {tVersion("compare.diff.coverageShort", {
+                    coverage: smartDiffCoverageLabel ?? "",
+                  })}
                 </span>
               )}
               {warning && (
@@ -937,7 +994,7 @@ export function VersionCompare({
           </div>
 
           <Button variant="secondary" onPress={onClose}>
-            关闭
+            {tVersion("compare.close")}
           </Button>
         </Card.Footer>
       </Card.Root>

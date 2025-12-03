@@ -1,0 +1,12 @@
+{
+  "tabs": {
+    "chat": "聊天",
+    "settings": "设置",
+    "version": "版本"
+  },
+  "aria": {
+    "navigation": "侧栏导航",
+    "tabsList": "侧栏选项",
+    "resizeHandle": "调整侧栏宽度"
+  }
+}
