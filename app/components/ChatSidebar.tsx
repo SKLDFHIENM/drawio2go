@@ -8,7 +8,8 @@ import {
   useCallback,
   type FormEvent,
 } from "react";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Cpu } from "lucide-react";
+import { Select, Label, ListBox, Header, Chip } from "@heroui/react";
 import { useChat } from "@ai-sdk/react";
 import {
   useStorageSettings,
@@ -22,6 +23,9 @@ import type {
   ChatUIMessage,
   LLMConfig,
   MessageMetadata,
+  ModelConfig,
+  ProviderConfig,
+  ActiveModelReference,
 } from "@/app/types/chat";
 import type { Conversation } from "@/app/lib/storage";
 import { DEFAULT_LLM_CONFIG, normalizeLLMConfig } from "@/app/lib/config-utils";
@@ -71,7 +75,15 @@ export default function ChatSidebar({
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // ========== 存储 Hooks ==========
-  const { getLLMConfig, error: settingsError } = useStorageSettings();
+  const {
+    getActiveModel,
+    getProviders,
+    getModels,
+    setActiveModel,
+    getRuntimeConfig,
+    subscribeSettingsUpdates,
+    error: settingsError,
+  } = useStorageSettings();
 
   const {
     createConversation,
@@ -91,6 +103,13 @@ export default function ChatSidebar({
   // ========== 本地状态 ==========
   const [llmConfig, setLlmConfig] = useState<LLMConfig | null>(null);
   const [configLoading, setConfigLoading] = useState(true);
+  const [selectorLoading, setSelectorLoading] = useState(true);
+  const [selectedProviderId, setSelectedProviderId] = useState<string | null>(
+    null,
+  );
+  const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
+  const [providers, setProviders] = useState<ProviderConfig[]>([]);
+  const [models, setModels] = useState<ModelConfig[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<
     string | null
@@ -130,6 +149,54 @@ export default function ChatSidebar({
   const fallbackModelName = useMemo(
     () => llmConfig?.modelName ?? DEFAULT_LLM_CONFIG.modelName,
     [llmConfig],
+  );
+
+  const resolveModelSelection = useCallback(
+    (
+      providerList: ProviderConfig[],
+      modelList: ModelConfig[],
+      activeModel: ActiveModelReference | null,
+      currentModelId?: string | null,
+    ): { providerId: string | null; modelId: string | null } => {
+      if (activeModel) {
+        const activeProviderExists = providerList.some(
+          (provider) => provider.id === activeModel.providerId,
+        );
+        const activeModelMatch = modelList.find(
+          (model) =>
+            model.id === activeModel.modelId &&
+            model.providerId === activeModel.providerId,
+        );
+
+        if (activeProviderExists && activeModelMatch) {
+          return {
+            providerId: activeModel.providerId,
+            modelId: activeModel.modelId,
+          };
+        }
+      }
+
+      if (currentModelId) {
+        const currentModel = modelList.find(
+          (model) => model.id === currentModelId,
+        );
+        if (currentModel) {
+          return {
+            providerId: currentModel.providerId,
+            modelId: currentModel.id,
+          };
+        }
+      }
+
+      const fallbackModel =
+        modelList.find((model) => model.isDefault) ?? modelList[0];
+
+      return {
+        providerId: fallbackModel?.providerId ?? null,
+        modelId: fallbackModel?.id ?? null,
+      };
+    },
+    [],
   );
 
   const pushErrorToast = useCallback(
@@ -219,6 +286,61 @@ export default function ChatSidebar({
     [push],
   );
 
+  const loadModelSelector = useCallback(
+    async (options?: { preserveSelection?: boolean }) => {
+      const preserveSelection = options?.preserveSelection ?? false;
+
+      setSelectorLoading(true);
+      setConfigLoading(true);
+
+      try {
+        const [providerList, modelList, activeModel] = await Promise.all([
+          getProviders(),
+          getModels(),
+          getActiveModel(),
+        ]);
+
+        setProviders(providerList);
+        setModels(modelList);
+
+        const { providerId, modelId } = resolveModelSelection(
+          providerList,
+          modelList,
+          activeModel,
+          preserveSelection ? selectedModelId : null,
+        );
+
+        setSelectedProviderId(providerId);
+        setSelectedModelId(modelId);
+
+        if (providerId && modelId) {
+          const runtimeConfig = await getRuntimeConfig(providerId, modelId);
+          setLlmConfig(
+            runtimeConfig
+              ? normalizeLLMConfig(runtimeConfig)
+              : { ...DEFAULT_LLM_CONFIG },
+          );
+        } else {
+          setLlmConfig({ ...DEFAULT_LLM_CONFIG });
+        }
+      } catch (error) {
+        logger.error("[ChatSidebar] 加载模型选择器数据失败:", error);
+        setLlmConfig((prev) => prev ?? { ...DEFAULT_LLM_CONFIG });
+      } finally {
+        setSelectorLoading(false);
+        setConfigLoading(false);
+      }
+    },
+    [
+      getActiveModel,
+      getModels,
+      getProviders,
+      getRuntimeConfig,
+      resolveModelSelection,
+      selectedModelId,
+    ],
+  );
+
   if (!chatServiceRef.current) {
     chatServiceRef.current = createChatSessionService(
       {
@@ -247,6 +369,20 @@ export default function ChatSidebar({
   useEffect(() => {
     chatService.updateDefaultXmlVersionId(defaultXmlVersionId ?? null);
   }, [chatService, defaultXmlVersionId]);
+
+  useEffect(() => {
+    const unsubscribe = subscribeSettingsUpdates((detail) => {
+      if (
+        detail.type === "provider" ||
+        detail.type === "model" ||
+        detail.type === "activeModel"
+      ) {
+        void loadModelSelector({ preserveSelection: true });
+      }
+    });
+
+    return unsubscribe;
+  }, [loadModelSelector, subscribeSettingsUpdates]);
 
   useEffect(
     () => () => {
@@ -318,20 +454,16 @@ export default function ChatSidebar({
 
   // ========== 初始化 ==========
   useEffect(() => {
-    async function initialize() {
-      try {
-        // 1. 加载 LLM 配置
-        const config = await getLLMConfig();
-        if (config) {
-          const normalized = normalizeLLMConfig(config);
-          setLlmConfig(normalized);
-        } else {
-          setLlmConfig({ ...DEFAULT_LLM_CONFIG });
-        }
-        setConfigLoading(false);
+    let isUnmounted = false;
 
-        // 2. 确保有默认 XML 版本
+    async function initialize() {
+      await loadModelSelector();
+
+      try {
+        // 确保有默认 XML 版本
         const xmlVersions = await getAllXMLVersions();
+        if (isUnmounted) return;
+
         let defaultVersionId: string;
 
         if (xmlVersions.length === 0) {
@@ -350,15 +482,16 @@ export default function ChatSidebar({
         }
         setDefaultXmlVersionId(defaultVersionId);
       } catch (error) {
-        logger.error("[ChatSidebar] 初始化失败:", error);
-        // 降级到默认配置
-        setLlmConfig({ ...DEFAULT_LLM_CONFIG });
-        setConfigLoading(false);
+        logger.error("[ChatSidebar] 初始化 XML 版本失败:", error);
       }
     }
 
-    initialize();
-  }, [getLLMConfig, getAllXMLVersions, saveXML, currentProjectId, t]);
+    void initialize();
+
+    return () => {
+      isUnmounted = true;
+    };
+  }, [loadModelSelector, getAllXMLVersions, saveXML, currentProjectId, t]);
 
   useEffect(() => {
     const projectUuid = currentProjectId ?? DEFAULT_PROJECT_UUID;
@@ -863,6 +996,43 @@ export default function ChatSidebar({
     [exportConversations, extractErrorMessage, showNotice, t, i18n.language],
   );
 
+  const handleModelChange = useCallback(
+    async (modelId: string) => {
+      if (!modelId) return;
+
+      const targetModel = models.find((model) => model.id === modelId);
+      const providerId = targetModel?.providerId ?? null;
+
+      setSelectedModelId(modelId);
+      setSelectedProviderId(providerId);
+
+      if (!providerId) {
+        pushErrorToast("未找到该模型的供应商");
+        return;
+      }
+
+      setSelectorLoading(true);
+      setConfigLoading(true);
+
+      try {
+        await setActiveModel(providerId, modelId);
+        const runtimeConfig = await getRuntimeConfig(providerId, modelId);
+        setLlmConfig(
+          runtimeConfig
+            ? normalizeLLMConfig(runtimeConfig)
+            : { ...DEFAULT_LLM_CONFIG },
+        );
+      } catch (error) {
+        logger.error("[ChatSidebar] 切换模型失败:", error);
+        pushErrorToast("模型切换失败，请稍后重试");
+      } finally {
+        setSelectorLoading(false);
+        setConfigLoading(false);
+      }
+    },
+    [getRuntimeConfig, models, pushErrorToast, setActiveModel],
+  );
+
   const handleToolCallToggle = (key: string) => {
     setExpandedToolCalls((prev) => ({
       ...prev,
@@ -879,83 +1049,177 @@ export default function ChatSidebar({
 
   const showSocketWarning = !isSocketConnected;
 
+  const modelSelectorDisabled = isChatStreaming || selectorLoading;
+
+  const renderModelSelector = () => (
+    <div className="model-selector-container">
+      {providers.length === 0 || models.length === 0 ? (
+        <p className="model-selector-empty">
+          暂无可用模型，请先在设置中添加供应商和模型
+        </p>
+      ) : (
+        <Select
+          value={selectedModelId ?? undefined}
+          onChange={(value) => handleModelChange(value as string)}
+          isDisabled={modelSelectorDisabled}
+          placeholder="选择模型"
+          className="model-selector"
+        >
+          <Label>当前模型</Label>
+          <Select.Trigger>
+            <Select.Value>
+              {({ defaultChildren, isPlaceholder }) => {
+                if (isPlaceholder || !selectedModelId) {
+                  return defaultChildren;
+                }
+
+                const model = models.find(
+                  (item) => item.id === selectedModelId,
+                );
+                const provider = providers.find(
+                  (item) => item.id === selectedProviderId,
+                );
+
+                return (
+                  <div className="model-selector-trigger-content">
+                    <Cpu size={16} />
+                    <span>{model?.displayName || model?.modelName}</span>
+                    <span className="provider-name">
+                      {provider?.displayName}
+                    </span>
+                  </div>
+                );
+              }}
+            </Select.Value>
+            <Select.Indicator />
+          </Select.Trigger>
+          <Select.Content>
+            <ListBox>
+              {providers.map((provider) => {
+                const providerModels = models.filter(
+                  (model) => model.providerId === provider.id,
+                );
+                if (providerModels.length === 0) return null;
+
+                return (
+                  <ListBox.Section key={provider.id}>
+                    <Header>{provider.displayName}</Header>
+                    {providerModels.map((model) => (
+                      <ListBox.Item
+                        key={model.id}
+                        id={model.id}
+                        textValue={model.displayName || model.modelName}
+                      >
+                        <div className="model-option-content">
+                          <span className="model-name">
+                            {model.displayName || model.modelName}
+                          </span>
+                          {model.isDefault && (
+                            <Chip size="sm" variant="secondary">
+                              默认
+                            </Chip>
+                          )}
+                          <span className="model-params">
+                            温度: {model.temperature} | 工具轮次:{" "}
+                            {model.maxToolRounds}
+                          </span>
+                        </div>
+                        <ListBox.ItemIndicator />
+                      </ListBox.Item>
+                    ))}
+                  </ListBox.Section>
+                );
+              })}
+            </ListBox>
+          </Select.Content>
+        </Select>
+      )}
+    </div>
+  );
+
   if (currentView === "history") {
     return (
-      <div className="chat-sidebar-content">
-        <ChatHistoryView
-          currentProjectId={currentProjectId}
-          conversations={conversations}
-          onSelectConversation={handleSelectFromHistory}
-          onBack={handleHistoryBack}
-          onDeleteConversations={handleBatchDelete}
-          onExportConversations={handleBatchExport}
-        />
-      </div>
+      <>
+        <div className="chat-sidebar-content">
+          <ChatHistoryView
+            currentProjectId={currentProjectId}
+            conversations={conversations}
+            onSelectConversation={handleSelectFromHistory}
+            onBack={handleHistoryBack}
+            onDeleteConversations={handleBatchDelete}
+            onExportConversations={handleBatchExport}
+          />
+        </div>
+        {renderModelSelector()}
+      </>
     );
   }
 
   return (
-    <div className="chat-sidebar-content">
-      {/* 消息内容区域 - 无分隔线一体化设计 */}
-      <div className="chat-messages-area">
-        {/* 会话标题栏 */}
-        <ChatSessionHeader
-          activeSession={
-            activeConversation
-              ? {
-                  id: activeConversation.id,
-                  title: activeConversation.title,
-                  messages: conversationMessages[activeConversation.id] || [],
-                  createdAt: activeConversation.created_at,
-                  updatedAt: activeConversation.updated_at,
-                }
-              : null
-          }
-          isSaving={isSaving}
-          saveError={saveError}
-          onHistoryClick={handleHistory}
-          onDeleteSession={handleDeleteSession}
-          onExportSession={handleExportSession}
-          onExportAllSessions={handleExportAllSessions}
-        />
+    <>
+      <div className="chat-sidebar-content">
+        {/* 消息内容区域 - 无分隔线一体化设计 */}
+        <div className="chat-messages-area">
+          {/* 会话标题栏 */}
+          <ChatSessionHeader
+            activeSession={
+              activeConversation
+                ? {
+                    id: activeConversation.id,
+                    title: activeConversation.title,
+                    messages: conversationMessages[activeConversation.id] || [],
+                    createdAt: activeConversation.created_at,
+                    updatedAt: activeConversation.updated_at,
+                  }
+                : null
+            }
+            isSaving={isSaving}
+            saveError={saveError}
+            onHistoryClick={handleHistory}
+            onDeleteSession={handleDeleteSession}
+            onExportSession={handleExportSession}
+            onExportAllSessions={handleExportAllSessions}
+          />
 
-        {showSocketWarning && (
-          <div className="chat-inline-warning" role="status">
-            <span className="chat-inline-warning-icon" aria-hidden>
-              <AlertTriangle size={16} />
-            </span>
-            <div className="chat-inline-warning-text">
-              <p>{t("chat:status.socketDisconnected")}</p>
-              <p>{t("chat:status.socketWarning")}</p>
+          {showSocketWarning && (
+            <div className="chat-inline-warning" role="status">
+              <span className="chat-inline-warning-icon" aria-hidden>
+                <AlertTriangle size={16} />
+              </span>
+              <div className="chat-inline-warning-text">
+                <p>{t("chat:status.socketDisconnected")}</p>
+                <p>{t("chat:status.socketWarning")}</p>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* 消息列表 */}
-        <MessageList
-          messages={displayMessages}
+          {/* 消息列表 */}
+          <MessageList
+            messages={displayMessages}
+            configLoading={configLoading}
+            llmConfig={llmConfig}
+            status={status}
+            expandedToolCalls={expandedToolCalls}
+            expandedThinkingBlocks={expandedThinkingBlocks}
+            onToolCallToggle={handleToolCallToggle}
+            onThinkingBlockToggle={handleThinkingBlockToggle}
+          />
+        </div>
+
+        {/* 底部输入区域 - 一体化设计 */}
+        <ChatInputArea
+          input={input}
+          setInput={setInput}
+          isChatStreaming={isChatStreaming}
           configLoading={configLoading}
           llmConfig={llmConfig}
-          status={status}
-          expandedToolCalls={expandedToolCalls}
-          expandedThinkingBlocks={expandedThinkingBlocks}
-          onToolCallToggle={handleToolCallToggle}
-          onThinkingBlockToggle={handleThinkingBlockToggle}
+          onSubmit={handleSubmit}
+          onCancel={handleCancel}
+          onNewChat={handleNewChat}
+          onHistory={handleHistory}
         />
       </div>
-
-      {/* 底部输入区域 - 一体化设计 */}
-      <ChatInputArea
-        input={input}
-        setInput={setInput}
-        isChatStreaming={isChatStreaming}
-        configLoading={configLoading}
-        llmConfig={llmConfig}
-        onSubmit={handleSubmit}
-        onCancel={handleCancel}
-        onNewChat={handleNewChat}
-        onHistory={handleHistory}
-      />
-    </div>
+      {renderModelSelector()}
+    </>
   );
 }

@@ -1,0 +1,73 @@
+/* 模型选择器浮动入口样式（ChatSidebar 专用） */
+
+.model-selector-container {
+  position: fixed;
+  bottom: clamp(12px, 4vw, 24px);
+  right: clamp(12px, 4vw, 24px);
+  z-index: 50;
+  min-width: 280px;
+  max-width: min(320px, 92vw);
+}
+
+.model-selector {
+  width: 100%;
+}
+
+.model-selector-trigger-content {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm, 0.5rem);
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-lg, 0.75rem);
+  border: 1px solid var(--border-default, var(--border));
+  background: color-mix(in oklch, var(--surface) 90%, transparent);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-2);
+  transition:
+    border-color var(--transition-normal, 200ms ease),
+    box-shadow var(--transition-normal, 200ms ease);
+}
+
+.model-selector-trigger-content:hover {
+  border-color: var(--border-hover, var(--border));
+  box-shadow: var(--shadow-4);
+}
+
+.model-option-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.model-option-content .model-name {
+  font-weight: 500;
+  color: var(--foreground-primary, var(--foreground));
+}
+
+.model-option-content .model-params {
+  font-size: 0.75rem;
+  color: var(--foreground-secondary, var(--text-secondary));
+  opacity: 0.8;
+}
+
+.provider-name {
+  margin-left: auto;
+  font-size: 0.875rem;
+  color: var(--foreground-secondary, var(--text-secondary));
+  opacity: 0.7;
+}
+
+.model-selector-empty {
+  padding: 1rem;
+  text-align: center;
+  color: var(--foreground-tertiary, var(--text-tertiary));
+  font-size: 0.875rem;
+}
+
+@media (max-width: 768px) {
+  .model-selector-container {
+    bottom: clamp(8px, 2vw, 16px);
+    right: clamp(8px, 2vw, 16px);
+    min-width: 240px;
+  }
+}

@@ -119,6 +119,7 @@
 - Markdown 渲染（react-markdown）
 - 工具状态卡片（进行中/成功/失败）
 - 模型信息条（图标 + 模型名 + 时间戳）
+- 右下角模型选择器（HeroUI Select 分组），按供应商列出模型，流式期间禁用选择
 
 #### 4.1 聊天子组件（app/components/chat/）
 
