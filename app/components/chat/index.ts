@@ -6,7 +6,6 @@
 export { default as ChatSidebar } from "../ChatSidebar";
 
 // 拆分后的子组件
-export { default as ChatSessionHeader } from "./ChatSessionHeader";
 export { default as ChatSessionMenu } from "./ChatSessionMenu";
 export { default as MessageList } from "./MessageList";
 export { default as MessageItem } from "./MessageItem";

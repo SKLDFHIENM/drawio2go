@@ -55,6 +55,16 @@ function apiError(code: ErrorCode, message: string, status = 500) {
 }
 
 export async function POST(req: NextRequest) {
+  const abortController = new AbortController();
+  const { signal: abortSignal } = abortController;
+
+  const abortListener = () => {
+    logger.info("[Chat API] 客户端请求中断，停止流式响应");
+    abortController.abort();
+  };
+
+  req.signal.addEventListener("abort", abortListener);
+
   try {
     const body = await req.json();
     const messages = body?.messages as UIMessage[] | undefined;
@@ -168,6 +178,7 @@ export async function POST(req: NextRequest) {
       temperature: normalizedConfig.temperature,
       tools: drawioTools,
       stopWhen: stepCountIs(normalizedConfig.maxToolRounds),
+      abortSignal,
       ...(experimentalParams && { experimental: experimentalParams }),
       onStepFinish: (step) => {
         requestLogger.debug("步骤完成", {
@@ -180,6 +191,15 @@ export async function POST(req: NextRequest) {
 
     return result.toUIMessageStreamResponse({ sendReasoning: true });
   } catch (error: unknown) {
+    if (error instanceof Error && error.name === "AbortError") {
+      logger.info("[Chat API] 流式响应被用户中断");
+      return apiError(
+        ErrorCodes.CHAT_REQUEST_CANCELLED,
+        "Request cancelled by user",
+        499,
+      );
+    }
+
     logger.error("Chat API error", error);
 
     let statusCode = 500;
@@ -207,5 +227,7 @@ export async function POST(req: NextRequest) {
     }
 
     return apiError(code, message, statusCode);
+  } finally {
+    req.signal.removeEventListener("abort", abortListener);
   }
 }

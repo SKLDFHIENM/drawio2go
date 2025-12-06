@@ -18,6 +18,10 @@
     "saving": "Auto-saving",
     "saved": "Saved",
     "retrying": "Retrying...",
+    "retryTitle": "Ready to Retry",
+    "retryDescription": "Last message restored to input box",
+    "userCancelled": "User cancelled this conversation",
+    "connectionLost": "Connection lost",
     "emptyConversation": "No messages yet. Say hi!",
     "loadMore": "Load more",
     "collapseAll": "Collapse all",
@@ -88,6 +92,8 @@
     "stop": "Stop",
     "newChat": "New chat",
     "openHistory": "History",
+    "retry": "Retry Last Message",
+    "waitingForAI": "Waiting for AI response...",
     "reset": "Clear input",
     "attachFile": "Attach file",
     "shortcuts": {
@@ -212,7 +218,9 @@
     "label": "Current model",
     "placeholder": "Select or search model",
     "empty": "No models available. Add providers and models in Settings first.",
-    "noResult": "No available models"
+    "noResult": "No available models",
+    "selectFailedTitle": "Model switch failed",
+    "selectFailedDescription": "Please choose another model or try again later."
   },
   "errors": {
     "loadFailed": "Failed to load messages",

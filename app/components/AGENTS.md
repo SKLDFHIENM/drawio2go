@@ -113,17 +113,17 @@
 **核心功能**:
 
 - 模块化架构（12个独立子组件）
-- 一体化布局：消息区 + 输入区
+- 一体化布局：消息区 + 输入区（含模型选择按钮）
 - 按钮组：新建聊天/历史对话（左）、版本管理/文件上传/发送（右）
 - @ai-sdk/react: `useChat` hook + 流式响应
 - Markdown 渲染（react-markdown）
 - 工具状态卡片（进行中/成功/失败）
 - 模型信息条（图标 + 模型名 + 时间戳）
-- 右下角模型选择器（HeroUI Select 分组），按供应商列出模型，流式期间禁用选择
+- 模型选择 Popover（HeroUI ComboBox 分组），按供应商列出模型，流式期间禁用选择
 
 #### 4.1 聊天子组件（app/components/chat/）
 
-**核心组件**: ChatSessionHeader、ChatSessionMenu、MessageList、MessageItem、MessageContent、ChatInputArea、ChatInputActions
+**核心组件**: ModelComboBox、ChatSessionMenu、MessageList、MessageItem、MessageContent、ChatInputArea、ChatInputActions
 
 **辅助组件**: EmptyState、ToolCallCard、ThinkingBlock
 

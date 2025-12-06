@@ -1,40 +1,27 @@
-/* 模型选择器浮动入口样式（ChatSidebar 专用） */
-
-.model-selector-container {
-  position: fixed;
-  bottom: clamp(12px, 4vw, 24px);
-  right: clamp(12px, 4vw, 24px);
-  z-index: 50;
-  min-width: 280px;
-  max-width: min(320px, 92vw);
-}
-
 .model-selector {
   width: 100%;
 }
 
-.model-selector-trigger-content {
+.model-combobox-wrapper {
+  position: relative;
   min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm, 0.5rem);
-  padding: var(--spacing-3) var(--spacing-md);
-  border-radius: var(--radius-lg, 0.75rem);
-  border: 1px solid var(--border-default, var(--border));
-  background: color-mix(in oklch, var(--surface) 90%, transparent);
-  backdrop-filter: blur(12px);
-  box-shadow: var(--shadow-2);
-  transition:
-    border-color var(--transition-normal, 200ms ease),
-    box-shadow var(--transition-normal, 200ms ease);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-.model-selector-trigger-content:hover {
-  border-color: var(--border-hover, var(--border));
-  box-shadow: var(--shadow-4);
+.model-combobox {
+  width: 100%;
+}
+
+.model-combobox .heroui-input-wrapper {
+  box-shadow: none;
+}
+
+.model-combobox-input {
+  min-height: 36px;
+  height: 36px;
+  border-radius: var(--radius-md, 0.5rem);
+  background: var(--surface, #fff);
+  border: 1px solid var(--border-default, var(--border));
+  box-shadow: none;
 }
 
 .model-option-content {
@@ -42,6 +29,7 @@
   flex-direction: column;
   gap: var(--spacing-xs);
 }
+
 .model-option-header {
   display: flex;
   align-items: center;
@@ -91,52 +79,6 @@
   font-size: 0.875rem;
 }
 
-.model-selector-container--inline {
-  position: static;
-  inset: auto;
-  min-width: 200px;
-  max-width: 360px;
-  flex: 1 1 220px;
-}
-
-.model-selector--inline {
-  width: 100%;
-}
-
-.model-combobox-wrapper {
-  position: relative;
-}
-
-.model-combobox-input {
-  min-height: 36px;
-  height: 36px;
-  border-radius: var(--radius-md, 0.5rem);
-  background: var(--surface, #fff);
-  border: 1px solid var(--border-default, var(--border));
-  box-shadow: none;
-}
-
-.model-selector--inline .model-selector-trigger-content {
-  padding: 0.45rem 0.75rem;
-  min-height: 36px;
-  border-radius: var(--radius-md, 0.5rem);
-  border: 1px solid var(--border-default, var(--border));
-  background: var(--surface, #fff);
-  box-shadow: none;
-  backdrop-filter: none;
-  white-space: nowrap;
-  overflow: hidden;
-}
-
-.model-selector--inline .model-selector-trigger-content:hover {
-  border-color: var(--border-hover, var(--border));
-  box-shadow: none;
-}
-
-.model-combobox .heroui-input-wrapper {
-  box-shadow: none;
-}
-
 .model-combobox-spinner {
   position: absolute;
   top: 50%;
@@ -146,40 +88,18 @@
   color: var(--foreground-secondary, var(--text-secondary));
 }
 
-.model-selector--inline [aria-disabled="true"],
-.model-selector--inline [data-disabled="true"] {
+.model-selector [aria-disabled="true"],
+.model-selector [data-disabled="true"] {
   opacity: 0.6;
 }
 
-@media (max-width: 768px) {
-  .model-selector-container {
-    bottom: clamp(8px, 2vw, 16px);
-    right: clamp(8px, 2vw, 16px);
-    min-width: 240px;
-  }
-}
-
 @media (max-width: 640px) {
-  .model-selector-container--inline {
-    min-width: 180px;
-    max-width: 70vw;
-  }
-
-  .model-selector--inline .model-selector-trigger-content {
-    padding: 0.4rem 0.65rem;
-  }
-
   .provider-name {
     display: none;
   }
 }
 
 @media (max-width: 480px) {
-  .model-selector-container--inline {
-    min-width: 160px;
-    max-width: 68vw;
-  }
-
   .model-option-meta {
     flex-direction: column;
     align-items: flex-start;

@@ -36,7 +36,7 @@ app/styles/components/
 ├── sessions.css             # 会话管理（标题栏、菜单）
 ├── toast.css                # Toast 通知系统
 ├── modal.css                # 弹窗样式（模态框）
-├── model-selector.css       # 模型选择器浮动入口（ChatSidebar 固定按钮）
+├── model-selector.css       # 模型选择器样式（Popover 内容、下拉项）
 ├── version-sidebar.css      # 版本侧边栏布局与空状态
 ├── version-timeline.css     # 版本时间线、卡片、对比查看器
 ├── version-dialog.css       # 版本对话框框架

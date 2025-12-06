@@ -33,20 +33,15 @@ import {
   fingerprintMessage,
   type ChatSessionService,
 } from "@/app/lib/chat-session-service";
+import { generateUUID } from "@/app/lib/utils";
 
 // 导入拆分后的组件
-import ChatSessionHeader from "./chat/ChatSessionHeader";
 import MessageList from "./chat/MessageList";
 import ChatInputArea from "./chat/ChatInputArea";
 import ChatHistoryView from "./chat/ChatHistoryView";
-import ModelComboBox from "./chat/ModelComboBox";
 
 // 导出工具
-import {
-  exportBlobContent,
-  exportSessionsAsJson,
-  type ExportSessionPayload,
-} from "./chat/utils/fileExport";
+import { exportBlobContent } from "./chat/utils/fileExport";
 import { createLogger } from "@/lib/logger";
 
 const logger = createLogger("ChatSidebar");
@@ -89,7 +84,6 @@ export default function ChatSidebar({
   const {
     createConversation,
     updateConversation,
-    deleteConversation: deleteConversationFromStorage,
     batchDeleteConversations,
     exportConversations,
     getMessages,
@@ -118,8 +112,6 @@ export default function ChatSidebar({
   const [defaultXmlVersionId, setDefaultXmlVersionId] = useState<string | null>(
     null,
   );
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
   const { t, i18n } = useI18n();
   const { push } = useToast();
   const { open: openAlertDialog, close: closeAlertDialog } = useAlertDialog();
@@ -138,10 +130,6 @@ export default function ChatSidebar({
   const socketAlertSeenRef = useRef(false);
 
   // ========== 派生状态 ==========
-  const activeConversation = useMemo(() => {
-    return conversations.find((c) => c.id === activeConversationId) || null;
-  }, [conversations, activeConversationId]);
-
   const initialMessages = useMemo<ChatUIMessage[]>(() => {
     return activeConversationId
       ? conversationMessages[activeConversationId] || []
@@ -280,13 +268,15 @@ export default function ChatSidebar({
   const handleSaveError = useCallback(
     (message: string) => {
       const normalizedMessage = message?.trim() ?? "";
-      setSaveError(normalizedMessage || null);
-
       if (normalizedMessage) {
-        push({ variant: "danger", description: normalizedMessage });
+        push({
+          variant: "danger",
+          title: t("toasts.operationFailedTitle"),
+          description: normalizedMessage,
+        });
       }
     },
-    [push],
+    [push, t],
   );
 
   const loadModelSelector = useCallback(
@@ -356,7 +346,6 @@ export default function ChatSidebar({
         ensureMessageMetadata,
         defaultXmlVersionId,
         onMessagesChange: handleMessagesChange,
-        onSavingChange: setIsSaving,
         onSaveError: handleSaveError,
       },
     );
@@ -470,26 +459,6 @@ export default function ChatSidebar({
       });
     },
     [chatService],
-  );
-
-  const exportSessions = useCallback(
-    async (sessions: ExportSessionPayload[], defaultFilename: string) => {
-      const success = await exportSessionsAsJson(sessions, defaultFilename, {
-        t,
-        locale: i18n.language,
-      });
-      if (success) {
-        showNotice(t("toasts.sessionExportSuccess"), "success");
-      } else {
-        showNotice(
-          t("toasts.sessionExportFailed", {
-            error: t("toasts.unknownError"),
-          }),
-          "danger",
-        );
-      }
-    },
-    [showNotice, t, i18n.language],
   );
 
   // ========== 初始化 ==========
@@ -654,6 +623,17 @@ export default function ChatSidebar({
     [messages, ensureMessageMetadata],
   );
 
+  const lastMessageIsUser = useMemo(() => {
+    if (!displayMessages || displayMessages.length === 0) return false;
+    const lastMsg = displayMessages[displayMessages.length - 1];
+    return lastMsg.role === "user";
+  }, [displayMessages]);
+
+  const canSendNewMessage = useMemo(() => {
+    if (isChatStreaming) return true;
+    return !lastMessageIsUser;
+  }, [isChatStreaming, lastMessageIsUser]);
+
   const areFingerprintsEqual = useCallback(
     (a: string[] | undefined, b: string[] | undefined) => {
       if (!a || !b) return false;
@@ -780,12 +760,93 @@ export default function ChatSidebar({
     }
   }, [chatError, extractErrorMessage, pushErrorToast, t]);
 
+  useEffect(() => {
+    if (!isChatStreaming) return;
+
+    const handleBeforeUnload = () => {
+      if (!activeConversationId) return;
+
+      logger.warn("[ChatSidebar] 页面卸载，尝试保存会话状态");
+
+      const disconnectMessage: ChatUIMessage = {
+        id: generateUUID("msg"),
+        role: "system",
+        parts: [
+          {
+            type: "text",
+            text: t("chat:messages.connectionLost"),
+          },
+        ],
+        metadata: {
+          createdAt: Date.now(),
+          isDisconnected: true,
+        },
+      };
+
+      const baseMessages =
+        chatService.getCachedMessages(activeConversationId) ?? displayMessages;
+
+      const nextMessages = [...baseMessages, disconnectMessage];
+
+      void chatService
+        .saveNow(activeConversationId, nextMessages, {
+          resolveConversationId,
+          onConversationResolved: (resolvedId) => {
+            setActiveConversationId(resolvedId);
+          },
+        })
+        .then(() => {
+          logger.info("[ChatSidebar] 断开连接消息已保存");
+        })
+        .catch((error) => {
+          logger.error("[ChatSidebar] 保存断开连接消息失败:", error);
+          push({
+            variant: "danger",
+            title: t("toasts.autoSaveFailed"),
+            description: extractErrorMessage(error) ?? t("toasts.unknownError"),
+          });
+        });
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        logger.debug("[ChatSidebar] Tab切换到后台");
+      } else {
+        logger.debug("[ChatSidebar] Tab切换到前台");
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [
+    activeConversationId,
+    chatService,
+    displayMessages,
+    extractErrorMessage,
+    isChatStreaming,
+    push,
+    resolveConversationId,
+    setActiveConversationId,
+    t,
+  ]);
+
   // ========== 事件处理函数 ==========
 
   const submitMessage = async () => {
     const trimmedInput = input.trim();
 
-    if (!trimmedInput || !llmConfig || configLoading || isChatStreaming) {
+    if (
+      !trimmedInput ||
+      !llmConfig ||
+      configLoading ||
+      isChatStreaming ||
+      !canSendNewMessage
+    ) {
       return;
     }
 
@@ -860,11 +921,117 @@ export default function ChatSidebar({
     await submitMessage();
   };
 
-  const handleCancel = () => {
-    if (isChatStreaming) {
-      stop();
+  const handleCancel = useCallback(async () => {
+    if (!isChatStreaming) return;
+
+    logger.info("[ChatSidebar] 用户取消聊天");
+    stop();
+
+    const targetConversationId =
+      activeConversationId ?? sendingSessionIdRef.current;
+
+    if (!targetConversationId) {
+      sendingSessionIdRef.current = null;
+      return;
     }
-  };
+
+    const cancelMessage: ChatUIMessage = {
+      id: generateUUID("msg"),
+      role: "system",
+      parts: [
+        {
+          type: "text",
+          text: t("chat:messages.userCancelled"),
+        },
+      ],
+      metadata: {
+        createdAt: Date.now(),
+        isCancelled: true,
+      },
+    };
+
+    const baseMessages =
+      activeConversationId === targetConversationId
+        ? displayMessages
+        : (chatService.getCachedMessages(targetConversationId) ?? []);
+
+    const nextMessages = [...baseMessages, cancelMessage];
+
+    if (activeConversationId === targetConversationId) {
+      setMessages(nextMessages);
+    }
+
+    try {
+      await chatService.saveNow(targetConversationId, nextMessages, {
+        resolveConversationId,
+        onConversationResolved: (resolvedId) => {
+          setActiveConversationId(resolvedId);
+        },
+      });
+      logger.info("[ChatSidebar] 取消消息已同步保存");
+    } catch (error) {
+      logger.error("[ChatSidebar] 保存取消消息失败:", error);
+      push({
+        variant: "danger",
+        title: t("toasts.autoSaveFailed"),
+        description: extractErrorMessage(error) ?? t("toasts.unknownError"),
+      });
+    } finally {
+      sendingSessionIdRef.current = null;
+    }
+  }, [
+    activeConversationId,
+    chatService,
+    displayMessages,
+    extractErrorMessage,
+    isChatStreaming,
+    push,
+    resolveConversationId,
+    setActiveConversationId,
+    setMessages,
+    stop,
+    t,
+  ]);
+
+  const handleRetry = useCallback(() => {
+    if (!lastMessageIsUser) return;
+
+    const lastMessage = displayMessages[displayMessages.length - 1];
+    if (!lastMessage || lastMessage.role !== "user") return;
+
+    const textParts =
+      lastMessage.parts
+        ?.filter((part) => (part as { type?: unknown }).type === "text")
+        .map((part) =>
+          typeof (part as { text?: unknown }).text === "string"
+            ? (part as { text?: string }).text
+            : "",
+        )
+        .filter(Boolean) ?? [];
+
+    const messageText = textParts.join(" ").trim();
+
+    if (!messageText) {
+      logger.warn("[ChatSidebar] 重试失败：最后一条消息为空");
+      return;
+    }
+
+    setInput(messageText);
+    setMessages((prev) => {
+      if (prev.length === 0) return prev;
+      const lastPrev = prev[prev.length - 1];
+      if (lastPrev.role !== "user") return prev;
+      return prev.slice(0, -1);
+    });
+
+    push({
+      variant: "success",
+      title: t("chat:messages.retryTitle"),
+      description: t("chat:messages.retryDescription"),
+    });
+
+    logger.info("[ChatSidebar] 已准备重试上一条消息");
+  }, [displayMessages, lastMessageIsUser, push, setInput, setMessages, t]);
 
   const handleNewChat = useCallback(async () => {
     try {
@@ -881,104 +1048,6 @@ export default function ChatSidebar({
 
   const handleHistory = () => {
     setCurrentView("history");
-  };
-
-  const handleDeleteSession = useCallback(async () => {
-    if (!activeConversation) return;
-
-    if (conversations.length === 1) {
-      showNotice(t("toasts.sessionDeleteKeepOne"), "warning");
-      return;
-    }
-
-    const messages =
-      conversationMessages[activeConversation.id] ??
-      (await ensureMessagesForConversation(activeConversation.id));
-    const messageCountLabel = t("chat:messages.counts.messageCount", {
-      count: messages.length,
-    });
-
-    alertOwnerRef.current = "single-delete";
-    openAlertDialog({
-      status: "danger",
-      title: t("chat:dialogs.deleteConversationTitle", {
-        title: activeConversation.title,
-      }),
-      description: t("chat:dialogs.deleteConversationDescription", {
-        title: activeConversation.title,
-        messageCount: messageCountLabel,
-      }),
-      actionLabel: t("chat:conversations.actions.delete"),
-      cancelLabel: t("actions.cancel", "取消"),
-      isDismissable: false,
-      onAction: async () => {
-        try {
-          await deleteConversationFromStorage(activeConversation.id);
-          setActiveConversationId(null);
-          removeConversationsFromState([activeConversation.id]);
-          alertOwnerRef.current = null;
-        } catch (error) {
-          logger.error("[ChatSidebar] 删除对话失败:", error);
-          const errorMessage =
-            extractErrorMessage(error) ?? t("toasts.unknownError");
-          showNotice(
-            t("toasts.sessionDeleteFailed", { error: errorMessage }),
-            "danger",
-          );
-          throw error;
-        }
-      },
-      onCancel: () => {
-        alertOwnerRef.current = null;
-      },
-    });
-  }, [
-    activeConversation,
-    conversationMessages,
-    ensureMessagesForConversation,
-    extractErrorMessage,
-    conversations.length,
-    deleteConversationFromStorage,
-    openAlertDialog,
-    removeConversationsFromState,
-    showNotice,
-    t,
-    setActiveConversationId,
-  ]);
-
-  const handleExportSession = async () => {
-    if (!activeConversation) return;
-
-    const messages = await ensureMessagesForConversation(activeConversation.id);
-    await exportSessions(
-      [
-        {
-          id: activeConversation.id,
-          title: activeConversation.title,
-          messages,
-          createdAt: activeConversation.created_at,
-          updatedAt: activeConversation.updated_at,
-        },
-      ],
-      `chat-${activeConversation.title}.json`,
-    );
-  };
-
-  const handleExportAllSessions = async () => {
-    const allSessions = await Promise.all(
-      conversations.map(async (conv) => ({
-        id: conv.id,
-        title: conv.title,
-        messages: await ensureMessagesForConversation(conv.id),
-        createdAt: conv.created_at,
-        updatedAt: conv.updated_at,
-      })),
-    );
-
-    await exportSessions(
-      allSessions,
-      `all-chats-${new Date().toISOString().split("T")[0]}.json`,
-    );
   };
 
   const handleSessionSelect = async (sessionId: string) => {
@@ -1183,6 +1252,15 @@ export default function ChatSidebar({
 
   const modelSelectorDisabled = isChatStreaming || selectorLoading;
 
+  const selectedModelLabel = useMemo(() => {
+    const matchedModel = models.find((model) => model.id === selectedModelId);
+    if (matchedModel) {
+      return matchedModel.displayName || matchedModel.modelName;
+    }
+    if (llmConfig?.modelName) return llmConfig.modelName;
+    return t("chat:modelSelector.label");
+  }, [llmConfig, models, selectedModelId, t]);
+
   if (currentView === "history") {
     return (
       <>
@@ -1203,30 +1281,8 @@ export default function ChatSidebar({
   return (
     <>
       <div className="chat-sidebar-content">
-        {/* 消息内容区域 - 无分隔线一体化设计 */}
+        {/* 消息内容区域 */}
         <div className="chat-messages-area">
-          {/* 会话标题栏 */}
-          <ChatSessionHeader
-            activeSession={
-              activeConversation
-                ? {
-                    id: activeConversation.id,
-                    title: activeConversation.title,
-                    messages: conversationMessages[activeConversation.id] || [],
-                    createdAt: activeConversation.created_at,
-                    updatedAt: activeConversation.updated_at,
-                  }
-                : null
-            }
-            isSaving={isSaving}
-            saveError={saveError}
-            onHistoryClick={handleHistory}
-            onDeleteSession={handleDeleteSession}
-            onExportSession={handleExportSession}
-            onExportAllSessions={handleExportAllSessions}
-          />
-
-          {/* 消息列表 */}
           <MessageList
             messages={displayMessages}
             configLoading={configLoading}
@@ -1246,20 +1302,22 @@ export default function ChatSidebar({
           isChatStreaming={isChatStreaming}
           configLoading={configLoading}
           llmConfig={llmConfig}
+          canSendNewMessage={canSendNewMessage}
+          lastMessageIsUser={lastMessageIsUser}
           onSubmit={handleSubmit}
           onCancel={handleCancel}
           onNewChat={handleNewChat}
           onHistory={handleHistory}
-          modelSelector={
-            <ModelComboBox
-              providers={providers}
-              models={models}
-              selectedModelId={selectedModelId}
-              onSelect={(value) => handleModelChange(value)}
-              disabled={modelSelectorDisabled}
-              isLoading={selectorLoading}
-            />
-          }
+          onRetry={handleRetry}
+          modelSelectorProps={{
+            providers,
+            models,
+            selectedModelId,
+            onSelectModel: handleModelChange,
+            isDisabled: modelSelectorDisabled,
+            isLoading: selectorLoading,
+            modelLabel: selectedModelLabel,
+          }}
         />
       </div>
     </>

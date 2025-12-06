@@ -1,32 +1,62 @@
 "use client";
 
+import { useCallback, useEffect, useState } from "react";
 import {
   Button,
+  Popover,
+  Spinner,
   TooltipContent,
   TooltipRoot,
   type ButtonProps,
 } from "@heroui/react";
+import { Cpu, RotateCcw } from "lucide-react";
 import { useAppTranslation } from "@/app/i18n/hooks";
-import { type ReactNode } from "react";
+import type { ModelConfig, ProviderConfig } from "@/app/types/chat";
+import ModelComboBox from "./ModelComboBox";
+import { useToast } from "@/app/components/toast";
 
 interface ChatInputActionsProps {
   isSendDisabled: boolean;
   isChatStreaming: boolean;
+  canSendNewMessage: boolean;
+  lastMessageIsUser: boolean;
   onCancel?: () => void;
   onNewChat: () => void;
   onHistory: () => void;
-  modelSelector?: ReactNode;
+  onRetry: () => void;
+  modelSelectorProps: {
+    providers: ProviderConfig[];
+    models: ModelConfig[];
+    selectedModelId: string | null;
+    onSelectModel: (modelId: string) => Promise<void> | void;
+    isDisabled: boolean;
+    isLoading: boolean;
+    modelLabel: string;
+  };
 }
 
 export default function ChatInputActions({
   isSendDisabled,
   isChatStreaming,
+  canSendNewMessage,
+  lastMessageIsUser,
   onCancel,
   onNewChat,
   onHistory,
-  modelSelector,
+  onRetry,
+  modelSelectorProps,
 }: ChatInputActionsProps) {
   const { t } = useAppTranslation("chat");
+  const {
+    providers,
+    models,
+    selectedModelId,
+    onSelectModel,
+    isDisabled: isModelSelectorDisabled,
+    isLoading: isModelSelectorLoading,
+    modelLabel,
+  } = modelSelectorProps;
+  const { push } = useToast();
   const canCancel = Boolean(isChatStreaming && onCancel);
   const sendButtonVariant: ButtonProps["variant"] = canCancel
     ? "danger"
@@ -37,12 +67,37 @@ export default function ChatInputActions({
     : isChatStreaming
       ? true
       : isSendDisabled;
+  const [isModelPopoverOpen, setIsModelPopoverOpen] = useState(false);
+
+  useEffect(() => {
+    if (isModelSelectorDisabled) {
+      setIsModelPopoverOpen(false);
+    }
+  }, [isModelSelectorDisabled]);
+
+  const handleModelSelect = useCallback(
+    async (modelId: string) => {
+      try {
+        await onSelectModel(modelId);
+        setIsModelPopoverOpen(false);
+      } catch (error) {
+        push({
+          variant: "danger",
+          title: t("modelSelector.selectFailedTitle"),
+          description:
+            (error as Error)?.message ??
+            t("modelSelector.selectFailedDescription"),
+        });
+        setIsModelPopoverOpen(true);
+      }
+    },
+    [onSelectModel, push, t],
+  );
 
   return (
     <div className="chat-input-actions">
       {/* 左侧按钮组 */}
       <div className="chat-actions-left">
-        {modelSelector}
         <TooltipRoot delay={0}>
           <Button
             size="sm"
@@ -101,6 +156,52 @@ export default function ChatInputActions({
 
       {/* 右侧按钮组 */}
       <div className="chat-actions-right">
+        {lastMessageIsUser && !isChatStreaming && (
+          <Button
+            variant="secondary"
+            size="sm"
+            onPress={onRetry}
+            aria-label={t("input.retry")}
+          >
+            <RotateCcw size={16} aria-hidden />
+            {t("input.retry")}
+          </Button>
+        )}
+
+        <Popover
+          isOpen={isModelPopoverOpen}
+          onOpenChange={setIsModelPopoverOpen}
+        >
+          <Popover.Trigger>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="chat-model-button"
+              isDisabled={isModelSelectorDisabled}
+              aria-label={`${t("modelSelector.label")}: ${modelLabel}`}
+            >
+              {isModelSelectorLoading ? (
+                <Spinner size="sm" />
+              ) : (
+                <Cpu size={16} aria-hidden />
+              )}
+              <span className="chat-model-button__label">{modelLabel}</span>
+            </Button>
+          </Popover.Trigger>
+          <Popover.Content className="chat-model-popover" placement="top end">
+            <ModelComboBox
+              providers={providers}
+              models={models}
+              selectedModelId={selectedModelId}
+              onSelect={handleModelSelect}
+              disabled={isModelSelectorDisabled}
+              isLoading={isModelSelectorLoading}
+              isOpen={isModelPopoverOpen}
+            />
+          </Popover.Content>
+        </Popover>
+
         <Button
           type={sendButtonType}
           variant={sendButtonVariant}
@@ -142,6 +243,10 @@ export default function ChatInputActions({
           )}
           {canCancel ? t("input.stop") : t("input.send")}
         </Button>
+
+        {!canSendNewMessage && !isChatStreaming && (
+          <span className="chat-waiting-hint">{t("input.waitingForAI")}</span>
+        )}
       </div>
     </div>
   );

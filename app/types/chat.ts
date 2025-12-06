@@ -123,6 +123,8 @@ export interface ChatMessage {
 export interface MessageMetadata {
   modelName?: string | null;
   createdAt?: number;
+  isCancelled?: boolean;
+  isDisconnected?: boolean;
 }
 
 export type ChatUIMessage = UIMessage<MessageMetadata>;

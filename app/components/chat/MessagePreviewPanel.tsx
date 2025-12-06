@@ -44,7 +44,7 @@ export default function MessagePreviewPanel({
   );
 
   return (
-    <aside className="history-preview" aria-live="polite">
+    <aside className="history-preview" aria-live="polite" data-visible={isOpen}>
       <div className="history-preview__header">
         <div className="history-preview__title">
           <p className="history-preview__name">{conversation.title}</p>
@@ -77,7 +77,7 @@ export default function MessagePreviewPanel({
       <div className="history-preview__content">
         {loading ? (
           <div className="history-preview__loading">
-            <Spinner size="sm" />
+            <Spinner size="md" />
             <span>{t("messages.loading")}</span>
           </div>
         ) : messages.length === 0 ? (

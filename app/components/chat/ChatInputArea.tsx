@@ -1,8 +1,12 @@
 "use client";
 
-import { type FormEvent, type KeyboardEvent, type ReactNode } from "react";
+import { type FormEvent, type KeyboardEvent } from "react";
 import { TextArea } from "@heroui/react";
-import { type LLMConfig } from "@/app/types/chat";
+import {
+  type LLMConfig,
+  type ModelConfig,
+  type ProviderConfig,
+} from "@/app/types/chat";
 import ChatInputActions from "./ChatInputActions";
 import { useAppTranslation } from "@/app/i18n/hooks";
 
@@ -12,11 +16,22 @@ interface ChatInputAreaProps {
   isChatStreaming: boolean;
   configLoading: boolean;
   llmConfig: LLMConfig | null;
+  canSendNewMessage: boolean;
+  lastMessageIsUser: boolean;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onCancel?: () => void;
   onNewChat: () => void;
   onHistory: () => void;
-  modelSelector?: ReactNode;
+  onRetry: () => void;
+  modelSelectorProps: {
+    providers: ProviderConfig[];
+    models: ModelConfig[];
+    selectedModelId: string | null;
+    onSelectModel: (modelId: string) => Promise<void> | void;
+    isDisabled: boolean;
+    isLoading: boolean;
+    modelLabel: string;
+  };
 }
 
 export default function ChatInputArea({
@@ -25,15 +40,22 @@ export default function ChatInputArea({
   isChatStreaming,
   configLoading,
   llmConfig,
+  canSendNewMessage,
+  lastMessageIsUser,
   onSubmit,
   onCancel,
   onNewChat,
   onHistory,
-  modelSelector,
+  onRetry,
+  modelSelectorProps,
 }: ChatInputAreaProps) {
   const { t } = useAppTranslation("chat");
   const isSendDisabled =
-    !input.trim() || isChatStreaming || configLoading || !llmConfig;
+    !input.trim() ||
+    isChatStreaming ||
+    configLoading ||
+    !llmConfig ||
+    !canSendNewMessage;
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Enter" && !event.shiftKey) {
@@ -61,7 +83,7 @@ export default function ChatInputArea({
           value={input}
           onChange={(event) => setInput(event.target.value)}
           rows={3}
-          disabled={configLoading || !llmConfig}
+          disabled={configLoading || !llmConfig || !canSendNewMessage}
           onKeyDown={handleKeyDown}
           className="w-full"
           aria-label={t("aria.input")}
@@ -71,10 +93,13 @@ export default function ChatInputArea({
         <ChatInputActions
           isSendDisabled={isSendDisabled}
           isChatStreaming={isChatStreaming}
+          canSendNewMessage={canSendNewMessage}
+          lastMessageIsUser={lastMessageIsUser}
           onCancel={onCancel}
           onNewChat={onNewChat}
           onHistory={onHistory}
-          modelSelector={modelSelector}
+          onRetry={onRetry}
+          modelSelectorProps={modelSelectorProps}
         />
       </form>
     </div>

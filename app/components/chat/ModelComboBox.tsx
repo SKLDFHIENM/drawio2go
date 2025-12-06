@@ -28,6 +28,7 @@ export interface ModelComboBoxProps {
   onSelect: (modelId: string) => void;
   disabled?: boolean;
   isLoading?: boolean;
+  isOpen?: boolean;
 }
 
 interface GroupedModels {
@@ -47,6 +48,7 @@ export default function ModelComboBox({
   onSelect,
   disabled = false,
   isLoading = false,
+  isOpen = false,
 }: ModelComboBoxProps) {
   const [inputValue, setInputValue] = useState("");
   const { t } = useI18n();
@@ -103,14 +105,12 @@ export default function ModelComboBox({
       .filter(Boolean) as GroupedModels[];
   }, [groupedModels, inputValue]);
 
-  const selectedLabel = useMemo(() => {
-    const selected = models.find((model) => model.id === selectedModelId);
-    return selected ? getModelLabel(selected) : "";
-  }, [models, selectedModelId]);
-
+  // Popover 打开时重置搜索框，默认显示全部模型
   useEffect(() => {
-    setInputValue(selectedLabel);
-  }, [selectedLabel]);
+    if (isOpen) {
+      setInputValue("");
+    }
+  }, [isOpen]);
 
   const handleSelectionChange = useCallback(
     (key: Key | null) => {
@@ -141,86 +141,90 @@ export default function ModelComboBox({
 
   const noResult = filteredGroups.length === 0;
 
-  return (
-    <div className="model-selector-container model-selector-container--inline">
-      {providers.length === 0 || models.length === 0 ? (
-        <p className="model-selector-empty">{t("chat:modelSelector.empty")}</p>
-      ) : (
-        <div className="model-combobox-wrapper">
-          <ComboBox
-            aria-label="当前模型"
-            className="model-selector model-selector--inline model-combobox"
-            selectedKey={selectedModelId ?? null}
-            onSelectionChange={handleSelectionChange}
-            inputValue={inputValue}
-            onInputChange={handleInputChange}
-            isDisabled={isDisabled}
-          >
-            <Label>{t("chat:modelSelector.label")}</Label>
-            <Input
-              placeholder={t("chat:modelSelector.placeholder")}
-              aria-label={t("chat:modelSelector.placeholder")}
-              onKeyDown={handleInputKeyDown}
-              className="model-combobox-input"
-            />
-            <ListBox>
-              {noResult ? (
-                <ListBox.Item
-                  key="no-result"
-                  id="no-result"
-                  textValue={t("chat:modelSelector.noResult")}
-                  isDisabled
-                >
-                  <div className="model-selector-empty">
-                    {t("chat:modelSelector.noResult")}
-                  </div>
-                </ListBox.Item>
-              ) : (
-                filteredGroups.map(({ provider, models: providerModels }) => (
-                  <ListBox.Section key={provider.id}>
-                    <Header>{provider.displayName}</Header>
-                    {providerModels.map((model) => (
-                      <ListBox.Item
-                        key={model.id}
-                        id={model.id}
-                        textValue={getModelLabel(model)}
-                      >
-                        <div className="model-option-content">
-                          <div className="model-option-header">
-                            <span className="model-name">
-                              {getModelLabel(model)}
-                            </span>
-                            {model.isDefault && (
-                              <Chip size="sm" variant="secondary">
-                                默认
-                              </Chip>
-                            )}
-                          </div>
-                          <div className="model-option-meta">
-                            <span className="model-params">
-                              温度: {model.temperature} | 工具轮次:{" "}
-                              {model.maxToolRounds}
-                            </span>
-                            <span className="provider-name">
-                              <Cpu size={14} aria-hidden />
-                              <span>{provider.displayName}</span>
-                            </span>
-                          </div>
-                        </div>
-                        <ListBox.ItemIndicator />
-                      </ListBox.Item>
-                    ))}
-                  </ListBox.Section>
-                ))
-              )}
-            </ListBox>
-          </ComboBox>
+  if (providers.length === 0 || models.length === 0) {
+    return (
+      <p className="model-selector-empty">{t("chat:modelSelector.empty")}</p>
+    );
+  }
 
-          {isLoading && (
-            <div className="model-combobox-spinner" aria-hidden>
-              <Spinner size="sm" />
-            </div>
+  return (
+    <div className="model-combobox-wrapper">
+      <ComboBox
+        aria-label="当前模型"
+        className="model-selector model-combobox"
+        selectedKey={selectedModelId ?? null}
+        onSelectionChange={handleSelectionChange}
+        inputValue={inputValue}
+        onInputChange={handleInputChange}
+        isDisabled={isDisabled}
+        menuTrigger="focus"
+        allowsEmptyCollection
+        allowsCustomValue
+      >
+        <Label>{t("chat:modelSelector.label")}</Label>
+        <Input
+          placeholder={t("chat:modelSelector.placeholder")}
+          aria-label={t("chat:modelSelector.placeholder")}
+          onKeyDown={handleInputKeyDown}
+          autoFocus={isOpen}
+          className="model-combobox-input"
+        />
+        <ListBox>
+          {noResult ? (
+            <ListBox.Item
+              key="no-result"
+              id="no-result"
+              textValue={t("chat:modelSelector.noResult")}
+              isDisabled
+            >
+              <div className="model-selector-empty">
+                {t("chat:modelSelector.noResult")}
+              </div>
+            </ListBox.Item>
+          ) : (
+            filteredGroups.map(({ provider, models: providerModels }) => (
+              <ListBox.Section key={provider.id}>
+                <Header>{provider.displayName}</Header>
+                {providerModels.map((model) => (
+                  <ListBox.Item
+                    key={model.id}
+                    id={model.id}
+                    textValue={getModelLabel(model)}
+                  >
+                    <div className="model-option-content">
+                      <div className="model-option-header">
+                        <span className="model-name">
+                          {getModelLabel(model)}
+                        </span>
+                        {model.isDefault && (
+                          <Chip size="sm" variant="secondary">
+                            默认
+                          </Chip>
+                        )}
+                      </div>
+                      <div className="model-option-meta">
+                        <span className="model-params">
+                          温度: {model.temperature} | 工具轮次:{" "}
+                          {model.maxToolRounds}
+                        </span>
+                        <span className="provider-name">
+                          <Cpu size={14} aria-hidden />
+                          <span>{provider.displayName}</span>
+                        </span>
+                      </div>
+                    </div>
+                    <ListBox.ItemIndicator />
+                  </ListBox.Item>
+                ))}
+              </ListBox.Section>
+            ))
           )}
+        </ListBox>
+      </ComboBox>
+
+      {isLoading && (
+        <div className="model-combobox-spinner" aria-hidden>
+          <Spinner size="sm" />
         </div>
       )}
     </div>
