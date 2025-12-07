@@ -17,6 +17,7 @@ import { WIP_VERSION } from "./lib/storage/constants";
 import { useToast } from "./components/toast";
 import { useAppTranslation, useI18n } from "./i18n/hooks";
 import { createLogger } from "./lib/logger";
+import { toErrorString } from "./lib/error-handler";
 
 const logger = createLogger("Page");
 
@@ -138,21 +139,7 @@ export default function Home() {
       };
 
       loadDefaultPath();
-
-      // 监听 AI 工具触发的 XML 替换事件
-      const handleAIXmlReplaced = (event: Event) => {
-        const customEvent = event as CustomEvent<{ xml: string }>;
-        if (customEvent.detail?.xml && editorRef.current) {
-          logger.info("AI 工具更新了 XML，正在加载到编辑器");
-          editorRef.current.loadDiagram(customEvent.detail.xml);
-        }
-      };
-
-      window.addEventListener("ai-xml-replaced", handleAIXmlReplaced);
-
-      return () => {
-        window.removeEventListener("ai-xml-replaced", handleAIXmlReplaced);
-      };
+      return undefined;
     }
   }, [getDefaultPath, editorRef]);
 
@@ -309,7 +296,7 @@ export default function Home() {
     } catch (error) {
       logger.error("手动保存失败", { error });
       push({
-        description: t("toasts.saveFailed", { error: String(error) }),
+        description: t("toasts.saveFailed", { error: toErrorString(error) }),
         variant: "danger",
       });
     }
@@ -331,7 +318,9 @@ export default function Home() {
             error,
           });
           push({
-            description: t("toasts.loadFailed", { error: String(error) }),
+            description: t("toasts.loadFailed", {
+              error: toErrorString(error),
+            }),
             variant: "danger",
           });
         }
@@ -363,7 +352,9 @@ export default function Home() {
                 error,
               });
               push({
-                description: t("toasts.loadFailed", { error: String(error) }),
+                description: t("toasts.loadFailed", {
+                  error: toErrorString(error),
+                }),
                 variant: "danger",
               });
             }

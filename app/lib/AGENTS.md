@@ -224,6 +224,8 @@ const xml = await restoreXMLFromVersion("version-id", storage);
 - 使用统一存储抽象层（Electron: SQLite, Web: IndexedDB）
 - 提供 `getDrawioXML()`、`replaceDrawioXML()`、`saveDrawioXML()` 三个接口
 - 通过 `drawio-xml-updated` 自定义事件通知编辑器更新
+- `replaceDrawioXML` 新增 `skipExportValidation`：AI merge 场景（`drawio_edit_batch`）信任 `drawio-merge-success`，跳过 export 校验；完整 load/overwrite 仍保留验证
+- export 校验仅比较关键语义（mxCell 数量与 id 集合），避免因属性排序/默认值导致误报
 - XML 归一化在 `storage/writers.prepareXmlContext` 统一处理
 - **WIP 工作区**: 实时自动保存到 v0.0.0，不计入历史版本，每次写入刷新时间戳
 

@@ -1,7 +1,16 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { Accordion, Button, Card, Chip, ListBox, Popover } from "@heroui/react";
+import {
+  Accordion,
+  Button,
+  Card,
+  Chip,
+  ListBox,
+  Popover,
+  TooltipContent,
+  TooltipRoot,
+} from "@heroui/react";
 import {
   Brain,
   Edit,
@@ -341,7 +350,7 @@ export default function ModelsSettingsPanel({
       {providers.length > 0 && (
         <Accordion
           variant="surface"
-          className="mt-4 flex w-full max-w-[760px] flex-col gap-2 rounded-2xl border border-default-200 bg-content1 p-2"
+          className="mt-4 flex w-full flex-col gap-2 rounded-2xl border border-default-200 bg-content1 p-2"
         >
           {providers.map((provider) => {
             const providerModels = modelsMap.get(provider.id) ?? [];
@@ -441,7 +450,7 @@ export default function ModelsSettingsPanel({
                   <Accordion.Body>
                     <div className="rounded-lg border border-default-200 bg-content1 px-3 py-2">
                       <div className="flex flex-col gap-1.5 text-sm text-foreground">
-                        <div className="grid grid-cols-[minmax(96px,0.3fr)_minmax(0,1fr)] items-start gap-2 sm:flex sm:items-center sm:gap-2">
+                        <div className="grid grid-cols-1 items-start gap-1.5 sm:grid-cols-[96px_1fr] sm:items-center sm:gap-2">
                           <span className="text-default-500 sm:w-24 sm:flex-shrink-0">
                             {t("models.provider.type")}
                           </span>
@@ -449,7 +458,7 @@ export default function ModelsSettingsPanel({
                             {provider.providerType}
                           </span>
                         </div>
-                        <div className="grid grid-cols-[minmax(96px,0.3fr)_minmax(0,1fr)] items-start gap-2 sm:flex sm:items-center sm:gap-2">
+                        <div className="grid grid-cols-1 items-start gap-1.5 sm:grid-cols-[96px_1fr] sm:items-center sm:gap-2">
                           <span className="text-default-500 sm:w-24 sm:flex-shrink-0">
                             {t("models.provider.apiUrl")}
                           </span>
@@ -457,7 +466,7 @@ export default function ModelsSettingsPanel({
                             {provider.apiUrl || "—"}
                           </span>
                         </div>
-                        <div className="grid grid-cols-[minmax(96px,0.3fr)_minmax(0,1fr)] items-start gap-2 sm:flex sm:items-center sm:gap-2">
+                        <div className="grid grid-cols-1 items-start gap-1.5 sm:grid-cols-[96px_1fr] sm:items-center sm:gap-2">
                           <span className="text-default-500 sm:w-24 sm:flex-shrink-0">
                             {t("models.provider.apiKey")}
                           </span>
@@ -534,75 +543,73 @@ export default function ModelsSettingsPanel({
                                         <span className="text-sm font-semibold text-foreground">
                                           {modelDisplayName}
                                         </span>
-                                        {[
-                                          {
-                                            key: "thinking",
-                                            enabled:
-                                              model.capabilities
-                                                .supportsThinking,
-                                            icon: Brain,
-                                            label: t(
-                                              "models.capabilities.thinking",
-                                              "思考",
+                                        <div className="flex items-center gap-1">
+                                          {[
+                                            {
+                                              key: "thinking",
+                                              enabled:
+                                                model.capabilities
+                                                  .supportsThinking,
+                                              icon: Brain,
+                                              label: t(
+                                                "models.capabilities.thinking",
+                                                "思考",
+                                              ),
+                                            },
+                                            {
+                                              key: "vision",
+                                              enabled:
+                                                model.capabilities
+                                                  .supportsVision,
+                                              icon: Eye,
+                                              label: t(
+                                                "models.capabilities.vision",
+                                                "视觉",
+                                              ),
+                                            },
+                                            {
+                                              key: "tools",
+                                              enabled:
+                                                model.enableToolsInThinking,
+                                              icon: Wrench,
+                                              label: t(
+                                                "models.capabilities.tools",
+                                                "工具",
+                                              ),
+                                            },
+                                          ].map(
+                                            ({
+                                              key,
+                                              enabled,
+                                              icon: Icon,
+                                              label,
+                                            }) => (
+                                              <TooltipRoot
+                                                key={`${model.id}-${key}`}
+                                                delay={0}
+                                              >
+                                                <span
+                                                  aria-label={label}
+                                                  className={`flex h-7 w-7 items-center justify-center rounded-md border border-default-200 bg-content2 text-sm transition-colors ${
+                                                    enabled
+                                                      ? "text-primary"
+                                                      : "text-default-400 opacity-50"
+                                                  }`}
+                                                >
+                                                  <Icon className="h-4 w-4" />
+                                                </span>
+                                                <TooltipContent placement="top">
+                                                  {enabled
+                                                    ? label
+                                                    : `${t(
+                                                        "models.capabilities.disabled",
+                                                        "未开启",
+                                                      )} ${label}`}
+                                                </TooltipContent>
+                                              </TooltipRoot>
                                             ),
-                                          },
-                                          {
-                                            key: "vision",
-                                            enabled:
-                                              model.capabilities.supportsVision,
-                                            icon: Eye,
-                                            label: t(
-                                              "models.capabilities.vision",
-                                              "视觉",
-                                            ),
-                                          },
-                                          {
-                                            key: "tools",
-                                            enabled:
-                                              model.enableToolsInThinking,
-                                            icon: Wrench,
-                                            label: t(
-                                              "models.capabilities.tools",
-                                              "工具",
-                                            ),
-                                          },
-                                        ].map(
-                                          ({
-                                            key,
-                                            enabled,
-                                            icon: Icon,
-                                            label,
-                                          }) => (
-                                            <Chip
-                                              key={`${model.id}-${key}`}
-                                              size="sm"
-                                              variant={
-                                                enabled
-                                                  ? "secondary"
-                                                  : "tertiary"
-                                              }
-                                              className={`flex items-center gap-1.5 ${
-                                                enabled
-                                                  ? ""
-                                                  : "border border-default-200 opacity-70"
-                                              }`}
-                                            >
-                                              <Icon
-                                                className={`h-3 w-3 ${
-                                                  enabled
-                                                    ? "text-primary"
-                                                    : "text-default-400"
-                                                }`}
-                                              />
-                                              {enabled
-                                                ? label
-                                                : `${t(
-                                                    "models.capabilities.disabled",
-                                                    "未开启",
-                                                  )} ${label}`}
-                                            </Chip>
-                                          ),
-                                        )}
+                                          )}
+                                        </div>
                                       </div>
                                     </div>
                                     <span className="text-xs text-default-500">
@@ -611,7 +618,7 @@ export default function ModelsSettingsPanel({
                                   </div>
 
                                   <div className="flex flex-col gap-1.5 text-xs text-default-500 sm:min-w-[200px]">
-                                    <div className="grid grid-cols-[minmax(96px,0.3fr)_minmax(0,1fr)] items-start gap-2 sm:flex sm:items-center sm:gap-2">
+                                    <div className="grid grid-cols-1 items-start gap-1.5 sm:grid-cols-[96px_1fr] sm:items-center sm:gap-2">
                                       <span className="text-default-500 sm:w-24 sm:flex-shrink-0">
                                         {t(
                                           "llm.temperature.label",
@@ -622,7 +629,7 @@ export default function ModelsSettingsPanel({
                                         {model.temperature}
                                       </span>
                                     </div>
-                                    <div className="grid grid-cols-[minmax(96px,0.3fr)_minmax(0,1fr)] items-start gap-2 sm:flex sm:items-center sm:gap-2">
+                                    <div className="grid grid-cols-1 items-start gap-1.5 sm:grid-cols-[96px_1fr] sm:items-center sm:gap-2">
                                       <span className="text-default-500 sm:w-24 sm:flex-shrink-0">
                                         {t(
                                           "llm.maxToolRounds.label",

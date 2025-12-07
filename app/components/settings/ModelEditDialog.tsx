@@ -9,7 +9,6 @@ import {
 } from "react";
 import {
   Button,
-  Checkbox,
   CloseButton,
   Description,
   FieldError,
@@ -18,6 +17,7 @@ import {
   Label,
   Spinner,
   Surface,
+  Switch,
   TextField,
 } from "@heroui/react";
 import { Brain, Eye, Wrench } from "lucide-react";
@@ -472,16 +472,16 @@ export function ModelEditDialog({
                   )}
                 </Description>
                 <Fieldset.Group className="mt-3 grid gap-3 sm:grid-cols-2">
-                  <Checkbox
+                  <Switch
                     isSelected={form.capabilities.supportsThinking}
-                    className="rounded-lg border border-default-200 p-3 transition-colors data-[selected=true]:border-primary data-[selected=true]:bg-primary-50 dark:data-[selected=true]:bg-primary-900/30"
                     onChange={(selected) => {
+                      const supportsThinking = Boolean(selected);
                       const nextCapabilities = {
                         ...form.capabilities,
-                        supportsThinking: Boolean(selected),
+                        supportsThinking,
                       };
                       const nextEnableTools =
-                        selected && form.enableToolsInThinking
+                        supportsThinking && form.enableToolsInThinking
                           ? form.enableToolsInThinking
                           : false;
                       setForm((prev) => ({
@@ -490,8 +490,12 @@ export function ModelEditDialog({
                         enableToolsInThinking: nextEnableTools,
                       }));
                     }}
+                    className="flex items-start gap-3 rounded-lg border border-default-200 px-3 py-3"
                   >
-                    <div className="flex items-start gap-3">
+                    <Switch.Control className="mt-0.5 shrink-0">
+                      <Switch.Thumb />
+                    </Switch.Control>
+                    <div className="flex flex-1 items-start gap-3">
                       <Brain className="mt-0.5 h-4 w-4 text-primary" />
                       <div className="text-left">
                         <p className="text-sm font-medium text-foreground">
@@ -500,19 +504,18 @@ export function ModelEditDialog({
                             "支持思考",
                           )}
                         </p>
-                        <p className="text-xs text-default-500">
+                        <Description className="text-xs text-default-500">
                           {t(
                             "models.form.capabilities.thinking.description",
                             "适用于 o1 / o3 / deepseek-reasoner 等推理模型",
                           )}
-                        </p>
+                        </Description>
                       </div>
                     </div>
-                  </Checkbox>
+                  </Switch>
 
-                  <Checkbox
+                  <Switch
                     isSelected={form.capabilities.supportsVision}
-                    className="rounded-lg border border-default-200 p-3 transition-colors data-[selected=true]:border-primary data-[selected=true]:bg-primary-50 dark:data-[selected=true]:bg-primary-900/30"
                     onChange={(selected) => {
                       const nextCapabilities = {
                         ...form.capabilities,
@@ -523,8 +526,12 @@ export function ModelEditDialog({
                         capabilities: nextCapabilities,
                       }));
                     }}
+                    className="flex items-start gap-3 rounded-lg border border-default-200 px-3 py-3"
                   >
-                    <div className="flex items-start gap-3">
+                    <Switch.Control className="mt-0.5 shrink-0">
+                      <Switch.Thumb />
+                    </Switch.Control>
+                    <div className="flex flex-1 items-start gap-3">
                       <Eye className="mt-0.5 h-4 w-4 text-primary" />
                       <div className="text-left">
                         <p className="text-sm font-medium text-foreground">
@@ -533,30 +540,33 @@ export function ModelEditDialog({
                             "支持视觉",
                           )}
                         </p>
-                        <p className="text-xs text-default-500">
+                        <Description className="text-xs text-default-500">
                           {t(
                             "models.form.capabilities.vision.description",
                             "能够解析图片/截图输入，如 gpt-4o",
                           )}
-                        </p>
+                        </Description>
                       </div>
                     </div>
-                  </Checkbox>
+                  </Switch>
                 </Fieldset.Group>
 
                 <div className="mt-3 rounded-lg border border-default-200 bg-content2 px-3 py-2">
-                  <Checkbox
+                  <Switch
                     isSelected={form.enableToolsInThinking}
                     isDisabled={!form.capabilities.supportsThinking}
-                    className="rounded-lg border border-default-200 p-3 transition-colors data-[selected=true]:border-primary data-[selected=true]:bg-primary-50 dark:data-[selected=true]:bg-primary-900/30"
                     onChange={(selected) =>
                       setForm((prev) => ({
                         ...prev,
                         enableToolsInThinking: Boolean(selected),
                       }))
                     }
+                    className="flex items-start gap-3 rounded-lg border border-default-200 px-3 py-3"
                   >
-                    <div className="flex items-start gap-3">
+                    <Switch.Control className="mt-0.5 shrink-0">
+                      <Switch.Thumb />
+                    </Switch.Control>
+                    <div className="flex flex-1 items-start gap-3">
                       <Wrench className="mt-0.5 h-4 w-4 text-primary" />
                       <div className="text-left">
                         <p className="text-sm font-medium text-foreground">
@@ -565,15 +575,15 @@ export function ModelEditDialog({
                             "思考中允许调用工具",
                           )}
                         </p>
-                        <p className="text-xs text-default-500">
+                        <Description className="text-xs text-default-500">
                           {t(
                             "models.form.enableToolsInThinking.description",
                             "某些推理模型可在思考阶段直接触发工具调用",
                           )}
-                        </p>
+                        </Description>
                       </div>
                     </div>
-                  </Checkbox>
+                  </Switch>
                 </div>
               </Fieldset>
 

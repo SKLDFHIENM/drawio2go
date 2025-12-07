@@ -58,7 +58,17 @@ app.prepare().then(() => {
         if (success) {
           pending.resolve(result);
         } else {
-          pending.reject(new Error(error || "工具执行失败"));
+          let errorMsg = "工具执行失败";
+          if (typeof error === "string" && error.trim()) {
+            errorMsg = error;
+          } else if (error !== undefined) {
+            try {
+              errorMsg = JSON.stringify(error);
+            } catch {
+              errorMsg = String(error);
+            }
+          }
+          pending.reject(new Error(errorMsg || "工具执行失败"));
         }
         pendingRequests.delete(requestId);
       } else {

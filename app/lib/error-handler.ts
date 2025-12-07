@@ -68,6 +68,40 @@ function resolveI18nKeyFromCode(code: ErrorCode): string {
 }
 
 /**
+ * 将任意错误对象转换为可读字符串
+ * @param error - 任意类型的错误
+ * @returns 规范化的错误字符串
+ */
+export function toErrorString(error: unknown): string {
+  if (typeof error === "string") {
+    return error;
+  }
+  if (error instanceof Error) {
+    return error.message;
+  }
+  if (error && typeof error === "object") {
+    if (
+      "message" in error &&
+      typeof (error as { message?: unknown }).message === "string"
+    ) {
+      return (error as { message: string }).message;
+    }
+    if (
+      "error" in error &&
+      typeof (error as { error?: unknown }).error === "string"
+    ) {
+      return (error as { error: string }).error;
+    }
+    try {
+      return JSON.stringify(error);
+    } catch {
+      return String(error);
+    }
+  }
+  return String(error);
+}
+
+/**
  * 应用错误类 - 支持错误码和国际化
  */
 export class AppError extends Error {

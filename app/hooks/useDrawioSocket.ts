@@ -28,6 +28,7 @@ import {
 } from "@/lib/version-utils";
 import { DEFAULT_FIRST_VERSION, WIP_VERSION } from "@/app/lib/storage";
 import { createLogger } from "@/lib/logger";
+import { toErrorString } from "@/lib/error-handler";
 
 const logger = createLogger("Socket Client");
 
@@ -300,7 +301,15 @@ export function useDrawioSocket(
             if (!request.input?.drawio_xml) {
               throw new Error("缺少 drawio_xml 参数");
             }
-            result = await replaceDrawioXML(request.input.drawio_xml as string);
+            const skipExportValidation = originalTool === "drawio_edit_batch";
+            result = await replaceDrawioXML(
+              request.input.drawio_xml as string,
+              {
+                requestId: request.requestId,
+                editorRef,
+                skipExportValidation,
+              },
+            );
             // 事件派发已在 replaceDrawioXML 内部处理，这里避免重复派发
             break;
 
@@ -313,7 +322,13 @@ export function useDrawioSocket(
           requestId: request.requestId,
           success: result.success,
           result: result,
-          error: result.success ? undefined : result.error || result.message,
+          error: result.success
+            ? undefined
+            : result.error
+              ? toErrorString(result.error)
+              : result.message
+                ? toErrorString(result.message)
+                : undefined,
         };
 
         socket.emit("tool:result", response);
@@ -327,7 +342,7 @@ export function useDrawioSocket(
         const response: ToolCallResult = {
           requestId: request.requestId,
           success: false,
-          error: error instanceof Error ? error.message : "未知错误",
+          error: toErrorString(error),
         };
 
         socket.emit("tool:result", response);

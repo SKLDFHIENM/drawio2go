@@ -78,7 +78,7 @@
 **Ref API**:
 
 - `loadDiagram(xml)`: 发送 `load` 并等待响应
-- `mergeDiagram(xml)`: 发送 `merge`，10s 超时回退为 `load`
+- `mergeDiagram(xml, requestId?)`: 发送 `merge`（透传 requestId），10.5s 超时回退为 `load`
 - `exportDiagram()`: 导出 XML
 - `exportSVG()`: 导出 SVG（Promise 队列避免串扰）
 
