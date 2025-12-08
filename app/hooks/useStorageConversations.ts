@@ -14,6 +14,7 @@ import i18n from "@/app/i18n/client";
 import { createLogger } from "@/lib/logger";
 
 const logger = createLogger("useStorageConversations");
+const ABNORMAL_STREAMING_TIMEOUT_MS = 2 * 60 * 1000;
 
 const DEFAULT_STORAGE_TIMEOUT = 8000;
 const getStorageTimeoutMessage = (
@@ -133,6 +134,43 @@ export function useStorageConversations() {
       return undefined;
     },
     [],
+  );
+
+  const evaluateStreamingStatus = useCallback(
+    async (
+      conversationId: string,
+      storage?: Awaited<ReturnType<typeof getStorage>>,
+    ): Promise<{
+      conversation: Conversation | null;
+      hasAbnormalExit: boolean;
+      storage: Awaited<ReturnType<typeof getStorage>>;
+    }> => {
+      const resolvedStorage = storage ?? (await resolveStorage());
+      const conversation = await withStorageTimeout(
+        resolvedStorage.getConversation(conversationId),
+        getStorageTimeoutMessage(),
+      );
+
+      let hasAbnormalExit = false;
+
+      if (conversation?.is_streaming) {
+        const since = conversation.streaming_since ?? 0;
+        const elapsed = since > 0 ? Date.now() - since : Infinity;
+        if (!since || elapsed > ABNORMAL_STREAMING_TIMEOUT_MS) {
+          hasAbnormalExit = true;
+          await withStorageTimeout(
+            resolvedStorage.setConversationStreaming(conversationId, false),
+            getStorageTimeoutMessage(),
+          );
+          conversation.is_streaming = false;
+          conversation.streaming_since = null;
+          conversation.updated_at = Date.now();
+        }
+      }
+
+      return { conversation, hasAbnormalExit, storage: resolvedStorage };
+    },
+    [resolveStorage],
   );
 
   const subscribeToConversations = useCallback(
@@ -337,6 +375,8 @@ export function useStorageConversations() {
                 id: uuidv4(),
                 project_uuid: projectUuid,
                 title,
+                is_streaming: false,
+                streaming_since: null,
               }),
               getStorageTimeoutMessage(),
             );
@@ -363,11 +403,7 @@ export function useStorageConversations() {
       return runStorageTask(
         async () => {
           try {
-            const storage = await resolveStorage();
-            const conversation = await withStorageTimeout(
-              storage.getConversation(id),
-              getStorageTimeoutMessage(),
-            );
+            const { conversation } = await evaluateStreamingStatus(id);
             return conversation;
           } catch (error) {
             logger.error("get conversation failed", { id, error });
@@ -377,7 +413,33 @@ export function useStorageConversations() {
         { setLoading, setError },
       );
     },
-    [resolveStorage],
+    [evaluateStreamingStatus],
+  );
+
+  const loadConversationWithStatus = useCallback(
+    async (
+      id: string,
+    ): Promise<{
+      conversation: Conversation | null;
+      hasAbnormalExit: boolean;
+    }> =>
+      runStorageTask(
+        async () => {
+          try {
+            const { conversation, hasAbnormalExit } =
+              await evaluateStreamingStatus(id);
+            return { conversation, hasAbnormalExit };
+          } catch (error) {
+            logger.error("load conversation with status failed", {
+              id,
+              error,
+            });
+            throw new Error(i18n.t("errors:conversation.loadFailed"));
+          }
+        },
+        { setLoading, setError },
+      ),
+    [evaluateStreamingStatus],
   );
 
   /**
@@ -403,6 +465,36 @@ export function useStorageConversations() {
         },
         { setLoading, setError },
       );
+    },
+    [resolveStorage],
+  );
+
+  const markConversationAsStreaming = useCallback(
+    async (id: string): Promise<void> => {
+      try {
+        const storage = await resolveStorage();
+        await withStorageTimeout(
+          storage.setConversationStreaming(id, true),
+          getStorageTimeoutMessage(),
+        );
+      } catch (error) {
+        logger.error("mark conversation streaming failed", { id, error });
+      }
+    },
+    [resolveStorage],
+  );
+
+  const markConversationAsCompleted = useCallback(
+    async (id: string): Promise<void> => {
+      try {
+        const storage = await resolveStorage();
+        await withStorageTimeout(
+          storage.setConversationStreaming(id, false),
+          getStorageTimeoutMessage(),
+        );
+      } catch (error) {
+        logger.error("mark conversation completed failed", { id, error });
+      }
     },
     [resolveStorage],
   );
@@ -618,6 +710,9 @@ export function useStorageConversations() {
     error,
     createConversation,
     getConversation,
+    loadConversationWithStatus,
+    markConversationAsStreaming,
+    markConversationAsCompleted,
     updateConversation,
     deleteConversation,
     batchDeleteConversations,

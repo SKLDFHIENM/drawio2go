@@ -22,6 +22,7 @@
     "retryDescription": "上一条消息已恢复到输入框",
     "userCancelled": "用户主动取消了此次对话",
     "connectionLost": "连接已断开",
+    "pageClosed": "页面已关闭",
     "emptyConversation": "暂无消息，开始对话吧",
     "loadMore": "加载更多",
     "collapseAll": "折叠全部",
@@ -211,8 +212,18 @@
     "deleteConversationsDescription": "将删除 {{count}} 个会话，合计 {{messageCount}}。删除后无法恢复。"
   },
   "status": {
-    "socketDisconnected": "Socket.IO 未连接",
-    "socketWarning": "AI 工具功能暂时不可用"
+    "socketDisconnected": "Socket 连接已断开",
+    "socketReconnected": "Socket 已重新连接",
+    "socketDisconnectedWithStop": "Socket 连接已断开，正在进行的聊天已停止",
+    "socketRequiredForChat": "Socket 连接是使用 AI 工具功能的必要条件，请等待重新连接",
+    "socketWarning": "AI 工具功能暂时不可用",
+    "networkOffline": "网络已断开",
+    "networkOfflineDesc": "正在进行的聊天请求已自动停止，请检查网络连接后重试",
+    "networkOfflineShort": "网络已断开",
+    "networkOnline": "网络已恢复",
+    "networkOnlineDesc": "网络已恢复，您可以继续发送消息",
+    "networkOnlineShort": "网络已恢复",
+    "networkDisconnectedHint": "网络连接已断开"
   },
   "modelSelector": {
     "label": "当前模型",

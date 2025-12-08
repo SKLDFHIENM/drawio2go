@@ -32,6 +32,12 @@ import { toErrorString } from "@/lib/error-handler";
 
 const logger = createLogger("Socket Client");
 
+type ConnectionStatus =
+  | "connecting"
+  | "connected"
+  | "disconnecting"
+  | "disconnected";
+
 /**
  * DrawIO Socket.IO Hook
  *
@@ -41,7 +47,9 @@ const logger = createLogger("Socket Client");
 export function useDrawioSocket(
   editorRef?: React.RefObject<DrawioEditorRef | null>,
 ) {
-  const [isConnected, setIsConnected] = useState(false);
+  const [connectionStatus, setConnectionStatusState] =
+    useState<ConnectionStatus>("connecting");
+  const connectionStatusRef = useRef<ConnectionStatus>("connecting");
   const socketRef = useRef<Socket<
     ServerToClientEvents,
     ClientToServerEvents
@@ -240,29 +248,87 @@ export function useDrawioSocket(
 
     socketRef.current = socket;
 
+    const applyConnectionStatus = (nextStatus: ConnectionStatus) => {
+      const previousStatus = connectionStatusRef.current;
+      if (previousStatus === nextStatus) {
+        return { changed: false, previousStatus };
+      }
+
+      connectionStatusRef.current = nextStatus;
+      setConnectionStatusState(nextStatus);
+      return { changed: true, previousStatus };
+    };
+
     // 连接事件
     socket.on("connect", () => {
-      logger.info("Socket 已连接到服务器", { socketId: socket.id });
-      setIsConnected(true);
+      const { changed, previousStatus } = applyConnectionStatus("connected");
+      if (changed) {
+        logger.info("Socket 已连接到服务器", {
+          socketId: socket.id,
+          previousStatus,
+        });
+      }
     });
 
     socket.on("disconnect", (reason: string) => {
-      logger.warn("Socket 已断开连接", { reason, socketId: socket.id });
-      setIsConnected(false);
+      const { changed, previousStatus } = applyConnectionStatus("disconnected");
+      if (changed) {
+        logger.warn("Socket 已断开连接", {
+          reason,
+          socketId: socket.id,
+          previousStatus,
+        });
+      }
     });
 
     socket.on("connect_error", (error: Error) => {
-      logger.error("Socket 连接错误", { error: error.message });
-      setIsConnected(false);
+      const { changed, previousStatus } = applyConnectionStatus("disconnected");
+      if (changed) {
+        logger.error("Socket 连接错误", {
+          error: error.message,
+          previousStatus,
+        });
+      }
     });
 
     // 监听工具执行请求
     socket.on("tool:execute", async (request: ToolCallRequest) => {
+      const currentProjectUuid = currentProjectRef.current?.uuid;
+
       logger.debug("收到工具调用请求", {
         toolName: request.toolName,
         requestId: request.requestId,
-        projectId: currentProjectRef.current?.uuid,
+        projectId: currentProjectUuid,
+        requestProject: request.projectUuid,
+        conversationId: request.conversationId,
       });
+
+      if (!request.projectUuid) {
+        logger.warn("收到缺少 projectUuid 的工具请求，已忽略以保持兼容", {
+          toolName: request.toolName,
+          requestId: request.requestId,
+        });
+        return;
+      }
+
+      if (!currentProjectUuid) {
+        logger.info("当前未打开任何项目，忽略工具请求", {
+          toolName: request.toolName,
+          requestId: request.requestId,
+          requestProject: request.projectUuid,
+        });
+        return;
+      }
+
+      if (request.projectUuid !== currentProjectUuid) {
+        logger.info("收到工具请求但项目不匹配，忽略", {
+          toolName: request.toolName,
+          requestId: request.requestId,
+          requestProject: request.projectUuid,
+          currentProject: currentProjectUuid,
+        });
+        return;
+      }
 
       try {
         const originalTool =
@@ -357,9 +423,11 @@ export function useDrawioSocket(
     // 清理函数
     return () => {
       logger.info("Socket 客户端清理，断开连接");
+      applyConnectionStatus("disconnecting");
       socket.disconnect();
+      applyConnectionStatus("disconnected");
     };
   }, [createHistoricalVersion, getAllXMLVersions, getSetting, editorRef]);
 
-  return { isConnected };
+  return { isConnected: connectionStatus === "connected", connectionStatus };
 }

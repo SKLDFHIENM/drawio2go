@@ -102,7 +102,6 @@ app/
 │   │   ├── constants-shared.js  # 跨环境共享常量
 │   │   ├── default-diagram-xml.js # 默认空白图表 XML
 │   │   ├── types.ts             # 存储层类型定义
-│   │   ├── migrations/          # 数据库迁移脚本
 │   │   ├── AGENTS.md            # 存储层详细文档
 │   │   └── index.ts             # 统一导出
 │   └── AGENTS.md                 # 工具库完整文档
@@ -520,11 +519,16 @@ pnpm format               # 使用 Prettier 格式化所有代码
 
 - **对话 API**：`getConversationsByXMLVersion` 全面下线，所有会话按 `project_uuid` 维度查询，前端 Hook 与 Electron IPC 均已同步。
 - **页面元数据校验**：新增 `app/lib/storage/page-metadata-validators.ts`，统一 `page_count`、`page_names` 解析规则与 SVG Blob（8MB）体积校验，IndexedDB/SQLite 复用同一逻辑。
-- **迁移体系**：
-  - 数据库版本统一为 v1（包含所有表结构）
-  - IndexedDB 通过 `storage/migrations/indexeddb/v1.ts` 执行幂等迁移
-  - SQLite 通过 `electron/storage/migrations/v1.js` 自动执行迁移并更新 `user_version`
-  - v1 已包含完整表结构（含 sequence_number 字段和 conversation_sequences 表）
-  - 禁止删除/重建存储，仅通过迁移脚本更新
+- **Schema 初始化（2025-12-07 破坏性更新）**：
+  - 迁移体系下线，v1 即当前完整 Schema（含 sequence_number、conversation_sequences、is_streaming/streaming_since）（已于 2025-12-08 恢复迁移机制，见下节）
+  - IndexedDB / SQLite 在初始化阶段直接建表，`pragma user_version` 固定为 1
+  - 需要结构变更时直接提升版本号并重建（允许清库，暂无迁移脚本）
 
-_最后更新: 2025-11-30_
+### 迁移体系恢复（2025-12-08）
+
+- 恢复存储迁移目录：`app/lib/storage/migrations/indexeddb`、`electron/storage/migrations`
+- IndexedDB：upgrade 回调使用 `runIndexedDbMigrations`，V1 迁移包含 settings/projects/xml_versions/conversations/messages/conversation_sequences，补回 `source_version_id` 及消息序列索引，幂等可重复执行
+- SQLite：基于 `PRAGMA user_version` 的 `runSQLiteMigrations`，V1 迁移创建全部表、索引（含 `source_version_id`）、外键约束，保持 WAL 与外键开启
+- 现有用户库版本仍为 1，如需应用迁移可删除本地库重新初始化（未来版本将基于此体系增量迭代）
+
+_最后更新: 2025-12-08_

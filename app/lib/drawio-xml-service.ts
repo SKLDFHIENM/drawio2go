@@ -16,8 +16,20 @@ import type {
 } from "@/app/types/drawio-tools";
 import type { GetXMLResult, ReplaceXMLResult } from "@/app/types/drawio-tools";
 import { createLogger } from "@/lib/logger";
+import type { ToolExecutionContext } from "@/app/types/socket";
 
 const logger = createLogger("DrawIO XML Service");
+
+function ensureContext(
+  context: ToolExecutionContext | undefined,
+): ToolExecutionContext {
+  const projectUuid = context?.projectUuid?.trim();
+  const conversationId = context?.conversationId?.trim();
+  if (!projectUuid || !conversationId) {
+    throw new Error("缺少项目或会话上下文，无法执行工具");
+  }
+  return { projectUuid, conversationId };
+}
 
 function ensureParser(): DOMParser {
   const parser = getDomParser();
@@ -63,11 +75,13 @@ function resolveLocator(locator: { xpath?: string; id?: string }): string {
 }
 
 export async function executeDrawioRead(
-  input?: DrawioReadInput,
+  input: DrawioReadInput | undefined,
+  context: ToolExecutionContext,
 ): Promise<DrawioReadResult> {
+  const resolvedContext = ensureContext(context);
   const { xpath, id, filter = "all" } = input ?? {};
 
-  const xmlString = await fetchDiagramXml();
+  const xmlString = await fetchDiagramXml(resolvedContext);
   const document = parseXml(xmlString);
 
   const hasXpath = Boolean(xpath);
@@ -143,7 +157,9 @@ export async function executeDrawioRead(
 
 export async function executeDrawioEditBatch(
   request: DrawioEditBatchRequest,
+  context: ToolExecutionContext,
 ): Promise<DrawioEditBatchResult> {
+  const resolvedContext = ensureContext(context);
   const { operations } = request;
 
   if (!operations.length) {
@@ -153,7 +169,7 @@ export async function executeDrawioEditBatch(
     };
   }
 
-  const xml = await fetchDiagramXml();
+  const xml = await fetchDiagramXml(resolvedContext);
   const originalXml = xml;
   const document = parseXml(xml);
 
@@ -174,6 +190,8 @@ export async function executeDrawioEditBatch(
   const replaceResult = (await executeToolOnClient(
     "replace_drawio_xml",
     { drawio_xml: updatedXml, _originalTool: "drawio_edit_batch" },
+    resolvedContext.projectUuid,
+    resolvedContext.conversationId,
     60000,
   )) as ReplaceXMLResult;
 
@@ -197,6 +215,8 @@ export async function executeDrawioEditBatch(
       const rollbackResult = (await executeToolOnClient(
         "replace_drawio_xml",
         { drawio_xml: originalXml },
+        resolvedContext.projectUuid,
+        resolvedContext.conversationId,
         60000,
       )) as ReplaceXMLResult;
 
@@ -236,10 +256,13 @@ export async function executeDrawioEditBatch(
   };
 }
 
-async function fetchDiagramXml(): Promise<string> {
+async function fetchDiagramXml(context: ToolExecutionContext): Promise<string> {
+  const resolvedContext = ensureContext(context);
   const response = (await executeToolOnClient(
     "get_drawio_xml",
     {},
+    resolvedContext.projectUuid,
+    resolvedContext.conversationId,
     15000,
   )) as GetXMLResult;
 

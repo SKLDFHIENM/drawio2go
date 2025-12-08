@@ -2,7 +2,6 @@ const Database = require("better-sqlite3");
 const { app } = require("electron");
 const path = require("path");
 const fs = require("fs");
-const { runSQLiteMigrations } = require("./migrations");
 const { v4: uuidv4 } = require("uuid");
 const {
   createDefaultDiagramXml,
@@ -12,6 +11,7 @@ const {
   WIP_VERSION,
   ZERO_SOURCE_VERSION_ID,
 } = require("../../app/lib/storage/constants-shared");
+const { runSQLiteMigrations } = require("./migrations");
 
 const SQLITE_DB_FILE = "drawio2go.db";
 
@@ -69,17 +69,21 @@ class SQLiteManager {
       // 打开数据库
       this.db = new Database(dbPath, { verbose: console.log });
 
-      // 启用外键约束
+      // 启用外键 & WAL
       this.db.pragma("foreign_keys = ON");
-
-      // 创建/迁移表结构
-      runSQLiteMigrations(this.db);
+      this.db.pragma("journal_mode = WAL");
+      const finalVersion = runSQLiteMigrations(this.db);
 
       // 创建默认工程
       this._ensureDefaultProject();
       this._ensureDefaultWipVersion();
 
-      console.log("SQLite database initialized at:", dbPath);
+      console.log(
+        "SQLite database initialized at:",
+        dbPath,
+        "version",
+        finalVersion,
+      );
     } catch (error) {
       console.error("Failed to initialize SQLite:", error);
       throw error;
@@ -513,14 +517,18 @@ class SQLiteManager {
     this.db
       .prepare(
         `
-        INSERT INTO conversations (id, project_uuid, title, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO conversations (id, project_uuid, title, is_streaming, streaming_since, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
       `,
       )
       .run(
         conversation.id,
         conversation.project_uuid,
         conversation.title,
+        conversation.is_streaming ? 1 : 0,
+        typeof conversation.streaming_since === "number"
+          ? conversation.streaming_since
+          : null,
         now,
         now,
       );
@@ -534,10 +542,21 @@ class SQLiteManager {
     const values = [];
 
     Object.entries(updates).forEach(([key, value]) => {
-      if (key !== "id" && key !== "created_at" && key !== "updated_at") {
-        fields.push(`${key} = ?`);
-        values.push(value);
+      if (key === "id" || key === "created_at" || key === "updated_at") {
+        return;
       }
+      if (key === "is_streaming") {
+        fields.push("is_streaming = ?");
+        values.push(value ? 1 : 0);
+        return;
+      }
+      if (key === "streaming_since") {
+        fields.push("streaming_since = ?");
+        values.push(typeof value === "number" ? Math.floor(value) : null);
+        return;
+      }
+      fields.push(`${key} = ?`);
+      values.push(value);
     });
 
     if (fields.length === 0) return;
@@ -548,6 +567,19 @@ class SQLiteManager {
     this.db
       .prepare(`UPDATE conversations SET ${fields.join(", ")} WHERE id = ?`)
       .run(...values);
+  }
+
+  setConversationStreaming(id, isStreaming) {
+    const now = Date.now();
+    this.db
+      .prepare(
+        `
+        UPDATE conversations
+        SET is_streaming = ?, streaming_since = ?, updated_at = ?
+        WHERE id = ?
+      `,
+      )
+      .run(isStreaming ? 1 : 0, isStreaming ? now : null, now, id);
   }
 
   deleteConversation(id) {

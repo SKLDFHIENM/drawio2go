@@ -56,6 +56,7 @@
 
 **核心方法**: `sessions` / `currentSession` / `createSession` / `updateSession` / `deleteSession` / `clearAllSessions`
 **会话结构**: `id`, `title`, `messages` (AI SDK 格式), `createdAt`, `updatedAt`
+**新增流式辅助**: `markConversationAsStreaming(id)` / `markConversationAsCompleted(id)` / `loadConversationWithStatus(id)`（自动检测 `is_streaming` 超时并返回 `hasAbnormalExit` 标记）
 
 ### 5. useStorageXMLVersions
 
@@ -119,18 +120,45 @@
 
 **配置**: `autoVersionOnAIEdit` (默认 true) 控制 AI 编辑时是否自动快照
 
+### 9. useChatLock
+
+**项目级聊天锁 Hook** - 基于 BroadcastChannel + localStorage 的跨标签页互斥
+
+**API**: `useChatLock(projectUuid)` → `{ canChat, lockHolder, acquireLock, releaseLock }`
+
+**特性**:
+
+- BroadcastChannel(`drawio2go-chat-lock`) 广播获取/释放/心跳事件
+- localStorage(`chat-lock-${projectUuid}`) 持久化持有者，崩溃后 30s 超时自动释放
+- 心跳：持锁端每 10s 更新时间戳；5s 轮询清理过期锁
+- 兼容性兜底：BroadcastChannel 不可用时回退 storage 监听
+- beforeunload 清理：组件卸载或页面关闭时自动释放锁
+
+### 10. useNetworkStatus
+
+**网络状态监听 Hook** - 结合浏览器 online 事件 + `/api/health` 心跳检测的真实连通性判断。
+
+- **返回值**: `{ isOnline, offlineReason, lastCheckedAt, isChecking, checkNow }`
+  - `offlineReason`: `browser-offline` | `ping-fail` | `socket-disconnect`
+  - `checkNow()`: 手动触发一次 3s 超时的健康检查（Promise.race）
+- **机制**: 60s 心跳节流，失败指数退避（最多 5 分钟）；恢复或 `online` 事件时立即重试
+- **默认值**: SSR 环境或缺少 navigator 时视为在线
+- **用途**: 聊天流式中断保护、UI 禁用发送按钮、提示更准确的离线原因
+
 ## 统一导出
 
 所有 Hooks 通过 `app/hooks/index.ts` 统一导出：
 
 ```typescript
 export { useDrawioSocket } from "./useDrawioSocket";
+export { useChatLock } from "./useChatLock";
 export { useStorageSettings } from "./useStorageSettings";
 export { useStorageProjects } from "./useStorageProjects";
 export { useCurrentProject } from "./useCurrentProject";
 export { useStorageConversations } from "./useStorageConversations";
 export { useStorageXMLVersions } from "./useStorageXMLVersions";
 export { useVersionCompare } from "./useVersionCompare";
+export { useNetworkStatus } from "./useNetworkStatus";
 export { useDrawioEditor } from "./useDrawioEditor";
 ```
 

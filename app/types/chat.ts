@@ -125,6 +125,8 @@ export interface MessageMetadata {
   createdAt?: number;
   isCancelled?: boolean;
   isDisconnected?: boolean;
+  isAbnormalExitNotice?: boolean;
+  disconnectReason?: string;
 }
 
 export type ChatUIMessage = UIMessage<MessageMetadata>;

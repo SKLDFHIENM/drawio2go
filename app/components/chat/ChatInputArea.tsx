@@ -18,6 +18,8 @@ interface ChatInputAreaProps {
   llmConfig: LLMConfig | null;
   canSendNewMessage: boolean;
   lastMessageIsUser: boolean;
+  isOnline: boolean;
+  isSocketConnected: boolean;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onCancel?: () => void;
   onNewChat: () => void;
@@ -42,6 +44,8 @@ export default function ChatInputArea({
   llmConfig,
   canSendNewMessage,
   lastMessageIsUser,
+  isOnline,
+  isSocketConnected,
   onSubmit,
   onCancel,
   onNewChat,
@@ -55,7 +59,9 @@ export default function ChatInputArea({
     isChatStreaming ||
     configLoading ||
     !llmConfig ||
-    !canSendNewMessage;
+    !canSendNewMessage ||
+    !isOnline ||
+    !isSocketConnected;
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Enter" && !event.shiftKey) {
@@ -83,11 +89,31 @@ export default function ChatInputArea({
           value={input}
           onChange={(event) => setInput(event.target.value)}
           rows={3}
-          disabled={configLoading || !llmConfig || !canSendNewMessage}
+          disabled={
+            configLoading ||
+            !llmConfig ||
+            !canSendNewMessage ||
+            !isOnline ||
+            !isSocketConnected
+          }
           onKeyDown={handleKeyDown}
           className="w-full"
           aria-label={t("aria.input")}
         />
+
+        {!isSocketConnected ? (
+          <div className="chat-network-status" role="status" aria-live="polite">
+            ⚠️ {t("status.socketDisconnected")} ·{" "}
+            {t("status.socketRequiredForChat")}
+          </div>
+        ) : null}
+
+        {isSocketConnected && !isOnline && (
+          <div className="chat-network-status" role="status" aria-live="polite">
+            ⚠️ {t("status.networkOfflineShort", "网络已断开")} ·{" "}
+            {t("status.networkDisconnectedHint")}
+          </div>
+        )}
 
         {/* 按钮组 */}
         <ChatInputActions
@@ -95,6 +121,8 @@ export default function ChatInputArea({
           isChatStreaming={isChatStreaming}
           canSendNewMessage={canSendNewMessage}
           lastMessageIsUser={lastMessageIsUser}
+          isOnline={isOnline}
+          isSocketConnected={isSocketConnected}
           onCancel={onCancel}
           onNewChat={onNewChat}
           onHistory={onHistory}

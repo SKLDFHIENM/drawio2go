@@ -517,6 +517,13 @@ ipcMain.handle("storage:updateConversation", async (event, id, updates) => {
   return storageManager.updateConversation(id, updates);
 });
 
+ipcMain.handle(
+  "storage:setConversationStreaming",
+  async (event, id, isStreaming) => {
+    return storageManager.setConversationStreaming(id, isStreaming);
+  },
+);
+
 ipcMain.handle("storage:deleteConversation", async (event, id) => {
   return storageManager.deleteConversation(id);
 });

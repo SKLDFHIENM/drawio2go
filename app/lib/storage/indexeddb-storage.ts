@@ -30,10 +30,10 @@ import {
   assertValidSvgBinary,
   resolvePageMetadataFromXml,
 } from "./page-metadata-validators";
-import { runIndexedDbMigrations } from "./migrations/indexeddb";
 import { v4 as uuidv4 } from "uuid";
 import { createDefaultDiagramXml } from "./default-diagram-xml";
 import { createLogger } from "@/lib/logger";
+import { runIndexedDbMigrations } from "./migrations/indexeddb";
 
 const logger = createLogger("IndexedDBStorage");
 
@@ -128,12 +128,22 @@ export class IndexedDBStorage implements StorageAdapter {
   private async _doInitialize(): Promise<void> {
     try {
       this.db = await openDB(DB_NAME, DB_VERSION, {
-        upgrade: async (db, oldVersion, newVersion, transaction) => {
-          logger.info("Upgrading IndexedDB", {
+        upgrade: (db, oldVersion, newVersion, transaction) => {
+          logger.info("Initializing IndexedDB schema via migrations", {
             oldVersion,
             newVersion,
           });
-          await runIndexedDbMigrations(db, oldVersion, newVersion, transaction);
+
+          runIndexedDbMigrations(
+            db,
+            oldVersion,
+            typeof newVersion === "number" ? newVersion : DB_VERSION,
+            transaction,
+          );
+
+          logger.info("IndexedDB schema initialized", {
+            version: newVersion ?? DB_VERSION,
+          });
         },
       });
 
@@ -534,6 +544,14 @@ export class IndexedDBStorage implements StorageAdapter {
     const now = Date.now();
     const fullConversation: Conversation = {
       ...conversation,
+      is_streaming:
+        typeof conversation.is_streaming === "boolean"
+          ? conversation.is_streaming
+          : false,
+      streaming_since:
+        typeof conversation.streaming_since === "number"
+          ? conversation.streaming_since
+          : null,
       created_at: now,
       updated_at: now,
     };
@@ -561,6 +579,32 @@ export class IndexedDBStorage implements StorageAdapter {
     const updated: Conversation = {
       ...existing,
       ...updates,
+      updated_at: now,
+    };
+
+    await db.put("conversations", updated);
+    dispatchConversationEvent("conversation-updated", {
+      projectUuid: updated.project_uuid,
+      conversationId: updated.id,
+    });
+  }
+
+  async setConversationStreaming(
+    id: string,
+    isStreaming: boolean,
+  ): Promise<void> {
+    const db = await this.ensureDB();
+    const existing = await db.get("conversations", id);
+    if (!existing) {
+      logger.warn("setConversationStreaming: conversation not found", { id });
+      return;
+    }
+
+    const now = Date.now();
+    const updated: Conversation = {
+      ...existing,
+      is_streaming: isStreaming,
+      streaming_since: isStreaming ? now : null,
       updated_at: now,
     };
 

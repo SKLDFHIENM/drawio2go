@@ -227,8 +227,14 @@ import {
 } from "../lib/drawio-xml-service";
 
 async function demo() {
+  const context = {
+    projectUuid: "demo-project",
+    conversationId: "demo-conversation",
+  };
+
   const read: DrawioReadResult = await executeDrawioRead(
-    "//mxCell[@id='cat-head']",
+    { xpath: "//mxCell[@id='cat-head']" },
+    context,
   );
 
   const editOperations: DrawioEditOperation[] = [
@@ -240,9 +246,12 @@ async function demo() {
     },
   ];
 
-  const result: DrawioEditBatchResult = await executeDrawioEditBatch({
-    operations: editOperations,
-  });
+  const result: DrawioEditBatchResult = await executeDrawioEditBatch(
+    {
+      operations: editOperations,
+    },
+    context,
+  );
 }
 ```
 

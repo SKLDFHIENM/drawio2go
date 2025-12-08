@@ -37,7 +37,6 @@ electron/
 ├── preload.js                 # 预加载脚本，安全暴露 IPC API
 └── storage/
     ├── sqlite-manager.js      # SQLite 数据库管理器（使用 better-sqlite3）
-    └── migrations/            # 数据库迁移脚本
 ```
 
 ## 核心功能
@@ -116,7 +115,7 @@ contextBridge.exposeInMainWorld("electronStorage", {
 - 使用 `better-sqlite3` 同步 API
 - 数据库文件位于 `userData/drawio2go.db`
 - 支持事务操作保证原子性
-- 自动执行数据库迁移脚本
+- 初始化时内联建表（v1 Schema，含流式字段），`pragma user_version = 1`
 
 ## 开发配置
 

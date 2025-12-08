@@ -349,8 +349,12 @@ export class SQLiteStorage implements StorageAdapter {
     conversation: CreateConversationInput,
   ): Promise<Conversation> {
     await this.ensureElectron();
-    const created =
-      await window.electronStorage!.createConversation(conversation);
+    const payload: CreateConversationInput = {
+      ...conversation,
+      is_streaming: conversation.is_streaming ?? false,
+      streaming_since: conversation.streaming_since ?? null,
+    };
+    const created = await window.electronStorage!.createConversation(payload);
     dispatchConversationEvent("conversation-created", {
       projectUuid: created.project_uuid,
       conversationId: created.id,
@@ -365,6 +369,19 @@ export class SQLiteStorage implements StorageAdapter {
     await this.ensureElectron();
     const conversation = await window.electronStorage!.getConversation(id);
     await window.electronStorage!.updateConversation(id, updates);
+    dispatchConversationEvent("conversation-updated", {
+      projectUuid: conversation?.project_uuid,
+      conversationId: id,
+    });
+  }
+
+  async setConversationStreaming(
+    id: string,
+    isStreaming: boolean,
+  ): Promise<void> {
+    await this.ensureElectron();
+    await window.electronStorage!.setConversationStreaming(id, isStreaming);
+    const conversation = await window.electronStorage!.getConversation(id);
     dispatchConversationEvent("conversation-updated", {
       projectUuid: conversation?.project_uuid,
       conversationId: id,

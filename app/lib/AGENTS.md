@@ -183,18 +183,18 @@ import { restoreXMLFromVersion } from "@/lib/storage/xml-version-engine";
 const xml = await restoreXMLFromVersion("version-id", storage);
 ```
 
-**迁移机制** (2025-11-17):
+**Schema 初始化** (2025-12-07 破坏性更新):
 
-- IndexedDB: `migrations/indexeddb/v*.ts` 负责初始化和升级
-- SQLite: 主进程 `migrations/v*.js` 根据 `pragma user_version` 依次执行
-- 升级逻辑必须幂等，禁止强制清库
+- 迁移脚本已移除，v1 即当前完整 Schema（含流式字段 is_streaming/streaming_since）
+- IndexedDB / SQLite 在初始化阶段直接建表，`DB_VERSION` / `pragma user_version` 固定为 1
+- 目前允许破坏性变更，必要时可提升版本并清库，无需编写迁移脚本
 
 ## DrawIO Socket.IO 调用流程
 
-1. 后端工具通过 `executeToolOnClient()` 获取当前 XML 或请求前端写入
+1. 后端工具通过 `executeToolOnClient(toolName, input, projectUuid, conversationId)` 获取当前 XML 或请求前端写入（必须携带项目/会话上下文）
 2. 前端（`useDrawioSocket` + `drawio-tools.ts`）访问统一存储层并响应请求
 3. 服务端使用 `drawio-xml-service.ts` 对 XML 进行 XPath 查询或批量操作
-4. 编辑完成后再次通过 Socket.IO 将新 XML 写回前端
+4. 编辑完成后再次通过 Socket.IO 将新 XML 写回前端（前端按 projectUuid 过滤执行）
 
 ## DrawIO XML 转接层（`drawio-xml-service.ts`）
 
@@ -202,7 +202,7 @@ const xml = await restoreXMLFromVersion("version-id", storage);
 - **原子性**: 批量操作全部成功后才写回，失败时无副作用
 - **无推断**: 仅处理 XPath 与原始字符串，不做领域特化解析
 - **支持操作**: `set_attribute`, `remove_attribute`, `insert_element`, `remove_element`, `replace_element`, `set_text_content`
-- **主要函数**: `executeDrawioRead()` 查询，`executeDrawioEditBatch()` 批量编辑
+- **主要函数**: `executeDrawioRead(input, context)` 查询，`executeDrawioEditBatch(request, context)` 批量编辑（需提供 `projectUuid`/`conversationId`）
 
 ## DrawIO AI 工具（`drawio-ai-tools.ts`）
 
@@ -530,10 +530,10 @@ const tools = [
 
 ### 修改存储层
 
-1. **Schema 变更**: 新增迁移文件 `migrations/indexeddb/vN.ts` 和 `migrations/vN.js`
-2. **递增版本号**: 更新迁移脚本中的版本检查
-3. **向后兼容**: 迁移脚本必须处理旧版本数据
-4. **测试**: 验证 Web 和 Electron 端均能正确升级
+1. **Schema 变更**：直接更新建表逻辑（`indexeddb-storage.ts` / `electron/storage/sqlite-manager.js`），保持 v1 内联
+2. **版本号**：必要时递增 `DB_VERSION` / `pragma user_version`，当前阶段可接受清库
+3. **兼容性**：暂不维护迁移脚本，若需保留数据需另行设计迁移方案
+4. **测试**：验证 Web 与 Electron 均能正常初始化、读写
 
 ### 添加 AI 工具
 

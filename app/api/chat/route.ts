@@ -1,8 +1,10 @@
-import { drawioTools } from "@/app/lib/drawio-ai-tools";
+import { createDrawioTools } from "@/app/lib/drawio-ai-tools";
 import { normalizeLLMConfig } from "@/app/lib/config-utils";
 import { LLMConfig } from "@/app/types/chat";
 import { ErrorCodes, type ErrorCode } from "@/app/errors/error-codes";
 import { createLogger } from "@/lib/logger";
+import type { ToolExecutionContext } from "@/app/types/socket";
+import { getStorage } from "@/app/lib/storage";
 import {
   streamText,
   stepCountIs,
@@ -50,8 +52,22 @@ function isNewUserQuestion(messages: ModelMessage[]): boolean {
   return lastMessage.role === "user";
 }
 
-function apiError(code: ErrorCode, message: string, status = 500) {
-  return NextResponse.json({ code, message }, { status });
+function apiError(
+  code: ErrorCode,
+  message: string,
+  status = 500,
+  details?: Record<string, unknown>,
+) {
+  return NextResponse.json(
+    {
+      success: false,
+      code,
+      message,
+      error: { code, message },
+      ...(details ?? {}),
+    },
+    { status, statusText: message },
+  );
 }
 
 export async function POST(req: NextRequest) {
@@ -69,6 +85,21 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const messages = body?.messages as UIMessage[] | undefined;
     const rawConfig = body?.llmConfig;
+    const bodyProjectUuid =
+      typeof body?.projectUuid === "string" &&
+      body.projectUuid.trim().length > 0
+        ? body.projectUuid.trim()
+        : "";
+    const headerProjectUuid =
+      typeof req.headers.get("x-project-uuid") === "string"
+        ? (req.headers.get("x-project-uuid")?.trim() ?? "")
+        : "";
+    const projectUuid = bodyProjectUuid;
+    const conversationId =
+      typeof body?.conversationId === "string" &&
+      body.conversationId.trim().length > 0
+        ? body.conversationId.trim()
+        : "";
 
     if (!Array.isArray(messages) || !rawConfig) {
       return apiError(
@@ -78,8 +109,78 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (!projectUuid) {
+      return apiError(
+        ErrorCodes.CHAT_MISSING_PARAMS,
+        "Missing required parameter: projectUuid",
+        400,
+      );
+    }
+
+    if (!conversationId) {
+      return apiError(
+        ErrorCodes.CHAT_MISSING_PARAMS,
+        "Missing conversationId in request body",
+        400,
+        {
+          conversationIdSource: "body",
+        },
+      );
+    }
+
+    const paramSources = {
+      conversationIdSource: "body",
+      projectUuidSource: bodyProjectUuid
+        ? "body"
+        : headerProjectUuid
+          ? "header"
+          : "missing",
+    };
+
+    const requestLogger = logger.withContext({
+      projectUuid,
+      conversationId,
+      ...paramSources,
+    });
+
+    let conversation;
+    try {
+      const storage = await getStorage();
+      conversation = await storage.getConversation(conversationId);
+    } catch (storageError) {
+      requestLogger.error("会话所有权校验失败（存储访问异常）", {
+        error:
+          storageError instanceof Error ? storageError.message : storageError,
+      });
+      return apiError(
+        ErrorCodes.CHAT_SEND_FAILED,
+        "Failed to validate conversation ownership",
+        500,
+        { source: "storage" },
+      );
+    }
+
+    if (!conversation || conversation.project_uuid !== projectUuid) {
+      requestLogger.warn("拒绝访问：会话不存在或不属于当前项目", {
+        conversationProject: conversation?.project_uuid,
+      });
+      return apiError(
+        ErrorCodes.CHAT_CONVERSATION_FORBIDDEN,
+        "Unauthorized access to conversation",
+        403,
+        paramSources,
+      );
+    }
+
+    const toolContext: ToolExecutionContext = {
+      projectUuid,
+      conversationId,
+    };
+
+    const tools = createDrawioTools(toolContext);
+
     const modelMessages = convertToModelMessages(messages, {
-      tools: drawioTools,
+      tools,
     });
 
     let normalizedConfig: LLMConfig;
@@ -94,16 +195,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const requestLogger = logger.withContext({
+    const configAwareLogger = requestLogger.withContext({
       provider: normalizedConfig.providerType,
       model: normalizedConfig.modelName,
       maxRounds: normalizedConfig.maxToolRounds,
+      projectUuid,
+      conversationId,
     });
 
-    requestLogger.info("收到请求", {
+    configAwareLogger.info("收到请求", {
       messagesCount: modelMessages.length,
       capabilities: normalizedConfig.capabilities,
       enableToolsInThinking: normalizedConfig.enableToolsInThinking,
+      paramSources,
     });
 
     // 根据 providerType 选择合适的 provider
@@ -150,18 +254,18 @@ export async function POST(req: NextRequest) {
           if (reasoningContent) {
             experimentalParams = { reasoning_content: reasoningContent };
 
-            requestLogger.debug("复用 reasoning_content", {
+            configAwareLogger.debug("复用 reasoning_content", {
               length: reasoningContent.length,
             });
           } else {
-            requestLogger.debug("无可复用的 reasoning_content");
+            configAwareLogger.debug("无可复用的 reasoning_content");
           }
         } else {
-          requestLogger.debug("新用户问题，跳过 reasoning_content 复用");
+          configAwareLogger.debug("新用户问题，跳过 reasoning_content 复用");
         }
       }
     } catch (reasoningError) {
-      requestLogger.error("构建 reasoning_content 失败，已降级为普通模式", {
+      configAwareLogger.error("构建 reasoning_content 失败，已降级为普通模式", {
         error:
           reasoningError instanceof Error
             ? reasoningError.message
@@ -176,12 +280,12 @@ export async function POST(req: NextRequest) {
       system: normalizedConfig.systemPrompt,
       messages: modelMessages,
       temperature: normalizedConfig.temperature,
-      tools: drawioTools,
+      tools,
       stopWhen: stepCountIs(normalizedConfig.maxToolRounds),
       abortSignal,
       ...(experimentalParams && { experimental: experimentalParams }),
       onStepFinish: (step) => {
-        requestLogger.debug("步骤完成", {
+        configAwareLogger.debug("步骤完成", {
           toolCalls: step.toolCalls.length,
           textLength: step.text.length,
           reasoning: step.reasoning.length,

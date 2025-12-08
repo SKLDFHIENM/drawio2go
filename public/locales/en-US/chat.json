@@ -22,6 +22,10 @@
     "retryDescription": "Last message restored to input box",
     "userCancelled": "User cancelled this conversation",
     "connectionLost": "Connection lost",
+    "pageClosed": "Page closed",
+    "chatLockedTitle": "Chat Locked by Another Tab",
+    "chatLockedHint": "This project is currently being used for chat in another tab",
+    "projectRequired": "Please select or create a project before sending messages",
     "emptyConversation": "No messages yet. Say hi!",
     "loadMore": "Load more",
     "collapseAll": "Collapse all",
@@ -211,8 +215,18 @@
     "deleteConversationsDescription": "This will delete {{count}} conversations ({{messageCount}} total). This action cannot be undone."
   },
   "status": {
-    "socketDisconnected": "Socket.IO disconnected",
-    "socketWarning": "AI tool features temporarily unavailable"
+    "socketDisconnected": "Socket Disconnected",
+    "socketReconnected": "Socket Reconnected",
+    "socketDisconnectedWithStop": "Socket disconnected, ongoing chat has been stopped",
+    "socketRequiredForChat": "Socket connection is required for AI tool features, please wait for reconnection",
+    "socketWarning": "AI tool features temporarily unavailable",
+    "networkOffline": "Network Offline",
+    "networkOfflineDesc": "Ongoing chat requests were stopped automatically. Check your connection before retrying.",
+    "networkOfflineShort": "You are offline",
+    "networkOnline": "Network Online",
+    "networkOnlineDesc": "Back online — you can continue sending messages",
+    "networkOnlineShort": "Back online",
+    "networkDisconnectedHint": "Network connection lost"
   },
   "modelSelector": {
     "label": "Current model",
