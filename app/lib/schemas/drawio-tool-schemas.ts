@@ -175,6 +175,12 @@ export const drawioReadInputSchema = z
       .enum(["all", "vertices", "edges"])
       .optional()
       .describe("ls 模式下的类型过滤：全部/顶点/连线，默认 all"),
+    description: z
+      .string()
+      .optional()
+      .describe(
+        '可选的操作描述。简要说明此次读取操作的目的，例如："查询登录按钮样式"、"检查页面布局结构"。如不提供将使用默认描述。',
+      ),
   })
   .describe("drawio_read 工具的输入参数定义")
   .superRefine((data, ctx) => {
@@ -199,6 +205,12 @@ export const drawioEditBatchInputSchema = z
       .array(operationSchema)
       .min(1, "operations 至少包含一项操作")
       .describe("按顺序执行的原子操作列表，全部成功或全部回滚"),
+    description: z
+      .string()
+      .optional()
+      .describe(
+        '可选操作描述。简要说明此次批量编辑的目的和内容，例如："将登录按钮颜色改为红色"、"调整页面布局间距"。如不提供将使用默认描述。',
+      ),
   })
   .describe("drawio_edit_batch 工具的输入：批量编辑请求体");
 
@@ -208,6 +220,12 @@ export const drawioOverwriteInputSchema = z
       .string()
       .min(1, "drawio_xml 不能为空")
       .describe("完整的 DrawIO XML 字符串，提交前会进行格式校验"),
+    description: z
+      .string()
+      .optional()
+      .describe(
+        '可选操作描述。简要说明此次覆写操作的目的，例如："应用新模板"、"重构整体架构"。如不提供将使用默认描述。',
+      ),
   })
   .describe("drawio_overwrite 工具的输入：用于完整替换图表内容");
 

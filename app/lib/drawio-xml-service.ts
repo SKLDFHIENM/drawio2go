@@ -23,11 +23,7 @@ const logger = createLogger("DrawIO XML Service");
 const { DRAWIO_READ } = AI_TOOL_NAMES;
 const { GET_DRAWIO_XML, REPLACE_DRAWIO_XML } = CLIENT_TOOL_NAMES;
 
-type InsertElementOperation = Extract<
-  DrawioEditOperation,
-  { type: "insert_element" }
->;
-type InsertPosition = InsertElementOperation["position"];
+type InsertPosition = "append_child" | "prepend_child" | "before" | "after";
 
 function ensureContext(
   context: ToolExecutionContext | undefined,
@@ -84,13 +80,13 @@ function resolveLocator(locator: { xpath?: string; id?: string }): string {
 }
 
 export async function executeDrawioRead(
-  input: DrawioReadInput | undefined,
+  input: DrawioReadInput & { description?: string },
   context: ToolExecutionContext,
 ): Promise<DrawioReadResult> {
   const resolvedContext = ensureContext(context);
-  const { xpath, id, filter = "all" } = input ?? {};
+  const { xpath, id, filter = "all", description } = input ?? {};
 
-  const xmlString = await fetchDiagramXml(resolvedContext);
+  const xmlString = await fetchDiagramXml(resolvedContext, description);
   const document = parseXml(xmlString);
 
   const hasXpath = Boolean(xpath);
@@ -165,11 +161,11 @@ export async function executeDrawioRead(
 }
 
 export async function executeDrawioEditBatch(
-  request: DrawioEditBatchRequest,
+  request: DrawioEditBatchRequest & { description?: string },
   context: ToolExecutionContext,
 ): Promise<DrawioEditBatchResult> {
   const resolvedContext = ensureContext(context);
-  const { operations } = request;
+  const { operations, description } = request;
 
   if (!operations.length) {
     return {
@@ -196,12 +192,14 @@ export async function executeDrawioEditBatch(
   const serializer = ensureSerializer();
   const updatedXml = serializer.serializeToString(document);
 
+  const finalDescription = description?.trim() || "批量编辑图表元素";
+
   const replaceResult = (await executeToolOnClient(
     REPLACE_DRAWIO_XML,
     { drawio_xml: updatedXml, skip_export_validation: true },
     resolvedContext.projectUuid,
     resolvedContext.conversationId,
-    "批量编辑 DrawIO 元素",
+    finalDescription,
   )) as ReplaceXMLResult;
 
   if (!replaceResult?.success) {
@@ -265,14 +263,18 @@ export async function executeDrawioEditBatch(
   };
 }
 
-async function fetchDiagramXml(context: ToolExecutionContext): Promise<string> {
+async function fetchDiagramXml(
+  context: ToolExecutionContext,
+  description?: string,
+): Promise<string> {
   const resolvedContext = ensureContext(context);
+  const finalDescription = description?.trim() || "读取图表内容";
   const response = (await executeToolOnClient(
     GET_DRAWIO_XML,
     {},
     resolvedContext.projectUuid,
     resolvedContext.conversationId,
-    "读取 DrawIO 图表内容",
+    finalDescription,
   )) as GetXMLResult;
 
   if (!response?.success || typeof response.xml !== "string") {
@@ -391,62 +393,74 @@ function applyOperation(
     id: operation.id,
   });
 
-  switch (operation.type) {
-    case "set_attribute":
-      setAttribute(
-        document,
-        resolvedXpath,
-        locatorLabel,
-        operation.key,
-        operation.value,
-        operation.allow_no_match,
-      );
-      break;
-    case "remove_attribute":
-      removeAttribute(
-        document,
-        resolvedXpath,
-        locatorLabel,
-        operation.key,
-        operation.allow_no_match,
-      );
-      break;
-    case "insert_element":
-      insertElement(
-        document,
-        { ...operation, xpath: resolvedXpath },
-        locatorLabel,
-      );
-      break;
-    case "remove_element":
-      removeElement(
-        document,
-        resolvedXpath,
-        locatorLabel,
-        operation.allow_no_match,
-      );
-      break;
-    case "replace_element":
-      replaceElement(
-        document,
-        resolvedXpath,
-        locatorLabel,
-        operation.new_xml,
-        operation.allow_no_match,
-      );
-      break;
-    case "set_text_content":
-      setTextContent(
-        document,
-        resolvedXpath,
-        locatorLabel,
-        operation.value,
-        operation.allow_no_match,
-      );
-      break;
-    default:
-      throw new Error(`未知操作类型: ${(operation as { type: string }).type}`);
+  if (operation.type === "set_attribute") {
+    setAttribute(
+      document,
+      resolvedXpath,
+      locatorLabel,
+      operation.key!,
+      operation.value!,
+      operation.allow_no_match,
+    );
+    return;
   }
+
+  if (operation.type === "remove_attribute") {
+    removeAttribute(
+      document,
+      resolvedXpath,
+      locatorLabel,
+      operation.key!,
+      operation.allow_no_match,
+    );
+    return;
+  }
+
+  if (operation.type === "insert_element") {
+    insertElement(
+      document,
+      resolvedXpath,
+      locatorLabel,
+      operation.new_xml!,
+      operation.position,
+      operation.allow_no_match,
+    );
+    return;
+  }
+
+  if (operation.type === "remove_element") {
+    removeElement(
+      document,
+      resolvedXpath,
+      locatorLabel,
+      operation.allow_no_match,
+    );
+    return;
+  }
+
+  if (operation.type === "replace_element") {
+    replaceElement(
+      document,
+      resolvedXpath,
+      locatorLabel,
+      operation.new_xml!,
+      operation.allow_no_match,
+    );
+    return;
+  }
+
+  if (operation.type === "set_text_content") {
+    setTextContent(
+      document,
+      resolvedXpath,
+      locatorLabel,
+      operation.value!,
+      operation.allow_no_match,
+    );
+    return;
+  }
+
+  throw new Error(`未知操作类型: ${(operation as { type: string }).type}`);
 }
 
 function setAttribute(
@@ -500,24 +514,27 @@ function removeAttribute(
 
 function insertElement(
   document: Document,
-  operation: InsertElementOperation & { xpath: string },
+  xpath: string,
   locatorLabel: string,
+  newXml: string,
+  position?: InsertPosition,
+  allowNoMatch?: boolean,
 ): void {
-  const targets = selectNodes(document, operation.xpath);
+  const targets = selectNodes(document, xpath);
 
   if (targets.length === 0) {
-    if (operation.allow_no_match) {
+    if (allowNoMatch) {
       return;
     }
     throw new Error(`${locatorLabel} did not match any elements.`);
   }
 
-  const position: InsertPosition = operation.position ?? "append_child";
+  const insertPosition: InsertPosition = position ?? "append_child";
 
   for (const target of targets) {
-    const newNode = createElementFromXml(document, operation.new_xml);
+    const newNode = createElementFromXml(document, newXml);
 
-    switch (position) {
+    switch (insertPosition) {
       case "append_child": {
         if (target.nodeType !== target.ELEMENT_NODE) {
           throw new Error(`${locatorLabel} 仅支持元素节点作为父节点。`);
@@ -550,7 +567,7 @@ function insertElement(
         break;
       }
       default:
-        throw new Error(`未知的插入位置: ${String(position)}`);
+        throw new Error(`未知的插入位置: ${String(insertPosition)}`);
     }
   }
 }
