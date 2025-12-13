@@ -10,6 +10,7 @@ import {
 } from "react";
 import { Alert } from "@heroui/react";
 import { useChat } from "@ai-sdk/react";
+import type { UIMessage } from "ai";
 import {
   useChatLock,
   useNetworkStatus,
@@ -54,6 +55,8 @@ export default function ChatSidebar({
   currentProjectId,
   isSocketConnected = true,
 }: ChatSidebarProps) {
+  type UseChatMessage = UIMessage<MessageMetadata>;
+
   const [input, setInput] = useState("");
   const [expandedToolCalls, setExpandedToolCalls] = useState<
     Record<string, boolean>
@@ -329,9 +332,9 @@ export default function ChatSidebar({
     status,
     stop,
     error: chatError,
-  } = useChat<ChatUIMessage>({
+  } = useChat<UseChatMessage>({
     id: activeConversationId || "default",
-    messages: initialMessages,
+    messages: initialMessages as unknown as UseChatMessage[],
     onFinish: async ({ messages: finishedMessages }) => {
       const targetSessionId = sendingSessionIdRef.current;
 
@@ -341,13 +344,17 @@ export default function ChatSidebar({
           return;
         }
 
-        await chatService.saveNow(targetSessionId, finishedMessages, {
+        await chatService.saveNow(
+          targetSessionId,
+          finishedMessages as unknown as ChatUIMessage[],
+          {
           forceTitleUpdate: true,
           resolveConversationId,
           onConversationResolved: (resolvedId) => {
             setActiveConversationId(resolvedId);
           },
-        });
+          },
+        );
       } catch (error) {
         logger.error("[ChatSidebar] 保存消息失败:", error);
       } finally {
@@ -438,7 +445,7 @@ export default function ChatSidebar({
               nextParts[index] = {
                 ...nextParts[index],
                 durationMs: computedDuration,
-              };
+              } as unknown as UseChatMessage["parts"][number];
 
               const nextMessages = [...prev];
               nextMessages[messageIndex] = {
@@ -803,7 +810,9 @@ export default function ChatSidebar({
         return current;
       }
 
-      const currentFingerprints = current.map(fingerprintMessage);
+      const currentFingerprints = (current as unknown as ChatUIMessage[]).map(
+        fingerprintMessage,
+      );
 
       const isSame = areFingerprintsEqual(
         cachedFingerprints,
@@ -819,7 +828,7 @@ export default function ChatSidebar({
       lastSyncedToUIRef.current[targetConversationId] = cachedFingerprints;
       lastSyncedToStoreRef.current[targetConversationId] = cachedFingerprints;
 
-      return cached;
+      return cached as unknown as UseChatMessage[];
     });
 
     // 在微任务中清除来源标记，确保后续写回路径正常运行
@@ -1149,7 +1158,7 @@ export default function ChatSidebar({
     const nextMessages = [...baseMessages, cancelMessage];
 
     if (activeConversationId === targetConversationId) {
-      setMessages(nextMessages);
+      setMessages(nextMessages as unknown as UseChatMessage[]);
     }
 
     try {

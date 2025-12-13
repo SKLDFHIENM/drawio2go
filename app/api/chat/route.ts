@@ -6,6 +6,11 @@ import { createLogger } from "@/lib/logger";
 import type { ToolExecutionContext } from "@/app/types/socket";
 import { getStorage } from "@/app/lib/storage";
 import {
+  checkVisionSupport,
+  convertImagePartsToFileUIParts,
+  validateImageParts,
+} from "@/lib/attachment-converter";
+import {
   streamText,
   stepCountIs,
   convertToModelMessages,
@@ -16,6 +21,7 @@ import { createOpenAI } from "@ai-sdk/openai";
 import { createDeepSeek } from "@ai-sdk/deepseek";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { NextRequest, NextResponse } from "next/server";
+import type { ImagePart } from "@/app/types/chat";
 
 const logger = createLogger("Chat API");
 
@@ -201,10 +207,6 @@ export async function POST(req: NextRequest) {
 
     const tools = createDrawioTools(toolContext);
 
-    const modelMessages = convertToModelMessages(messages, {
-      tools,
-    });
-
     let normalizedConfig: LLMConfig;
 
     try {
@@ -225,8 +227,110 @@ export async function POST(req: NextRequest) {
       conversationId,
     });
 
+    // ==================== 图片消息处理（Milestone 3） ====================
+
+    // 步骤 1: 检查 vision 支持（有图片但模型不支持时硬拒绝）
+    const visionCheck = checkVisionSupport(
+      messages,
+      Boolean(normalizedConfig.capabilities?.supportsVision),
+    );
+
+    if (visionCheck.shouldReject) {
+      configAwareLogger.warn("拒绝图片消息: 模型不支持 vision", {
+        modelName: normalizedConfig.modelName,
+      });
+
+      return apiError(
+        ErrorCodes.CHAT_VISION_NOT_SUPPORTED,
+        visionCheck.errorMessage || "Model does not support vision",
+        400,
+      );
+    }
+
+    // 步骤 2: 提取并验证所有图片 parts（数量/大小/MIME）
+    const allImageParts: ImagePart[] = [];
+    for (const msg of messages) {
+      const parts = (msg as unknown as { parts?: unknown }).parts;
+      if (!Array.isArray(parts)) {
+        continue;
+      }
+
+      const imageParts = parts.filter((part): part is ImagePart => {
+        if (typeof part !== "object" || part === null) {
+          return false;
+        }
+
+        return (part as { type?: unknown }).type === "image";
+      });
+
+      allImageParts.push(...imageParts);
+    }
+
+    if (allImageParts.length > 0) {
+      const validation = validateImageParts(allImageParts);
+      if (!validation.valid) {
+        configAwareLogger.warn("图片验证失败", {
+          error: validation.error,
+          imageCount: allImageParts.length,
+        });
+
+        return apiError(
+          ErrorCodes.CHAT_INVALID_IMAGE,
+          validation.error || "Invalid image attachments",
+          400,
+        );
+      }
+    }
+
+    // 步骤 3: 将 ImagePart 原地替换为 AI SDK 标准的 FileUIPart（保持 parts 顺序）
+    const processedMessages: UIMessage[] = messages.map((msg) => {
+      const parts = (msg as unknown as { parts?: unknown }).parts;
+      if (!Array.isArray(parts)) {
+        return msg;
+      }
+
+      const imageParts = parts.filter((part): part is ImagePart => {
+        if (typeof part !== "object" || part === null) {
+          return false;
+        }
+
+        return (part as { type?: unknown }).type === "image";
+      });
+
+      if (imageParts.length === 0) {
+        return msg;
+      }
+
+      const fileParts = convertImagePartsToFileUIParts(imageParts);
+      let fileIndex = 0;
+
+      const nextParts = parts.map((part) => {
+        if (typeof part !== "object" || part === null) {
+          return part;
+        }
+
+        if ((part as { type?: unknown }).type !== "image") {
+          return part;
+        }
+
+        const nextFile = fileParts[fileIndex];
+        fileIndex += 1;
+        return nextFile ?? part;
+      });
+
+      return {
+        ...msg,
+        parts: nextParts as unknown as UIMessage["parts"],
+      };
+    });
+
+    const modelMessages = convertToModelMessages(processedMessages, {
+      tools,
+    });
+
     configAwareLogger.info("收到请求", {
       messagesCount: modelMessages.length,
+      imageCount: allImageParts.length,
       capabilities: normalizedConfig.capabilities,
       enableToolsInThinking: normalizedConfig.enableToolsInThinking,
       paramSources,

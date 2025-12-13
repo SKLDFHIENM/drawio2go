@@ -497,10 +497,12 @@ export class SQLiteStorage implements StorageAdapter {
     } else if (data instanceof ArrayBuffer) {
       payload.blob_data = data;
     } else if (data && ArrayBuffer.isView(data)) {
-      payload.blob_data = data.buffer.slice(
+      const view = new Uint8Array(
+        data.buffer,
         data.byteOffset,
-        data.byteOffset + data.byteLength,
+        data.byteLength,
       );
+      payload.blob_data = view.slice().buffer;
     }
 
     return window.electronStorage!.createAttachment(payload);
