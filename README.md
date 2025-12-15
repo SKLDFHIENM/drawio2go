@@ -47,7 +47,7 @@ A modern, cross-platform DrawIO editor application built with Electron, Next.js 
 ### Prerequisites
 
 - Node.js 20.x or higher
-- pnpm (recommended) or npm
+- npm
 
 ### Installation
 
@@ -57,7 +57,7 @@ git clone https://github.com/your-username/drawio2go.git
 cd drawio2go
 
 # Install dependencies
-pnpm install
+npm install
 ```
 
 ### Development
@@ -65,7 +65,7 @@ pnpm install
 **Web Mode (Browser):**
 
 ```bash
-pnpm run dev
+npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
@@ -73,17 +73,17 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 **Desktop Mode (Electron):**
 
 ```bash
-pnpm run electron:dev
+npm run electron:dev
 ```
 
 ### Production Build
 
 ```bash
 # Build Next.js
-pnpm run build
+npm run build
 
 # Build Electron app (outputs to dist/)
-pnpm run electron:build
+npm run electron:build
 ```
 
 ## Project Structure
@@ -151,17 +151,17 @@ drawio2go/
 ### Commands
 
 ```bash
-pnpm run dev          # Start development server
-pnpm run build        # Build for production
-pnpm run lint         # Run ESLint + TypeScript check
-pnpm run test         # Run tests
-pnpm run format       # Format code with Prettier
+npm run dev          # Start development server
+npm run build        # Build for production
+npm run lint         # Run ESLint + TypeScript check
+npm run test         # Run tests
+npm run format       # Format code with Prettier
 ```
 
 ### Architecture Notes
 
-- Uses **pnpm** as package manager
-- Must use `pnpm run dev` (not `next dev`) for Socket.IO support
+- Uses **npm** as package manager (for Electron build compatibility)
+- Must use `npm run dev` (not `next dev`) for Socket.IO support
 - HeroUI v3 requires Tailwind CSS v4
 - Components use `onPress` instead of `onClick` (React Aria convention)
 

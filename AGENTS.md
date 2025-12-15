@@ -252,7 +252,7 @@ Accordion, Alert, Avatar, Button, Card, Checkbox, CheckboxGroup, Chip, CloseButt
 
 ### 6. 检查测试
 
-- 务必主动调用`pnpm run lint`获得语法错误检查信息，避免在编译时才处理语法错误
+- 务必主动调用`npm run lint`获得语法错误检查信息，避免在编译时才处理语法错误
 
 ## 代码腐化清理记录
 
@@ -337,19 +337,19 @@ Accordion, Alert, Avatar, Button, Card, Checkbox, CheckboxGroup, Chip, CloseButt
 
 ## 开发命令
 
-使用pnpm作为包管理系统
+使用 npm 作为包管理系统（因 Electron 打包兼容性需求）
 
 ```bash
-pnpm run dev              # Socket.IO + Next.js 开发服务器 (http://localhost:3000)
-pnpm run electron:dev     # Electron + Socket.IO + Next.js 开发模式
-pnpm run build            # 构建 Next.js 应用
-pnpm run start            # 生产环境启动 (Socket.IO + Next.js)
-pnpm run electron:build   # 构建 Electron 应用 (输出到 dist/)
-pnpm run lint             # ESLint 检查 + TypeScript 类型检查
-pnpm format               # 使用 Prettier 格式化所有代码
+npm run dev              # Socket.IO + Next.js 开发服务器 (http://localhost:3000)
+npm run electron:dev     # Electron + Socket.IO + Next.js 开发模式
+npm run build            # 构建 Next.js 应用
+npm run start            # 生产环境启动 (Socket.IO + Next.js)
+npm run electron:build   # 构建 Electron 应用 (输出到 dist/)
+npm run lint             # ESLint 检查 + TypeScript 类型检查
+npm run format           # 使用 Prettier 格式化所有代码
 ```
 
-⚠️ **重要**: 不能使用 `next dev` 命令，必须使用 `pnpm run dev` 启动自定义服务器（包含 Socket.IO）
+⚠️ **重要**: 不能使用 `next dev` 命令，必须使用 `npm run dev` 启动自定义服务器（包含 Socket.IO）
 
 ## 常见问题
 

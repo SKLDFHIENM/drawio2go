@@ -1,10 +1,14 @@
 const { app, BrowserWindow, ipcMain, dialog, shell } = require("electron");
 const path = require("path");
 const fs = require("fs");
+const { fork } = require("child_process");
+const net = require("net");
 const SQLiteManager = require("./storage/sqlite-manager");
 
 let mainWindow;
 let storageManager = null;
+let serverProcess = null; // 内嵌服务器子进程
+let serverPort = 3000; // 服务器端口
 // 更可靠的开发模式检测：检查是否打包或者环境变量
 const isDev = !app.isPackaged || process.env.NODE_ENV === "development";
 
@@ -39,6 +43,125 @@ function resolveUserDataPathSafe(relativePath) {
   return target;
 }
 
+/**
+ * 查找可用端口（避免端口冲突）
+ * @param {number} startPort 起始端口
+ * @returns {Promise<number>} 可用端口
+ */
+function findAvailablePort(startPort = 3000) {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer();
+    server.unref();
+    server.on("error", (err) => {
+      if (err.code === "EADDRINUSE") {
+        resolve(findAvailablePort(startPort + 1));
+      } else {
+        reject(err);
+      }
+    });
+    server.listen(startPort, () => {
+      const port = server.address().port;
+      server.close(() => resolve(port));
+    });
+  });
+}
+
+/**
+ * 启动内嵌的 Next.js + Socket.IO 服务器
+ * @returns {Promise<number>} 服务器端口
+ */
+async function startEmbeddedServer() {
+  if (isDev) {
+    // 开发模式：假设外部已启动服务器
+    console.log("[Electron] 开发模式，使用外部服务器 http://localhost:3000");
+    return 3000;
+  }
+
+  // 生产模式：启动内嵌服务器
+  const port = await findAvailablePort(3000);
+
+  // 确定 server.js 和工作目录路径
+  // asarUnpack 会将 server.js 和 .next 解压到 app.asar.unpacked 目录
+  const serverPath = app.isPackaged
+    ? path
+        .join(__dirname, "../server.js")
+        .replace("app.asar", "app.asar.unpacked")
+    : path.join(__dirname, "../server.js");
+
+  const serverCwd = app.isPackaged
+    ? path.join(__dirname, "..").replace("app.asar", "app.asar.unpacked")
+    : path.join(__dirname, "..");
+
+  // node_modules 在 app.asar 中，需要设置 NODE_PATH 让子进程能找到
+  const asarNodeModules = app.isPackaged
+    ? path.join(__dirname, "../node_modules")
+    : null;
+
+  console.log(`[Electron] 启动内嵌服务器: ${serverPath} on port ${port}`);
+  console.log(`[Electron] 服务器工作目录: ${serverCwd}`);
+  if (asarNodeModules) {
+    console.log(`[Electron] NODE_PATH: ${asarNodeModules}`);
+  }
+
+  return new Promise((resolve, reject) => {
+    // 设置环境变量
+    const env = {
+      ...process.env,
+      NODE_ENV: "production",
+      PORT: String(port),
+      // 设置 NODE_PATH 让 server.js 能找到 app.asar 中的 node_modules
+      ...(asarNodeModules && { NODE_PATH: asarNodeModules }),
+    };
+
+    // 使用 fork 启动服务器（共享 Electron 的 Node.js 运行时）
+    serverProcess = fork(serverPath, [], {
+      env,
+      cwd: serverCwd,
+      stdio: ["pipe", "pipe", "pipe", "ipc"],
+    });
+
+    let resolved = false;
+
+    // 监听服务器输出
+    serverProcess.stdout.on("data", (data) => {
+      const message = data.toString();
+      console.log(`[Server] ${message.trim()}`);
+
+      // 检测服务器是否已启动
+      if (!resolved && message.includes("Ready on")) {
+        resolved = true;
+        console.log(`[Electron] 服务器已就绪，端口: ${port}`);
+        resolve(port);
+      }
+    });
+
+    serverProcess.stderr.on("data", (data) => {
+      console.error(`[Server Error] ${data.toString().trim()}`);
+    });
+
+    serverProcess.on("error", (err) => {
+      console.error("[Electron] 服务器启动失败:", err);
+      if (!resolved) {
+        resolved = true;
+        reject(err);
+      }
+    });
+
+    serverProcess.on("exit", (code) => {
+      console.log(`[Electron] 服务器进程退出，代码: ${code}`);
+      serverProcess = null;
+    });
+
+    // 超时检测（30秒）
+    setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        reject(new Error("服务器启动超时（30秒）"));
+      }
+    }, 30000);
+  });
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
@@ -55,17 +178,17 @@ function createWindow() {
     },
   });
 
-  // 加载应用
-  const url = isDev
-    ? "http://localhost:3000"
-    : `file://${path.join(__dirname, "../out/index.html")}`;
+  // 加载应用（统一使用 HTTP URL）
+  const url = `http://localhost:${serverPort}`;
 
   console.log(`加载 URL: ${url} (开发模式: ${isDev})`);
 
   mainWindow.loadURL(url).catch((err) => {
     console.error("加载 URL 失败:", err);
     if (isDev) {
-      console.error("请确保 Next.js 开发服务器正在运行 (npm run dev)");
+      console.error("请确保 Next.js 开发服务器正在运行 (pnpm run dev)");
+    } else {
+      console.error("内嵌服务器可能未正常启动");
     }
   });
 
@@ -123,13 +246,23 @@ function createWindow() {
   );
 }
 
-app.whenReady().then(() => {
-  // 初始化存储
-  storageManager = new SQLiteManager();
-  storageManager.initialize();
+app.whenReady().then(async () => {
+  try {
+    // 初始化存储
+    storageManager = new SQLiteManager();
+    storageManager.initialize();
 
-  // 创建窗口
-  createWindow();
+    // 启动内嵌服务器（生产模式）
+    serverPort = await startEmbeddedServer();
+    console.log(`[Electron] 服务器端口: ${serverPort}`);
+
+    // 创建窗口
+    createWindow();
+  } catch (error) {
+    console.error("[Electron] 启动失败:", error);
+    dialog.showErrorBox("启动失败", `无法启动应用服务器: ${error.message}`);
+    app.quit();
+  }
 });
 
 app.on("window-all-closed", () => {
@@ -137,8 +270,24 @@ app.on("window-all-closed", () => {
   if (storageManager) {
     storageManager.close();
   }
+
+  // 关闭服务器进程
+  if (serverProcess && !serverProcess.killed) {
+    console.log("[Electron] 关闭服务器进程...");
+    serverProcess.kill("SIGTERM");
+    serverProcess = null;
+  }
+
   if (process.platform !== "darwin") {
     app.quit();
+  }
+});
+
+app.on("before-quit", () => {
+  // 确保服务器进程被清理
+  if (serverProcess && !serverProcess.killed) {
+    serverProcess.kill("SIGTERM");
+    serverProcess = null;
   }
 });
 

@@ -221,4 +221,21 @@ app.prepare().then(() => {
     console.log(`> Ready on http://${hostname}:${port}`);
     console.log(`> Socket.IO server initialized`);
   });
+
+  // 优雅关闭
+  process.on("SIGTERM", () => {
+    console.log("> SIGTERM received, shutting down gracefully...");
+    httpServer.close(() => {
+      console.log("> Server closed");
+      process.exit(0);
+    });
+  });
+
+  process.on("SIGINT", () => {
+    console.log("> SIGINT received, shutting down gracefully...");
+    httpServer.close(() => {
+      console.log("> Server closed");
+      process.exit(0);
+    });
+  });
 });

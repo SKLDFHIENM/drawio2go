@@ -41,7 +41,7 @@ export default [
     },
   },
   {
-    files: ["server.js", "electron/**/*.js"],
+    files: ["server.js", "electron/**/*.js", "scripts/**/*.js"],
     rules: {
       "@typescript-eslint/no-require-imports": "off",
     },

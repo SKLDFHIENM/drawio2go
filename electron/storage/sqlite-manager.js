@@ -3,14 +3,12 @@ const { app } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const { v4: uuidv4 } = require("uuid");
-const {
-  createDefaultDiagramXml,
-} = require("../../app/lib/storage/default-diagram-xml");
+const { createDefaultDiagramXml } = require("./shared/default-diagram-xml");
 const {
   DEFAULT_PROJECT_UUID,
   WIP_VERSION,
   ZERO_SOURCE_VERSION_ID,
-} = require("../../app/lib/storage/constants-shared");
+} = require("./shared/constants-shared");
 const { runSQLiteMigrations } = require("./migrations");
 
 const SQLITE_DB_FILE = "drawio2go.db";

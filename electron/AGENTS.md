@@ -37,6 +37,12 @@ electron/
 ├── preload.js                 # 预加载脚本，安全暴露 IPC API
 └── storage/
     ├── sqlite-manager.js      # SQLite 数据库管理器（使用 better-sqlite3）
+    ├── migrations/            # 数据库迁移脚本
+    │   ├── index.js           # 迁移入口
+    │   └── v1.js              # V1 迁移
+    └── shared/                # 共享常量（打包时需包含）
+        ├── constants-shared.js    # 存储常量
+        └── default-diagram-xml.js # 默认图表 XML
 ```
 
 ## 核心功能
@@ -164,6 +170,25 @@ if (isElectron) {
 3. 返回 XML 内容给前端
 
 ## 构建配置
+
+### 内嵌服务器架构（2025-12-15 更新）
+
+**生产模式**：Electron 主进程通过 `fork()` 启动内嵌的 Next.js + Socket.IO 服务器
+
+```javascript
+// electron/main.js
+async function startEmbeddedServer() {
+  const port = await findAvailablePort(3000); // 自动查找可用端口
+  serverProcess = fork(serverPath, [], { env: { PORT: port } });
+  // 监听 "Ready on" 输出确认启动成功
+}
+```
+
+**关键特性**：
+
+- 端口自动查找：避免 3000 端口被占用时的冲突
+- 优雅关闭：SIGTERM/SIGINT 信号处理
+- 路径解析：`asarUnpack` 解压的文件位于 `app.asar.unpacked/`
 
 ### electron-builder 配置
 

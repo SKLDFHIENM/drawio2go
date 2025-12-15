@@ -47,7 +47,7 @@
 ### 环境要求
 
 - Node.js 20.x 或更高版本
-- pnpm（推荐）或 npm
+- npm
 
 ### 安装
 
@@ -57,7 +57,7 @@ git clone https://github.com/your-username/drawio2go.git
 cd drawio2go
 
 # 安装依赖
-pnpm install
+npm install
 ```
 
 ### 开发模式
@@ -65,7 +65,7 @@ pnpm install
 **网页版（浏览器）：**
 
 ```bash
-pnpm run dev
+npm run dev
 ```
 
 在浏览器中打开 [http://localhost:3000](http://localhost:3000)
@@ -73,17 +73,17 @@ pnpm run dev
 **桌面版（Electron）：**
 
 ```bash
-pnpm run electron:dev
+npm run electron:dev
 ```
 
 ### 生产构建
 
 ```bash
 # 构建 Next.js 应用
-pnpm run build
+npm run build
 
 # 构建 Electron 安装包（输出到 dist/ 目录）
-pnpm run electron:build
+npm run electron:build
 ```
 
 ## 项目结构
@@ -151,17 +151,17 @@ drawio2go/
 ### 常用命令
 
 ```bash
-pnpm run dev          # 启动开发服务器
-pnpm run build        # 构建生产版本
-pnpm run lint         # 运行 ESLint + TypeScript 检查
-pnpm run test         # 运行测试
-pnpm run format       # 使用 Prettier 格式化代码
+npm run dev          # 启动开发服务器
+npm run build        # 构建生产版本
+npm run lint         # 运行 ESLint + TypeScript 检查
+npm run test         # 运行测试
+npm run format       # 使用 Prettier 格式化代码
 ```
 
 ### 架构说明
 
-- 使用 **pnpm** 作为包管理器
-- 必须使用 `pnpm run dev`（而非 `next dev`）以支持 Socket.IO
+- 使用 **npm** 作为包管理器（因 Electron 打包兼容性需求）
+- 必须使用 `npm run dev`（而非 `next dev`）以支持 Socket.IO
 - HeroUI v3 需要 Tailwind CSS v4
 - 组件使用 `onPress` 而非 `onClick`（React Aria 规范）
 

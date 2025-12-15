@@ -1,5 +1,5 @@
 const { applySQLiteV1Migration } = require("./v1");
-const { STORAGE_VERSION } = require("../../app/lib/storage/constants-shared");
+const { STORAGE_VERSION } = require("../shared/constants-shared");
 
 const defaultLogger = {
   info: (...args) => console.log("[SQLiteMigration]", ...args),

@@ -86,7 +86,8 @@
       "Bash(awk:*)",
       "Bash(npm run lint:*)",
       "WebFetch(domain:sdk.vercel.ai)",
-      "Bash(npm run type-check:*)"
+      "Bash(npm run type-check:*)",
+      "Bash(node scripts/prepare-electron.js:*)"
     ],
     "deny": [],
     "ask": []
