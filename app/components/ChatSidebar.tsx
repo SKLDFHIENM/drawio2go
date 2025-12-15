@@ -1353,7 +1353,7 @@ export default function ChatSidebar({
       }
 
       await sendMessage(
-        { ...(userMessage as unknown as UseChatMessage), messageId },
+        userMessage as unknown as UseChatMessage,
         {
           body: {
             llmConfig,

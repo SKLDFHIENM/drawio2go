@@ -18,7 +18,6 @@ import type {
 } from "@/app/types/socket-protocol";
 import { getDrawioXML, replaceDrawioXML } from "@/app/lib/drawio-tools";
 import { useStorageXMLVersions } from "./useStorageXMLVersions";
-import { useCurrentProject } from "./useCurrentProject";
 import { useStorageSettings } from "./useStorageSettings";
 import {
   getNextSubVersion,
@@ -57,10 +56,12 @@ function resolveToolCallError(result: ToolResultLike): string | undefined {
  * DrawIO Socket.IO Hook
  *
  * @param editorRef 可选 DrawIO 编辑器引用，供自动版本快照导出 XML/SVG
+ * @param projectUuid 当前项目 UUID（由上层统一来源传入，避免多处 useCurrentProject 状态不同步）
  * @returns { isConnected: boolean } - Socket.IO 连接状态
  */
 export function useDrawioSocket(
   editorRef?: React.RefObject<DrawioEditorRef | null>,
+  projectUuid?: string | null,
 ) {
   const [connectionStatus, setConnectionStatusState] =
     useState<ConnectionStatus>("connecting");
@@ -71,9 +72,9 @@ export function useDrawioSocket(
   > | null>(null);
   const { createHistoricalVersion, getAllXMLVersions } =
     useStorageXMLVersions();
-  const { currentProject } = useCurrentProject();
   const { getSetting } = useStorageSettings();
-  const currentProjectRef = useRef(currentProject);
+  const normalizedProjectUuid = (projectUuid ?? "").trim() || null;
+  const projectUuidRef = useRef<string | null>(normalizedProjectUuid);
   const cachedProjectUuidRef = useRef<string | null>(null);
   const latestMainVersionRef = useRef<string | null>(null);
   const latestSubVersionRef = useRef<string | null>(null);
@@ -116,17 +117,17 @@ export function useDrawioSocket(
   }, []);
 
   useEffect(() => {
-    currentProjectRef.current = currentProject;
-  }, [currentProject]);
+    projectUuidRef.current = normalizedProjectUuid;
+  }, [normalizedProjectUuid]);
 
   useEffect(() => {
-    const projectId = currentProject?.uuid ?? null;
+    const projectId = normalizedProjectUuid;
     if (cachedProjectUuidRef.current !== projectId) {
       cachedProjectUuidRef.current = projectId;
       latestMainVersionRef.current = null;
       latestSubVersionRef.current = null;
     }
-  }, [currentProject]);
+  }, [normalizedProjectUuid]);
 
   useEffect(() => {
     const getLastSubNumber = (version: string | null): number | null => {
@@ -193,28 +194,28 @@ export function useDrawioSocket(
       try {
         const autoVersionEnabled =
           (await getSetting("autoVersionOnAIEdit")) !== "false";
-        const project = currentProjectRef.current;
+        const currentProjectId = projectUuidRef.current;
 
-        if (!autoVersionEnabled || !project?.uuid) {
+        if (!autoVersionEnabled || !currentProjectId) {
           return;
         }
 
         if (isCreatingSnapshotRef.current) {
           logger.debug("已有快照任务进行中，跳过本次自动快照", {
             requestId: request.requestId,
-            projectId: project.uuid,
+            projectId: currentProjectId,
           });
           return;
         }
 
         isCreatingSnapshotRef.current = true;
 
-        if (cachedProjectUuidRef.current !== project.uuid) {
-          cachedProjectUuidRef.current = project.uuid;
+        if (cachedProjectUuidRef.current !== currentProjectId) {
+          cachedProjectUuidRef.current = currentProjectId;
           resetVersionCache();
         }
 
-        await seedVersionCache(project.uuid);
+        await seedVersionCache(currentProjectId);
 
         const timestamp = new Date().toLocaleString("zh-CN");
         const baseDescription =
@@ -228,12 +229,12 @@ export function useDrawioSocket(
         // 没有主版本时，先创建首个主版本（关键帧），再创建子版本
         if (!latestMainVersion) {
           logger.info("未检测到主版本，正在创建首个主版本", {
-            projectId: project?.uuid,
+            projectId: currentProjectId,
             version: DEFAULT_FIRST_VERSION,
           });
 
           await createHistoricalVersion(
-            project.uuid,
+            currentProjectId,
             DEFAULT_FIRST_VERSION,
             "AI 自动创建的首个主版本",
             editorRef,
@@ -243,7 +244,7 @@ export function useDrawioSocket(
           latestMainVersion = DEFAULT_FIRST_VERSION;
           latestMainVersionRef.current = DEFAULT_FIRST_VERSION;
           logger.info("首个主版本创建成功，准备创建子版本", {
-            projectId: project?.uuid,
+            projectId: currentProjectId,
             parentVersion: latestMainVersion,
           });
         }
@@ -258,7 +259,7 @@ export function useDrawioSocket(
         const nextSubVersion = getNextSubVersionIncremental(latestMainVersion);
 
         logger.info("准备创建子版本", {
-          projectId: project?.uuid,
+          projectId: currentProjectId,
           parentVersion: latestMainVersion,
           nextVersion: nextSubVersion,
           requestId: request.requestId,
@@ -266,7 +267,7 @@ export function useDrawioSocket(
         });
 
         await createHistoricalVersion(
-          project.uuid,
+          currentProjectId,
           nextSubVersion,
           versionDescription,
           editorRef,
@@ -274,7 +275,7 @@ export function useDrawioSocket(
         );
 
         logger.info("已创建版本快照", {
-          projectId: project?.uuid,
+          projectId: currentProjectId,
           version: nextSubVersion,
           requestId: request.requestId,
           description: versionDescription,
@@ -284,7 +285,7 @@ export function useDrawioSocket(
         latestSubVersionRef.current = nextSubVersion;
       } catch (error) {
         logger.error("自动版本创建失败", {
-          projectId: currentProjectRef.current?.uuid,
+          projectId: projectUuidRef.current,
           error,
         });
         resetVersionCache();
@@ -324,14 +325,9 @@ export function useDrawioSocket(
         });
       }
 
-      const projectUuid = currentProjectRef.current?.uuid;
-      if (projectUuid) {
-        socket.emit("join_project", projectUuid);
-        joinedProjectRef.current = projectUuid;
-        logger.info("已加入项目房间", {
-          socketId: socket.id,
-          projectUuid,
-        });
+      const currentProjectId = projectUuidRef.current;
+      if (currentProjectId) {
+        syncProjectRoom(currentProjectId);
       } else {
         logger.warn("连接成功但当前没有项目，等待项目就绪后加入房间", {
           socketId: socket.id,
@@ -362,7 +358,7 @@ export function useDrawioSocket(
 
     // 监听工具执行请求
     socket.on("tool:execute", async (request: ToolCallRequest) => {
-      const currentProjectUuid = currentProjectRef.current?.uuid;
+      const currentProjectUuid = projectUuidRef.current;
 
       logger.debug("收到工具调用请求", {
         toolName: request.toolName,
@@ -504,11 +500,17 @@ export function useDrawioSocket(
       socket.disconnect();
       applyConnectionStatus("disconnected");
     };
-  }, [createHistoricalVersion, getAllXMLVersions, getSetting, editorRef]);
+  }, [
+    createHistoricalVersion,
+    getAllXMLVersions,
+    getSetting,
+    editorRef,
+    syncProjectRoom,
+  ]);
 
   useEffect(() => {
-    syncProjectRoom(currentProject?.uuid ?? null);
-  }, [currentProject, syncProjectRoom]);
+    syncProjectRoom(normalizedProjectUuid);
+  }, [normalizedProjectUuid, syncProjectRoom]);
 
   return { isConnected: connectionStatus === "connected", connectionStatus };
 }

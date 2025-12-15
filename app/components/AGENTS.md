@@ -120,6 +120,7 @@
 - 工具状态卡片（进行中/成功/失败）
 - 模型信息条（图标 + 模型名 + 时间戳）
 - 模型选择 Popover（HeroUI ComboBox 分组），按供应商列出模型，流式期间禁用选择
+- `sendMessage(message, ...)` 仅在“替换既有用户消息”时才传 `message.messageId`；普通发送只需设置 `message.id`
 
 #### 4.1 聊天子组件（app/components/chat/）
 
