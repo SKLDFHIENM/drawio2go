@@ -43,13 +43,14 @@ export default function SettingsSidebar({
     getAgentSettings,
     saveAgentSettings,
     getActiveModel,
-    getDefaultPath,
-    saveDefaultPath,
+    getGeneralSettings,
+    updateGeneralSettings,
     getSetting,
     setSetting,
   } = useStorageSettings();
 
   const [defaultPath, setDefaultPath] = useState("");
+  const [sidebarExpanded, setSidebarExpanded] = useState(true);
 
   const [providers, setProviders] = useState<ProviderConfig[]>([]);
   const [models, setModels] = useState<ModelConfig[]>([]);
@@ -117,11 +118,20 @@ export default function SettingsSidebar({
   const saveDefaultPathNow = useCallback(
     async (path: string) => {
       await runSaveTask(async () => {
-        await saveDefaultPath(path);
+        await updateGeneralSettings({ defaultPath: path });
         onSettingsChange?.({ defaultPath: path });
       });
     },
-    [onSettingsChange, runSaveTask, saveDefaultPath],
+    [onSettingsChange, runSaveTask, updateGeneralSettings],
+  );
+
+  const saveSidebarExpandedNow = useCallback(
+    async (expanded: boolean) => {
+      await runSaveTask(async () => {
+        await updateGeneralSettings({ sidebarExpanded: expanded });
+      });
+    },
+    [runSaveTask, updateGeneralSettings],
   );
 
   const saveAgentSettingsNow = useCallback(
@@ -190,14 +200,14 @@ export default function SettingsSidebar({
     const loadSettings = async () => {
       try {
         const [
-          path,
+          generalSettings,
           loadedProviders,
           loadedModels,
           loadedAgent,
           loadedActiveModel,
           versionSetting,
         ] = await Promise.all([
-          getDefaultPath(),
+          getGeneralSettings(),
           getProviders(),
           getModels(),
           getAgentSettings(),
@@ -205,8 +215,9 @@ export default function SettingsSidebar({
           getSetting("version.autoVersionOnAIEdit"),
         ]);
 
-        const normalizedPath = path || "";
+        const normalizedPath = generalSettings.defaultPath || "";
         setDefaultPath(normalizedPath);
+        setSidebarExpanded(generalSettings.sidebarExpanded);
 
         setProviders(loadedProviders);
 
@@ -227,6 +238,7 @@ export default function SettingsSidebar({
         setAgentSettings(DEFAULT_AGENT_SETTINGS);
         setActiveModelState(null);
         setVersionSettings({ autoVersionOnAIEdit: true });
+        setSidebarExpanded(true);
         showToast({
           variant: "danger",
           description: t("toasts.loadFailed", {
@@ -239,7 +251,7 @@ export default function SettingsSidebar({
     loadSettings().catch(() => {});
   }, [
     getAgentSettings,
-    getDefaultPath,
+    getGeneralSettings,
     getModels,
     getProviders,
     getActiveModel,
@@ -269,6 +281,14 @@ export default function SettingsSidebar({
       debouncedSaveDefaultPath(path);
     },
     [debouncedSaveDefaultPath],
+  );
+
+  const handleSidebarExpandedChange = useCallback(
+    (expanded: boolean) => {
+      setSidebarExpanded(expanded);
+      saveSidebarExpandedNow(expanded).catch(() => {});
+    },
+    [saveSidebarExpandedNow],
   );
 
   const handleProvidersChange = (items: ProviderConfig[]) => {
@@ -329,6 +349,8 @@ export default function SettingsSidebar({
         <div className="settings-content">
           {activeTab === "general" && (
             <GeneralSettingsPanel
+              sidebarExpanded={sidebarExpanded}
+              onSidebarExpandedChange={handleSidebarExpandedChange}
               defaultPath={defaultPath}
               onDefaultPathChange={handleDefaultPathChange}
             />

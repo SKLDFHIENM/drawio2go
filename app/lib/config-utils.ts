@@ -134,6 +134,20 @@ export const STORAGE_KEY_LLM_MODELS = "settings.llm.models";
 export const STORAGE_KEY_AGENT_SETTINGS = "settings.llm.agent";
 export const STORAGE_KEY_ACTIVE_MODEL = "settings.llm.activeModel";
 
+export const STORAGE_KEY_GENERAL_SETTINGS = "settings.general";
+
+export interface GeneralSettings {
+  // 默认展开侧边栏
+  sidebarExpanded: boolean;
+  // 默认文件路径
+  defaultPath: string;
+}
+
+export const DEFAULT_GENERAL_SETTINGS: GeneralSettings = {
+  sidebarExpanded: true,
+  defaultPath: "",
+};
+
 // 默认不预置任何 providers/models（需要用户在设置中创建）
 export const DEFAULT_PROVIDERS: ProviderConfig[] = [];
 export const DEFAULT_MODELS: ModelConfig[] = [];

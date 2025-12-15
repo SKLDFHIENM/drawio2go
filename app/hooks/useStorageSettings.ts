@@ -13,8 +13,10 @@ import type {
 } from "@/app/types/chat";
 import {
   DEFAULT_AGENT_SETTINGS,
+  DEFAULT_GENERAL_SETTINGS,
   STORAGE_KEY_ACTIVE_MODEL,
   STORAGE_KEY_AGENT_SETTINGS,
+  STORAGE_KEY_GENERAL_SETTINGS,
   STORAGE_KEY_LLM_MODELS,
   STORAGE_KEY_LLM_PROVIDERS,
   normalizeLLMConfig,
@@ -30,10 +32,17 @@ import {
 const logger = createLogger("useStorageSettings");
 const STORAGE_TIMEOUT_MESSAGE = getStorageTimeoutMessage();
 
-type SettingsUpdatedType = "provider" | "model" | "agent" | "activeModel";
+type SettingsUpdatedType =
+  | "provider"
+  | "model"
+  | "agent"
+  | "activeModel"
+  | "general";
 type SettingsUpdatedDetail = { type: SettingsUpdatedType };
 
 type StorageInstance = Awaited<ReturnType<typeof getStorage>>;
+
+type GeneralSettings = typeof DEFAULT_GENERAL_SETTINGS;
 
 const safeParseJSON = <T>(
   raw: string | null,
@@ -47,6 +56,24 @@ const safeParseJSON = <T>(
     logger.error(`[useStorageSettings] 解析 ${key} 失败`, error);
     return fallback;
   }
+};
+
+const normalizeGeneralSettings = (parsed: unknown): GeneralSettings | null => {
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return null;
+  }
+
+  const record = parsed as Record<string, unknown>;
+  return {
+    sidebarExpanded:
+      typeof record.sidebarExpanded === "boolean"
+        ? record.sidebarExpanded
+        : DEFAULT_GENERAL_SETTINGS.sidebarExpanded,
+    defaultPath:
+      typeof record.defaultPath === "string"
+        ? record.defaultPath
+        : DEFAULT_GENERAL_SETTINGS.defaultPath,
+  };
 };
 
 const pickFallbackActiveModel = (
@@ -322,6 +349,36 @@ export function useStorageSettings() {
     [],
   );
 
+  const loadGeneralSettings = useCallback(
+    async (storage: StorageInstance): Promise<GeneralSettings> => {
+      const rawGeneral = await withStorageTimeout(
+        storage.getSetting(STORAGE_KEY_GENERAL_SETTINGS),
+      );
+
+      const parsed = safeParseJSON<unknown>(
+        rawGeneral,
+        STORAGE_KEY_GENERAL_SETTINGS,
+        null,
+      );
+
+      const normalized = normalizeGeneralSettings(parsed);
+      return normalized ?? DEFAULT_GENERAL_SETTINGS;
+    },
+    [],
+  );
+
+  const persistGeneralSettings = useCallback(
+    async (storage: StorageInstance, settings: GeneralSettings) => {
+      await withStorageTimeout(
+        storage.setSetting(
+          STORAGE_KEY_GENERAL_SETTINGS,
+          JSON.stringify(settings),
+        ),
+      );
+    },
+    [],
+  );
+
   /**
    * 获取设置值
    */
@@ -352,24 +409,71 @@ export function useStorageSettings() {
   }, [execute]);
 
   /**
-   * 获取默认路径
+   * 获取通用设置（v1）
    */
-  const getDefaultPath = useCallback(async (): Promise<string | null> => {
-    return execute((storage) =>
-      withStorageTimeout(storage.getSetting("defaultPath")),
-    );
-  }, [execute]);
+  const getGeneralSettings = useCallback(async (): Promise<GeneralSettings> => {
+    return execute(async (storage) => {
+      const settings = await loadGeneralSettings(storage);
+      return settings;
+    });
+  }, [execute, loadGeneralSettings]);
 
   /**
-   * 保存默认路径
+   * 保存通用设置（全量覆盖）
+   */
+  const saveGeneralSettings = useCallback(
+    async (settings: GeneralSettings): Promise<void> => {
+      await execute(async (storage) => {
+        await persistGeneralSettings(storage, settings);
+        dispatchSettingsUpdated("general");
+      });
+    },
+    [execute, persistGeneralSettings],
+  );
+
+  /**
+   * 更新通用设置（Partial 合并）
+   */
+  const updateGeneralSettings = useCallback(
+    async (updates: Partial<GeneralSettings>): Promise<GeneralSettings> => {
+      return execute(async (storage) => {
+        const current = await loadGeneralSettings(storage);
+        const next: GeneralSettings = {
+          sidebarExpanded:
+            typeof updates.sidebarExpanded === "boolean"
+              ? updates.sidebarExpanded
+              : current.sidebarExpanded,
+          defaultPath:
+            typeof updates.defaultPath === "string"
+              ? updates.defaultPath
+              : current.defaultPath,
+        };
+
+        await persistGeneralSettings(storage, next);
+        dispatchSettingsUpdated("general");
+        return next;
+      });
+    },
+    [execute, loadGeneralSettings, persistGeneralSettings],
+  );
+
+  /**
+   * 获取默认路径（便捷方法，内部使用通用设置）
+   */
+  const getDefaultPath = useCallback(async (): Promise<string | null> => {
+    const settings = await getGeneralSettings();
+    const normalized = settings.defaultPath.trim();
+    return normalized ? normalized : null;
+  }, [getGeneralSettings]);
+
+  /**
+   * 保存默认路径（便捷方法，内部使用通用设置）
    */
   const saveDefaultPath = useCallback(
     async (path: string): Promise<void> => {
-      await execute((storage) =>
-        withStorageTimeout(storage.setSetting("defaultPath", path)),
-      );
+      await updateGeneralSettings({ defaultPath: path });
     },
-    [execute],
+    [updateGeneralSettings],
   );
 
   /**
@@ -1209,6 +1313,9 @@ export function useStorageSettings() {
     getSetting,
     setSetting,
     getAllSettings,
+    getGeneralSettings,
+    saveGeneralSettings,
+    updateGeneralSettings,
     getLLMConfig,
     saveLLMConfig,
     getDefaultPath,

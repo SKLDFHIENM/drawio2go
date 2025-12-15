@@ -40,7 +40,7 @@ type PendingSaveEntry = {
 
 export default function Home() {
   // 存储 Hook
-  const { getDefaultPath } = useStorageSettings();
+  const { getGeneralSettings } = useStorageSettings();
 
   // 工程管理 Hook
   const {
@@ -214,21 +214,20 @@ export default function Home() {
       setIsElectronEnv(Boolean(window.electron));
 
       // 加载默认路径设置
-      const loadDefaultPath = async () => {
+      const loadGeneralSettings = async () => {
         try {
-          const savedPath = await getDefaultPath();
-          if (savedPath) {
-            setSettings({ defaultPath: savedPath });
-          }
+          const general = await getGeneralSettings();
+          setSettings({ defaultPath: general.defaultPath });
+          setIsSidebarOpen(general.sidebarExpanded);
         } catch (error) {
-          logger.error("加载默认路径失败", { error });
+          logger.error("加载通用设置失败", { error });
         }
       };
 
-      loadDefaultPath();
+      loadGeneralSettings();
       return undefined;
     }
-  }, [getDefaultPath, editorRef]);
+  }, [getGeneralSettings, editorRef]);
 
   // 监听 DrawIO 合并错误并展示提示
   useEffect(() => {

@@ -17,6 +17,10 @@
       "placeholder": "/home/user/drawio",
       "selectButton": "Select Directory",
       "description": "Default directory for saving new projects"
+    },
+    "sidebarExpanded": {
+      "label": "Expand Sidebar by Default",
+      "description": "Open the right sidebar on startup"
     }
   },
   "llm": {

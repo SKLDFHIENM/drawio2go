@@ -38,6 +38,8 @@
 
 ```typescript
 interface GeneralSettingsPanelProps {
+  sidebarExpanded: boolean; // 默认展开侧边栏
+  onSidebarExpandedChange: (expanded: boolean) => void;
   defaultPath: string; // 默认文件路径
   onDefaultPathChange: (path: string) => void;
 }
@@ -46,6 +48,7 @@ interface GeneralSettingsPanelProps {
 **配置项：**
 
 - **语言选择** - 切换应用UI语言（中文/英文），使用 LanguageSwitcher 组件
+- **默认展开侧边栏** - 控制启动时右侧侧边栏是否默认展开
 - **默认文件路径** - 设置文件浏览器打开的初始目录（Electron 环境）
 
 ### ModelsSettingsPanel（供应商/模型管理）
@@ -144,6 +147,8 @@ settings.general.defaultPath.label
 settings.general.defaultPath.placeholder
 settings.general.defaultPath.description
 settings.general.defaultPath.selectButton
+settings.general.sidebarExpanded.label
+settings.general.sidebarExpanded.description
 ```
 
 **LLM 设置：**

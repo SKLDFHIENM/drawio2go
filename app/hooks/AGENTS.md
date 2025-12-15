@@ -14,13 +14,14 @@
 
 ### 1. useStorageSettings
 
-**应用设置持久化 Hook** - 管理 LLM 配置、默认路径等应用级设置
+**应用设置持久化 Hook** - 管理 LLM 配置、通用设置等应用级设置
 
 #### 核心方法
 
 - `getSetting(key)` / `setSetting(key, value)` / `getAllSettings()`
+- `getGeneralSettings()` / `saveGeneralSettings(settings)` / `updateGeneralSettings(updates)`: 通用设置（`settings.general`，JSON 字符串）
 - `getLLMConfig()` / `saveLLMConfig(config)`: **已废弃**，内部自动映射到 provider/model/agent 级配置，并清理旧的 `llmConfig` 键；请优先使用 `getRuntimeConfig` 与对应的 provider/model/agent 更新接口
-- `getDefaultPath()` / `saveDefaultPath(path)`: 获取/保存默认路径
+- `getDefaultPath()` / `saveDefaultPath(path)`: 默认路径便捷方法（内部使用通用设置）
 
 **特性**: TypeScript 类型安全，自动规范化配置（补全默认值、验证 provider、规范化 URL）
 

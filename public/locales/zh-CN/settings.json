@@ -17,6 +17,10 @@
       "placeholder": "/home/user/drawio",
       "selectButton": "选择目录",
       "description": "新建项目时默认保存的目录"
+    },
+    "sidebarExpanded": {
+      "label": "默认展开侧边栏",
+      "description": "启动应用时默认打开右侧侧边栏"
     }
   },
   "llm": {
