@@ -189,7 +189,7 @@ function createWindow() {
   mainWindow.loadURL(url).catch((err) => {
     console.error("加载 URL 失败:", err);
     if (isDev) {
-      console.error("请确保 Next.js 开发服务器正在运行 (pnpm run dev)");
+      console.error("请确保 Next.js 开发服务器正在运行 (npm run dev)");
     } else {
       console.error("内嵌服务器可能未正常启动");
     }

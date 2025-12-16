@@ -41,7 +41,7 @@ console.log("Preparing Electron build...\n");
 // 检查 .next 目录是否存在
 if (!fs.existsSync(nextDir)) {
   console.error("Error: .next directory not found!");
-  console.error("Please run 'pnpm run build' first.");
+  console.error("Please run 'npm run build' first.");
   process.exit(1);
 }
 
@@ -120,12 +120,12 @@ if (fs.existsSync(sqliteNodePath)) {
     console.log(`✓ better-sqlite3 原生模块: ${nodeFiles.join(", ")}`);
   } else {
     console.warn(
-      "Warning: better-sqlite3 原生模块 (.node) 未找到，可能需要运行 pnpm rebuild",
+      "Warning: better-sqlite3 原生模块 (.node) 未找到，可能需要运行 npm run rebuild",
     );
   }
 } else {
   console.warn(
-    "Warning: better-sqlite3/build/Release 目录不存在，可能需要运行 pnpm rebuild",
+    "Warning: better-sqlite3/build/Release 目录不存在，可能需要运行 npm run rebuild",
   );
 }
 

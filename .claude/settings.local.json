@@ -87,7 +87,8 @@
       "Bash(npm run lint:*)",
       "WebFetch(domain:sdk.vercel.ai)",
       "Bash(npm run type-check:*)",
-      "Bash(node scripts/prepare-electron.js:*)"
+      "Bash(node scripts/prepare-electron.js:*)",
+      "mcp__codexmcp__codex"
     ],
     "deny": [],
     "ask": []

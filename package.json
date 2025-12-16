@@ -11,8 +11,8 @@
     "test": "vitest run",
     "format": "prettier --write .",
     "electron": "electron .",
-    "electron:dev": "concurrently \"pnpm run dev\" \"wait-on http://localhost:3000 && electron .\"",
-    "electron:build": "pnpm run build && pnpm run electron:prepare && electron-builder",
+    "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:3000 && electron .\"",
+    "electron:build": "npm run build && npm run electron:prepare && electron-builder",
     "electron:prepare": "node scripts/prepare-electron.js",
     "rebuild": "electron-rebuild -f -w better-sqlite3",
     "postinstall": "electron-rebuild -f -w better-sqlite3"
