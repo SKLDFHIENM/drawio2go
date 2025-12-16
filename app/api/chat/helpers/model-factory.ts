@@ -1,4 +1,9 @@
 import type { LLMConfig } from "@/app/types/chat";
+import {
+  DEFAULT_ANTHROPIC_API_URL,
+  DEFAULT_DEEPSEEK_API_URL,
+  DEFAULT_OPENAI_API_URL,
+} from "@/app/lib/config-utils";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createDeepSeek } from "@ai-sdk/deepseek";
 import { createOpenAI } from "@ai-sdk/openai";
@@ -10,21 +15,21 @@ type ModelFactory = (config: LLMConfig) => LanguageModel;
 const FACTORIES: Record<string, ModelFactory> = {
   "openai-reasoning": (config) => {
     const openaiProvider = createOpenAI({
-      baseURL: config.apiUrl,
+      baseURL: config.apiUrl || DEFAULT_OPENAI_API_URL,
       apiKey: config.apiKey || "dummy-key",
     });
     return openaiProvider.chat(config.modelName);
   },
   "deepseek-native": (config) => {
     const deepseekProvider = createDeepSeek({
-      baseURL: config.apiUrl,
+      baseURL: config.apiUrl || DEFAULT_DEEPSEEK_API_URL,
       apiKey: config.apiKey || "dummy-key",
     });
     return deepseekProvider(config.modelName);
   },
   anthropic: (config) => {
     const anthropicProvider = createAnthropic({
-      baseURL: config.apiUrl || "https://api.anthropic.com",
+      baseURL: config.apiUrl || DEFAULT_ANTHROPIC_API_URL,
       apiKey: config.apiKey || "",
     });
     return anthropicProvider(config.modelName);
@@ -34,7 +39,7 @@ const FACTORIES: Record<string, ModelFactory> = {
 const DEFAULT_FACTORY: ModelFactory = (config) => {
   const compatibleProvider = createOpenAICompatible({
     name: config.providerType,
-    baseURL: config.apiUrl,
+    baseURL: config.apiUrl || DEFAULT_OPENAI_API_URL,
     apiKey: config.apiKey || "dummy-key",
   });
   return compatibleProvider(config.modelName);

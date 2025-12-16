@@ -34,9 +34,12 @@ export const DEFAULT_SYSTEM_PROMPT = `你是一个专业的 DrawIO XML 绘制助
 
 确保输出的 XML 始终可以被 DrawIO 正确解析与渲染，并在回复中解释你的思考过程与操作理由。`;
 
-// 默认不提供任何供应商 API URL（需要用户在设置中显式配置）
-export const DEFAULT_API_URL = "";
+// 各供应商官方 API URL 默认值
+export const DEFAULT_OPENAI_API_URL = "https://api.openai.com/v1";
+export const DEFAULT_DEEPSEEK_API_URL = "https://api.deepseek.com";
 export const DEFAULT_ANTHROPIC_API_URL = "https://api.anthropic.com";
+// 通用默认值（用于 OpenAI 兼容类型）
+export const DEFAULT_API_URL = DEFAULT_OPENAI_API_URL;
 
 export function stripTrailingSlashes(input: string): string {
   let end = input.length;
@@ -118,15 +121,34 @@ export const normalizeAnthropicApiUrl = (
   return withoutTrailingSlash;
 };
 
+/**
+ * 获取指定供应商类型的默认 API URL
+ */
+export const getDefaultApiUrlForProvider = (
+  providerType: ProviderType,
+): string => {
+  switch (providerType) {
+    case "anthropic":
+      return DEFAULT_ANTHROPIC_API_URL;
+    case "deepseek-native":
+      return DEFAULT_DEEPSEEK_API_URL;
+    case "openai-reasoning":
+    case "openai-compatible":
+    default:
+      return DEFAULT_OPENAI_API_URL;
+  }
+};
+
 export const normalizeProviderApiUrl = (
   providerType: ProviderType,
   value?: string,
-  fallback: string = DEFAULT_API_URL,
+  fallback?: string,
 ): string => {
+  const defaultUrl = fallback ?? getDefaultApiUrlForProvider(providerType);
   if (providerType === "anthropic") {
-    return normalizeAnthropicApiUrl(value);
+    return normalizeAnthropicApiUrl(value, defaultUrl);
   }
-  return normalizeApiUrl(value, fallback);
+  return normalizeApiUrl(value, defaultUrl);
 };
 
 export const STORAGE_KEY_LLM_PROVIDERS = "settings.llm.providers";
@@ -215,16 +237,8 @@ export function normalizeLLMConfig(
 
   const apiUrl =
     typeof safeConfig.apiUrl === "string"
-      ? normalizeProviderApiUrl(
-          providerType,
-          safeConfig.apiUrl,
-          DEFAULT_LLM_CONFIG.apiUrl,
-        )
-      : normalizeProviderApiUrl(
-          providerType,
-          undefined,
-          DEFAULT_LLM_CONFIG.apiUrl,
-        );
+      ? normalizeProviderApiUrl(providerType, safeConfig.apiUrl)
+      : normalizeProviderApiUrl(providerType, undefined);
 
   const modelName =
     typeof safeConfig.modelName === "string" && safeConfig.modelName.trim()

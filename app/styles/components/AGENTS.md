@@ -134,6 +134,7 @@ app/styles/components/
 **关键特性**:
 
 - 使用 CSS 变量动态主题: `--toast-bg`, `--toast-fg`, `--toast-border`
+- 控制按钮（复制/关闭）随变体协调: `--toast-accent` + `--toast-control-*`（hover/focus 对比度更稳定）
 - 响应式适配: 小屏幕居中显示 (sm: translateX(-50%))
 - z-index: 1300（高于Modal的1000和Dialog的1000）
 
