@@ -16,6 +16,15 @@
     "close": "Close",
     "processing": "Processing..."
   },
+  "errorBoundary": {
+    "title": "Something went wrong",
+    "description": "The app hit an unexpected error. You can refresh to try again, or reset the app to clear local data.",
+    "refresh": "Refresh",
+    "resetApp": "Reset app",
+    "resetting": "Resetting...",
+    "details": "Error details",
+    "unknownError": "Unknown error"
+  },
   "toast": {
     "close": "Close notification",
     "copy": "Copy notification",

@@ -321,7 +321,9 @@ export default function ChatInputArea({
       >
         <div className="flex items-center gap-2 rounded-md bg-white/70 px-4 py-3 text-blue-700 shadow-sm backdrop-blur dark:bg-black/40 dark:text-blue-200">
           <ImagePlus size={18} aria-hidden />
-          <span className="text-sm font-medium">拖拽图片到此处上传</span>
+          <span className="text-sm font-medium">
+            {t("input.dropImageHint")}
+          </span>
         </div>
       </div>
     </div>

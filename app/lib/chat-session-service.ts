@@ -197,11 +197,6 @@ const safeJsonStringify = (value: unknown): string => {
   });
 };
 
-const LEGACY_STATE_MAP: Record<string, ToolInvocationState> = {
-  call: "input-available",
-  result: "output-available",
-};
-
 const TOOL_STATES = new Set<ToolInvocationState>([
   "input-streaming",
   "input-available",
@@ -233,9 +228,6 @@ function normalizeToolState(
   value: unknown,
   fallback: ToolInvocationState,
 ): ToolInvocationState {
-  if (typeof value === "string" && LEGACY_STATE_MAP[value]) {
-    return LEGACY_STATE_MAP[value];
-  }
   if (
     typeof value === "string" &&
     TOOL_STATES.has(value as ToolInvocationState)

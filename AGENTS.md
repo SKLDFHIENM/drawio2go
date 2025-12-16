@@ -74,9 +74,9 @@ app/
 │   │   └── diff-engine/          # 差异计算引擎模块
 │   └── AGENTS.md                 # 组件库完整文档
 ├── i18n/               # 国际化配置 [详细文档 → app/i18n/AGENTS.md]
-│   ├── locales/                  # 翻译资源（zh-CN, en-US, ja-JP）
 │   ├── config.ts                 # i18n 配置文件
-│   └── constants.ts              # 语言常量和路由规则
+│   ├── client.ts                 # i18next 初始化（动态加载 JSON）
+│   └── hooks.ts                  # 类型安全 i18n Hooks
 ├── lib/                # 工具库 [详细文档 → app/lib/AGENTS.md]
 │   ├── drawio-tools.ts          # DrawIO XML 操作工具集
 │   ├── drawio-ai-tools.ts       # DrawIO AI 工具调用接口
@@ -131,6 +131,9 @@ app/
 ├── page.tsx            # 主页面
 ├── layout.tsx          # 根布局（含国际化初始化）
 └── globals.css         # 全局样式入口
+
+public/
+└── locales/            # 翻译资源（en-US, zh-CN，按需扩展 ja-JP）
 
 electron/               # 桌面应用 [详细文档 → electron/AGENTS.md]
 server.js              # Socket.IO 服务器 + Next.js 集成

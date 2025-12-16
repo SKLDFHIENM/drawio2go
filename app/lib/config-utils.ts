@@ -279,60 +279,14 @@ export async function initializeDefaultLLMConfig(
   storage: StorageAdapter,
 ): Promise<void> {
   try {
-    const cleanupLegacyKey = async () => {
-      try {
-        await storage.deleteSetting("llmConfig");
-      } catch (cleanupError) {
-        logger.warn("Failed to delete legacy llmConfig", { cleanupError });
-      }
-    };
-
     const existingProviders = await storage.getSetting(
       STORAGE_KEY_LLM_PROVIDERS,
     );
 
     if (existingProviders !== null) {
-      try {
-        const parsedProviders = JSON.parse(existingProviders) as Array<
-          Record<string, unknown>
-        >;
-        let hasMigration = false;
-
-        const migratedProviders = parsedProviders.map((provider) => {
-          const providerType = (provider as { providerType?: string })
-            .providerType;
-
-          if (providerType === "deepseek") {
-            hasMigration = true;
-            return {
-              ...provider,
-              providerType: "deepseek-native" as ProviderType,
-            };
-          }
-          return provider;
-        });
-
-        if (hasMigration) {
-          await storage.setSetting(
-            STORAGE_KEY_LLM_PROVIDERS,
-            JSON.stringify(migratedProviders),
-          );
-          logger.warn(
-            "providerType 'deepseek' 已迁移为 'deepseek-native'，请确认自定义配置是否需要更新",
-            { providersMigrated: migratedProviders.length },
-          );
-        }
-      } catch (migrationError) {
-        logger.error(
-          "解析或迁移已存在的 LLM providers 时失败，已跳过兼容迁移",
-          { migrationError },
-        );
-      }
-      await cleanupLegacyKey();
       return;
     }
-    // 默认不再写入任何 provider/model 配置；仅清理旧键位即可
-    await cleanupLegacyKey();
+    // 默认不再写入任何 provider/model 配置
   } catch (error) {
     logger.error("Failed to initialize default LLM config", { error });
   }

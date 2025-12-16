@@ -106,6 +106,7 @@
     "waitingForAI": "Waiting for AI response...",
     "reset": "Clear input",
     "attachFile": "Attach file",
+    "dropImageHint": "Drag an image here to upload",
     "shortcuts": {
       "send": "Enter to send",
       "newLine": "Shift+Enter for new line"
@@ -236,6 +237,7 @@
   },
   "modelSelector": {
     "label": "Current model",
+    "defaultLabel": "Default",
     "placeholder": "Select or search model",
     "empty": "No models available. Add providers and models in Settings first.",
     "noResult": "No available models",

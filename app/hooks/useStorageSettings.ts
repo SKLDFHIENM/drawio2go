@@ -5,7 +5,6 @@ import { getStorage } from "@/app/lib/storage";
 import type {
   ActiveModelReference,
   AgentSettings,
-  LLMConfig,
   ModelCapabilities,
   ModelConfig,
   RuntimeLLMConfig,
@@ -1125,177 +1124,6 @@ export function useStorageSettings() {
     [execute, loadActiveModel, loadAgentSettings, loadModels, loadProviders],
   );
 
-  /**
-   * @deprecated 请使用 getRuntimeConfig；此方法仅为兼容旧调用
-   */
-  const getLLMConfig = useCallback(async (): Promise<LLMConfig | null> => {
-    const runtimeConfig = await getRuntimeConfig();
-    return runtimeConfig ? normalizeLLMConfig(runtimeConfig) : null;
-  }, [getRuntimeConfig]);
-
-  /**
-   * @deprecated 请使用 provider/model/agent 级别接口；内部会同步到新存储结构
-   */
-  const saveLLMConfig = useCallback(
-    async (config: Partial<LLMConfig>): Promise<void> => {
-      const normalized = normalizeLLMConfig(config);
-
-      await execute(async (storage) => {
-        const [loadedProviders, loadedModels, agentSettings, activeModel] =
-          await Promise.all([
-            loadProviders(storage),
-            loadModels(storage),
-            loadAgentSettings(storage),
-            loadActiveModel(storage),
-          ]);
-
-        const providers = loadedProviders;
-        let models = loadedModels;
-
-        if (providers.length === 0 || models.length === 0) {
-          throw new Error(
-            "[useStorageSettings] 未配置任何供应商/模型，请先在设置中完成模型配置",
-          );
-        }
-
-        const fallbackActive = pickFallbackActiveModel(providers, models);
-        const targetProviderId =
-          activeModel?.providerId ??
-          fallbackActive?.providerId ??
-          providers[0]?.id ??
-          null;
-
-        if (!targetProviderId) {
-          throw new Error(
-            "[useStorageSettings] saveLLMConfig 无法解析目标供应商",
-          );
-        }
-
-        const now = Date.now();
-        const providerIndex = providers.findIndex(
-          (item) => item.id === targetProviderId,
-        );
-        const currentProvider =
-          providerIndex >= 0 ? providers[providerIndex] : null;
-
-        if (!currentProvider) {
-          throw new Error(
-            `[useStorageSettings] saveLLMConfig 未找到供应商 ${targetProviderId}`,
-          );
-        }
-
-        const modelsOfProvider = models.filter(
-          (item) => item.providerId === targetProviderId,
-        );
-
-        let targetModel =
-          modelsOfProvider.find(
-            (item) => activeModel?.modelId && item.id === activeModel.modelId,
-          ) ??
-          modelsOfProvider[0] ??
-          null;
-
-        if (!targetModel) {
-          targetModel = {
-            id: generateUUID("model"),
-            providerId: targetProviderId,
-            modelName: normalized.modelName,
-            displayName: normalized.modelName,
-            temperature: normalized.temperature,
-            maxToolRounds: normalized.maxToolRounds,
-            isDefault: true,
-            capabilities: normalized.capabilities,
-            enableToolsInThinking: normalized.enableToolsInThinking,
-            customConfig: { ...normalized.customConfig },
-            createdAt: now,
-            updatedAt: now,
-          };
-          models.push(targetModel);
-        } else {
-          targetModel = {
-            ...targetModel,
-            modelName: normalized.modelName,
-            displayName: targetModel.displayName || normalized.modelName,
-            temperature: normalized.temperature,
-            maxToolRounds: normalized.maxToolRounds,
-            capabilities: normalized.capabilities,
-            enableToolsInThinking: normalized.enableToolsInThinking,
-            customConfig: {
-              ...targetModel.customConfig,
-              ...normalized.customConfig,
-            },
-            updatedAt: now,
-          };
-          models = models.map((item) =>
-            item.id === targetModel.id ? targetModel : item,
-          );
-        }
-
-        const providerModels = new Set(currentProvider.models);
-        providerModels.add(targetModel.id);
-
-        const updatedProvider: ProviderConfig = {
-          ...currentProvider,
-          providerType: normalized.providerType,
-          apiUrl: normalized.apiUrl,
-          apiKey: normalized.apiKey,
-          customConfig: {
-            ...currentProvider.customConfig,
-            ...normalized.customConfig,
-          },
-          models: Array.from(providerModels),
-          updatedAt: now,
-        };
-        providers[providerIndex] = updatedProvider;
-
-        const updatedAgentSettings: AgentSettings = {
-          ...agentSettings,
-          systemPrompt: normalized.systemPrompt,
-          updatedAt: now,
-        };
-
-        const activeReference: ActiveModelReference = {
-          providerId: updatedProvider.id,
-          modelId: targetModel.id,
-          updatedAt: now,
-        };
-
-        await Promise.all([
-          persistProviders(storage, providers),
-          persistModels(storage, models),
-          persistAgentSettings(storage, updatedAgentSettings),
-          persistActiveModel(storage, activeReference),
-          (async () => {
-            try {
-              await withStorageTimeout(storage.deleteSetting("llmConfig"));
-            } catch (cleanupError) {
-              logger.warn(
-                "[useStorageSettings] 清理旧 llmConfig 失败",
-                cleanupError,
-              );
-            }
-          })(),
-        ]);
-
-        dispatchSettingsUpdated("provider");
-        dispatchSettingsUpdated("model");
-        dispatchSettingsUpdated("agent");
-        dispatchSettingsUpdated("activeModel");
-      });
-    },
-    [
-      execute,
-      loadActiveModel,
-      loadAgentSettings,
-      loadModels,
-      loadProviders,
-      persistActiveModel,
-      persistAgentSettings,
-      persistModels,
-      persistProviders,
-    ],
-  );
-
   // 初始化时检查存储可用性
   useEffect(() => {
     void runStorageTask(
@@ -1316,8 +1144,6 @@ export function useStorageSettings() {
     getGeneralSettings,
     saveGeneralSettings,
     updateGeneralSettings,
-    getLLMConfig,
-    saveLLMConfig,
     getDefaultPath,
     saveDefaultPath,
     getProviders,

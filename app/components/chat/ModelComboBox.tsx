@@ -17,7 +17,7 @@ import {
   useState,
   type KeyboardEvent,
 } from "react";
-import { useI18n } from "@/app/i18n/hooks";
+import { useAppTranslation } from "@/app/i18n/hooks";
 import type { ModelConfig, ProviderConfig } from "@/app/types/chat";
 import ModelIcon from "@/app/components/common/ModelIcon";
 
@@ -51,7 +51,7 @@ export default function ModelComboBox({
   isOpen = false,
 }: ModelComboBoxProps) {
   const [inputValue, setInputValue] = useState("");
-  const { t } = useI18n();
+  const { t } = useAppTranslation("chat");
 
   const groupedModels = useMemo<GroupedModels[]>(() => {
     if (providers.length === 0 || models.length === 0) return [];
@@ -142,15 +142,13 @@ export default function ModelComboBox({
   const noResult = filteredGroups.length === 0;
 
   if (providers.length === 0 || models.length === 0) {
-    return (
-      <p className="model-selector-empty">{t("chat:modelSelector.empty")}</p>
-    );
+    return <p className="model-selector-empty">{t("modelSelector.empty")}</p>;
   }
 
   return (
     <div className="model-combobox-wrapper">
       <ComboBox
-        aria-label="当前模型"
+        aria-label={t("modelSelector.label")}
         className="model-selector model-combobox"
         selectedKey={selectedModelId ?? null}
         onSelectionChange={handleSelectionChange}
@@ -161,10 +159,10 @@ export default function ModelComboBox({
         allowsEmptyCollection
         allowsCustomValue
       >
-        <Label>{t("chat:modelSelector.label")}</Label>
+        <Label>{t("modelSelector.label")}</Label>
         <Input
-          placeholder={t("chat:modelSelector.placeholder")}
-          aria-label={t("chat:modelSelector.placeholder")}
+          placeholder={t("modelSelector.placeholder")}
+          aria-label={t("modelSelector.placeholder")}
           onKeyDown={handleInputKeyDown}
           autoFocus={isOpen}
           className="model-combobox-input"
@@ -174,11 +172,11 @@ export default function ModelComboBox({
             <ListBox.Item
               key="no-result"
               id="no-result"
-              textValue={t("chat:modelSelector.noResult")}
+              textValue={t("modelSelector.noResult")}
               isDisabled
             >
               <div className="model-selector-empty">
-                {t("chat:modelSelector.noResult")}
+                {t("modelSelector.noResult")}
               </div>
             </ListBox.Item>
           ) : (
@@ -216,7 +214,7 @@ export default function ModelComboBox({
                           </span>
                           {model.isDefault && (
                             <Chip size="sm" variant="secondary">
-                              默认
+                              {t("modelSelector.defaultLabel")}
                             </Chip>
                           )}
                         </div>

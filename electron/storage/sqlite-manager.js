@@ -363,6 +363,22 @@ class SQLiteManager {
     const filePaths = rows.map((row) => row.file_path).filter(Boolean);
 
     const tx = this.db.transaction((projectUuid, paths) => {
+      const conversationRows = this.db
+        .prepare("SELECT id FROM conversations WHERE project_uuid = ?")
+        .all(projectUuid);
+      const conversationIds = conversationRows
+        .map((row) => row.id)
+        .filter(Boolean);
+
+      if (conversationIds.length > 0) {
+        const placeholders = this._generatePlaceholders(conversationIds.length);
+        this.db
+          .prepare(
+            `DELETE FROM conversation_sequences WHERE conversation_id IN (${placeholders})`,
+          )
+          .run(...conversationIds);
+      }
+
       this.db.prepare("DELETE FROM projects WHERE uuid = ?").run(projectUuid);
       for (const filePath of paths) {
         const absPath = this._getAttachmentAbsolutePath(filePath);
@@ -724,6 +740,9 @@ class SQLiteManager {
 
     const tx = this.db.transaction((conversationId, paths) => {
       this.db
+        .prepare("DELETE FROM conversation_sequences WHERE conversation_id = ?")
+        .run(conversationId);
+      this.db
         .prepare("DELETE FROM conversations WHERE id = ?")
         .run(conversationId);
       for (const filePath of paths) {
@@ -756,6 +775,11 @@ class SQLiteManager {
       this.db
         .prepare(
           `DELETE FROM messages WHERE conversation_id IN (${placeholders})`,
+        )
+        .run(...conversationIds);
+      this.db
+        .prepare(
+          `DELETE FROM conversation_sequences WHERE conversation_id IN (${placeholders})`,
         )
         .run(...conversationIds);
       this.db
