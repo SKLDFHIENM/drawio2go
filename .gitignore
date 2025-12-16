@@ -143,7 +143,6 @@ dist
 !.yarn/versions
 
 # Lock files for other package managers
-package-lock.json
 yarn.lock
 
 # Vite logs files
