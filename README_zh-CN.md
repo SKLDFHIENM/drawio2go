@@ -1,7 +1,7 @@
 # DrawIO2Go
 
 <p align="center">
-  <strong>AI 驱动的跨平台 DrawIO 编辑器</strong>
+  <strong>AI 加持，人机共绘</strong>
 </p>
 
 <p align="center">
@@ -18,29 +18,8 @@
 
 ---
 
-一款现代化的跨平台 DrawIO 编辑器应用，基于 Electron、Next.js 15 和 HeroUI v3 构建。支持 AI 辅助绘图、版本控制和精美的 Material Design 界面。
+一款现代化的 DrawIO 编辑器应用，致力于在AI加持下构建更好的人机协作建模工具。
 
-## 功能特性
-
-- **AI 智能编辑** - 通过对话让 AI 帮你创建、修改和理解图表
-- **版本控制** - 完整的版本历史记录，支持差异对比和一键回滚
-- **跨平台运行** - 支持 Windows、macOS、Linux 以及浏览器模式
-- **现代化界面** - 基于 HeroUI v3 的 Material Design 设计风格
-- **多语言支持** - 支持中文、英文和日文
-- **实时通讯** - Socket.IO 驱动的 AI 与编辑器双向通信
-- **深色模式** - 支持系统级主题自动切换
-
-## 技术栈
-
-| 类别          | 技术                                          |
-| ------------- | --------------------------------------------- |
-| **前端框架**  | Next.js 15 (App Router) + React 19            |
-| **UI 组件库** | HeroUI v3 (Beta) - 基于 React Aria Components |
-| **样式方案**  | Tailwind CSS v4                               |
-| **桌面框架**  | Electron 38.x                                 |
-| **AI 集成**   | Vercel AI SDK，支持多服务商                   |
-| **数据存储**  | SQLite (Electron) / IndexedDB (浏览器)        |
-| **开发语言**  | TypeScript                                    |
 
 ## 快速开始
 
