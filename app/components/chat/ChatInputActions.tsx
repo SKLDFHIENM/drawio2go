@@ -108,9 +108,9 @@ export default function ChatInputActions({
 
   const handleModelSelect = useCallback(
     async (modelId: string) => {
+      setIsModelPopoverOpen(false); // 立即关闭弹窗，避免状态竞争
       try {
         await onSelectModel(modelId);
-        setIsModelPopoverOpen(false);
       } catch (error) {
         push({
           variant: "danger",
@@ -119,7 +119,7 @@ export default function ChatInputActions({
             (error as Error)?.message ??
             t("modelSelector.selectFailedDescription"),
         });
-        setIsModelPopoverOpen(true);
+        // 不再重新打开弹窗，用户可手动重试
       }
     },
     [onSelectModel, push, t],
