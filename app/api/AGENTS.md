@@ -7,6 +7,8 @@
 ```
 app/api/
 ├── AGENTS.md           # 本文档
+├── ai-proxy/
+│   └── route.ts        # 纯 AI 代理端点（仅转发，不含业务逻辑）
 ├── chat/
 │   └── route.ts        # 聊天 API（流式响应 + 工具调用）
 ├── health/
@@ -17,15 +19,46 @@ app/api/
 
 ## 端点列表
 
-| 端点          | 方法       | 功能                       | 运行时  |
-| ------------- | ---------- | -------------------------- | ------- |
-| `/api/chat`   | POST       | 流式聊天 + DrawIO 工具调用 | Node.js |
-| `/api/test`   | POST       | LLM 配置连接测试           | Edge    |
-| `/api/health` | HEAD / GET | 健康检查（<100ms 心跳）    | Edge    |
+| 端点            | 方法       | 功能                       | 运行时  |
+| --------------- | ---------- | -------------------------- | ------- |
+| `/api/chat`     | POST       | 流式聊天 + DrawIO 工具调用 | Node.js |
+| `/api/ai-proxy` | POST       | 纯代理：转发到 AI Provider | Node.js |
+| `/api/test`     | POST       | LLM 配置连接测试           | Edge    |
+| `/api/health`   | HEAD / GET | 健康检查（<100ms 心跳）    | Edge    |
 
 ---
 
 ## 核心实现
+
+### `/api/ai-proxy` - 纯 AI 代理端点
+
+**文件**: `drawio2go/app/api/ai-proxy/route.ts`
+
+#### 功能描述
+
+仅负责将前端请求转发到 AI Provider，返回标准 `UIMessageStreamResponse` 流式响应。
+
+#### 请求格式
+
+```typescript
+{
+  messages: UIMessage[];
+  config: {
+    providerType: ProviderType;
+    modelName: string;
+    apiUrl?: string;
+    apiKey: string;
+    systemPrompt?: string;
+    temperature?: number;
+    maxToolRounds?: number;
+  };
+}
+```
+
+#### 注意事项
+
+- 不做会话校验/项目隔离
+- 不注入 DrawIO 工具，也不使用 Socket.IO
 
 ### `/api/chat` - 聊天端点
 
