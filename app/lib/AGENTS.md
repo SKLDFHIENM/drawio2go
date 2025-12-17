@@ -2,7 +2,7 @@
 
 ## 概述
 
-汇总应用层工具函数与 AI 工具定义，负责 DrawIO XML 的读取、写入与 Socket.IO 调用协调。
+汇总应用层工具函数与 AI 工具定义，负责 DrawIO XML 的读取、写入，以及（历史/过渡阶段的）Socket.IO 工具调用协调与前端工具执行。
 
 ## 工具文件清单
 
@@ -11,6 +11,7 @@
 - **drawio-tools.ts**: 浏览器端的 XML 存储桥接（统一存储抽象层 + 事件通知）
 - **drawio-xml-service.ts**: 服务端 XML 转接层，负责 XPath 查询与批量编辑
 - **drawio-ai-tools.ts**: AI 工具定义（`drawio_read` / `drawio_edit_batch`）
+- **frontend-tools.ts**: 前端 AI 工具定义与执行（`drawio_read` / `drawio_edit_batch` / `drawio_overwrite`），通过注入回调直接读取/写入编辑器 XML（用于逐步替代 Socket.IO 工具调用）
 - **schemas/drawio-tool-schemas.ts**: DrawIO AI 工具参数的统一 Zod Schema 单一真源（含类型导出）
 - **tool-executor.ts**: 工具执行路由器，通过 Socket.IO 与前端通讯
 - **svg-export-utils.ts**: DrawIO 多页面 SVG 导出工具（页面拆分、单页 XML 重建、结果序列化）
