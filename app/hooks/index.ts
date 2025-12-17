@@ -14,6 +14,7 @@ export { useLLMConfig } from "./useLLMConfig";
 export { useOperationToast } from "./useOperationToast";
 export { useAttachmentObjectUrl } from "./useAttachmentObjectUrl";
 export { useUpdateChecker } from "./useUpdateChecker";
+export { useAIChat } from "./useAIChat";
 
 // Other Hooks - 其他 Hooks
 export { useDrawioSocket } from "./useDrawioSocket";
