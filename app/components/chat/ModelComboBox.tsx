@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  ComboBox,
+  TextField,
   Input,
   Label,
   ListBox,
@@ -14,6 +14,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type KeyboardEvent,
 } from "react";
@@ -52,6 +53,7 @@ export default function ModelComboBox({
 }: ModelComboBoxProps) {
   const [inputValue, setInputValue] = useState("");
   const { t } = useAppTranslation("chat");
+  const searchRef = useRef<HTMLDivElement>(null);
 
   const groupedModels = useMemo<GroupedModels[]>(() => {
     if (providers.length === 0 || models.length === 0) return [];
@@ -105,16 +107,23 @@ export default function ModelComboBox({
       .filter(Boolean) as GroupedModels[];
   }, [groupedModels, inputValue]);
 
-  // Popover 打开时重置搜索框，默认显示全部模型
+  // Popover 打开时重置搜索框并聚焦
   useEffect(() => {
     if (isOpen) {
       setInputValue("");
+      // 延迟聚焦，确保 Popover 渲染完成
+      requestAnimationFrame(() => {
+        const input = searchRef.current?.querySelector("input");
+        input?.focus();
+      });
     }
   }, [isOpen]);
 
   const handleSelectionChange = useCallback(
-    (key: Key | null) => {
-      if (key !== null && key !== undefined) {
+    (keys: "all" | Set<Key>) => {
+      if (keys === "all") return;
+      const key = keys.values().next().value;
+      if (key !== undefined && key !== "no-result") {
         onSelect(String(key));
       }
     },
@@ -146,28 +155,35 @@ export default function ModelComboBox({
   }
 
   return (
-    <div className="model-combobox-wrapper">
-      <ComboBox
-        aria-label={t("modelSelector.label")}
-        className="model-selector model-combobox"
-        selectedKey={selectedModelId ?? null}
-        onSelectionChange={handleSelectionChange}
-        inputValue={inputValue}
-        onInputChange={handleInputChange}
-        isDisabled={isDisabled}
-        menuTrigger="focus"
-        allowsEmptyCollection
-        allowsCustomValue
-      >
-        <Label>{t("modelSelector.label")}</Label>
-        <Input
-          placeholder={t("modelSelector.placeholder")}
-          aria-label={t("modelSelector.placeholder")}
-          onKeyDown={handleInputKeyDown}
-          autoFocus={isOpen}
-          className="model-combobox-input"
-        />
-        <ListBox>
+    <div className="model-selector-panel">
+      {/* 搜索框 */}
+      <div className="model-selector-search" ref={searchRef}>
+        <TextField
+          aria-label={t("modelSelector.label")}
+          value={inputValue}
+          onChange={handleInputChange}
+          isDisabled={isDisabled}
+        >
+          <Label className="sr-only">{t("modelSelector.label")}</Label>
+          <Input
+            placeholder={t("modelSelector.placeholder")}
+            onKeyDown={handleInputKeyDown}
+            className="model-selector-input"
+          />
+        </TextField>
+      </div>
+
+      {/* 模型列表 */}
+      <div className="model-selector-list">
+        <ListBox
+          aria-label={t("modelSelector.label")}
+          selectionMode="single"
+          selectedKeys={
+            selectedModelId ? new Set([selectedModelId]) : new Set()
+          }
+          onSelectionChange={handleSelectionChange}
+          disabledKeys={isDisabled ? "all" : undefined}
+        >
           {noResult ? (
             <ListBox.Item
               key="no-result"
@@ -243,10 +259,10 @@ export default function ModelComboBox({
             ))
           )}
         </ListBox>
-      </ComboBox>
+      </div>
 
       {isLoading && (
-        <div className="model-combobox-spinner" aria-hidden>
+        <div className="model-selector-loading" aria-hidden>
           <Spinner size="sm" />
         </div>
       )}

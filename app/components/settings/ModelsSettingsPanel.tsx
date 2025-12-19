@@ -1,13 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   Accordion,
   Button,
   Card,
   Chip,
-  ListBox,
-  Popover,
+  Dropdown,
+  Label,
   TooltipContent,
   TooltipRoot,
 } from "@heroui/react";
@@ -110,28 +110,6 @@ export default function ModelsSettingsPanel({
       provider: null,
     });
   const [modelDeletingId, setModelDeletingId] = useState<string | null>(null);
-  const [providerActionsOpenId, setProviderActionsOpenId] = useState<
-    string | null
-  >(null);
-  const [modelActionsOpenId, setModelActionsOpenId] = useState<string | null>(
-    null,
-  );
-
-  const closeAllActionPopovers = useCallback(() => {
-    setProviderActionsOpenId(null);
-    setModelActionsOpenId(null);
-  }, []);
-
-  const isAnyBlockingDialogOpen =
-    isEditDialogOpen ||
-    modelDialogState.isOpen ||
-    deleteModelState.isOpen ||
-    deleteProviderState.isOpen;
-
-  useEffect(() => {
-    if (!isAnyBlockingDialogOpen) return;
-    closeAllActionPopovers();
-  }, [closeAllActionPopovers, isAnyBlockingDialogOpen]);
 
   const showToast = useCallback(
     (variant: Parameters<typeof push>[0]["variant"], description: string) => {
@@ -177,8 +155,11 @@ export default function ModelsSettingsPanel({
   }, []);
 
   const handleEditProvider = useCallback((provider: ProviderConfig) => {
-    setEditingProvider(provider);
-    setIsEditDialogOpen(true);
+    // 延迟执行，让 Dropdown 有时间完成关闭动画
+    setTimeout(() => {
+      setEditingProvider(provider);
+      setIsEditDialogOpen(true);
+    }, 150);
   }, []);
 
   const handleCloseDialog = useCallback(() => {
@@ -250,11 +231,14 @@ export default function ModelsSettingsPanel({
   }, []);
 
   const handleEditModel = useCallback((model: ModelConfig) => {
-    setModelDialogState({
-      isOpen: true,
-      providerId: model.providerId,
-      model,
-    });
+    // 延迟执行，让 Dropdown 有时间完成关闭动画
+    setTimeout(() => {
+      setModelDialogState({
+        isOpen: true,
+        providerId: model.providerId,
+        model,
+      });
+    }, 150);
   }, []);
 
   const handleModelDialogOpenChange = useCallback((open: boolean) => {
@@ -381,103 +365,74 @@ export default function ModelsSettingsPanel({
             return (
               <Accordion.Item
                 key={provider.id}
-                className="rounded-xl border border-default-200 bg-content1"
+                className="relative rounded-xl border border-default-200 bg-content1"
               >
                 <Accordion.Heading className="px-0">
-                  <div className="flex items-center justify-between gap-2 rounded-lg px-3 py-2">
-                    <Accordion.Trigger className="flex flex-1 items-center justify-between gap-2 text-left">
-                      <div className="flex items-center gap-2">
-                        <ModelIcon
-                          size={18}
-                          providerId={provider.id}
-                          providerType={provider.providerType}
-                          className="text-primary"
-                        />
-                        <span className="text-base font-medium text-foreground">
-                          {provider.displayName}
-                        </span>
-                        <Chip
-                          size="sm"
-                          variant="secondary"
-                          color="accent"
-                          className="text-xs"
-                        >
-                          {t("models.modelsList.title")} (
-                          {providerModels.length})
-                        </Chip>
-                      </div>
-                      <Accordion.Indicator />
-                    </Accordion.Trigger>
-
-                    <Popover
-                      isOpen={providerActionsOpenId === provider.id}
-                      onOpenChange={(open) => {
-                        if (open) {
-                          setModelActionsOpenId(null);
-                          setProviderActionsOpenId(provider.id);
-                          return;
-                        }
-                        setProviderActionsOpenId(null);
-                      }}
-                    >
-                      <Popover.Trigger className="ml-auto flex items-center">
-                        <Button
-                          variant="tertiary"
-                          size="sm"
-                          isIconOnly
-                          isDisabled={isDeleting}
-                          aria-label={t("models.actions.edit")}
-                          onPress={(event) => {
-                            const pressEvent = event as unknown as {
-                              stopPropagation?: () => void;
-                            };
-                            pressEvent.stopPropagation?.();
-                          }}
-                        >
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </Popover.Trigger>
-                      <Popover.Content className="z-[1000] min-w-[160px] rounded-xl border border-default-200 bg-content1 p-1 shadow-2xl">
-                        <ListBox
-                          aria-label="provider-actions"
-                          selectionMode="single"
-                          onAction={(key) => {
-                            closeAllActionPopovers();
-                            if (key === "edit") {
-                              handleEditProvider(provider);
-                            } else if (key === "delete") {
-                              setDeleteProviderState({
-                                isOpen: true,
-                                provider,
-                              });
-                            }
-                          }}
-                        >
-                          <ListBox.Item
-                            id="edit"
-                            key="edit"
-                            textValue="edit"
-                            className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-foreground hover:bg-primary-50"
-                            isDisabled={isDeleting}
-                          >
-                            <Edit className="h-4 w-4" />
-                            {t("models.actions.edit")}
-                          </ListBox.Item>
-                          <ListBox.Item
-                            id="delete"
-                            key="delete"
-                            textValue="delete"
-                            className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-danger hover:bg-danger-50"
-                            isDisabled={isDeleting}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            {t("models.actions.delete")}
-                          </ListBox.Item>
-                        </ListBox>
-                      </Popover.Content>
-                    </Popover>
-                  </div>
+                  <Accordion.Trigger className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 pr-12 text-left">
+                    <div className="flex items-center gap-2">
+                      <ModelIcon
+                        size={18}
+                        providerId={provider.id}
+                        providerType={provider.providerType}
+                        className="text-primary"
+                      />
+                      <span className="text-base font-medium text-foreground">
+                        {provider.displayName}
+                      </span>
+                      <Chip
+                        size="sm"
+                        variant="secondary"
+                        color="accent"
+                        className="text-xs"
+                      >
+                        {t("models.modelsList.title")} ({providerModels.length})
+                      </Chip>
+                    </div>
+                    <Accordion.Indicator />
+                  </Accordion.Trigger>
                 </Accordion.Heading>
+
+                <div className="absolute right-3 top-2 z-10">
+                  <Dropdown>
+                    <Button
+                      variant="tertiary"
+                      size="sm"
+                      isIconOnly
+                      isDisabled={isDeleting}
+                      aria-label={t("models.actions.more", "更多操作")}
+                    >
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                    <Dropdown.Popover className="z-[1000] min-w-[160px]">
+                      <Dropdown.Menu
+                        disabledKeys={isDeleting ? ["edit", "delete"] : []}
+                        onAction={(key) => {
+                          if (key === "edit") {
+                            handleEditProvider(provider);
+                          } else if (key === "delete") {
+                            setDeleteProviderState({
+                              isOpen: true,
+                              provider,
+                            });
+                          }
+                        }}
+                      >
+                        <Dropdown.Item id="edit" textValue="edit">
+                          <Edit className="h-4 w-4" />
+                          <Label>{t("models.actions.edit")}</Label>
+                        </Dropdown.Item>
+                        <Dropdown.Item
+                          id="delete"
+                          textValue="delete"
+                          variant="danger"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          <Label>{t("models.actions.delete")}</Label>
+                        </Dropdown.Item>
+                      </Dropdown.Menu>
+                    </Dropdown.Popover>
+                  </Dropdown>
+                </div>
 
                 <Accordion.Panel className="px-3 pb-3">
                   <Accordion.Body>
@@ -671,40 +626,35 @@ export default function ModelsSettingsPanel({
                                       </div>
 
                                       <div className="shrink-0">
-                                        <Popover
-                                          isOpen={
-                                            modelActionsOpenId === model.id
-                                          }
-                                          onOpenChange={(open) => {
-                                            if (open) {
-                                              setProviderActionsOpenId(null);
-                                              setModelActionsOpenId(model.id);
-                                              return;
-                                            }
-                                            setModelActionsOpenId(null);
-                                          }}
-                                        >
-                                          <Popover.Trigger>
-                                            <Button
-                                              className="flex items-center"
-                                              variant="tertiary"
-                                              size="sm"
-                                              isIconOnly
-                                              aria-label={t(
-                                                "models.actions.more",
-                                                "更多操作",
-                                              )}
-                                              isDisabled={isModelOperating}
-                                            >
-                                              <MoreVertical className="h-4 w-4" />
-                                            </Button>
-                                          </Popover.Trigger>
-                                          <Popover.Content className="z-[1000] min-w-[180px] rounded-xl border border-default-200 bg-content1 p-1 shadow-2xl">
-                                            <ListBox
-                                              aria-label="model-actions"
-                                              selectionMode="single"
+                                        <Dropdown>
+                                          <Button
+                                            className="flex items-center"
+                                            variant="tertiary"
+                                            size="sm"
+                                            isIconOnly
+                                            aria-label={t(
+                                              "models.actions.more",
+                                              "更多操作",
+                                            )}
+                                            isDisabled={isModelOperating}
+                                          >
+                                            <MoreVertical className="h-4 w-4" />
+                                          </Button>
+                                          <Dropdown.Popover className="z-[1000] min-w-[180px]">
+                                            <Dropdown.Menu
+                                              disabledKeys={[
+                                                ...(isModelOperating
+                                                  ? [
+                                                      "edit",
+                                                      "set-default",
+                                                      "delete",
+                                                    ]
+                                                  : []),
+                                                ...(model.isDefault
+                                                  ? ["set-default"]
+                                                  : []),
+                                              ]}
                                               onAction={(key) => {
-                                                closeAllActionPopovers();
                                                 if (key === "edit") {
                                                   handleEditModel(model);
                                                 } else if (
@@ -722,45 +672,40 @@ export default function ModelsSettingsPanel({
                                                 }
                                               }}
                                             >
-                                              <ListBox.Item
+                                              <Dropdown.Item
                                                 id="edit"
-                                                key="edit"
                                                 textValue="edit"
-                                                className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-foreground hover:bg-primary-50"
-                                                isDisabled={isModelOperating}
                                               >
                                                 <Edit className="h-4 w-4" />
-                                                {t("models.actions.edit")}
-                                              </ListBox.Item>
-                                              <ListBox.Item
+                                                <Label>
+                                                  {t("models.actions.edit")}
+                                                </Label>
+                                              </Dropdown.Item>
+                                              <Dropdown.Item
                                                 id="set-default"
-                                                key="set-default"
                                                 textValue="set-default"
-                                                className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-foreground hover:bg-primary-50"
-                                                isDisabled={
-                                                  isModelOperating ||
-                                                  model.isDefault
-                                                }
                                               >
                                                 <Star className="h-4 w-4" />
-                                                {t(
-                                                  "models.actions.setDefault",
-                                                  "设为默认",
-                                                )}
-                                              </ListBox.Item>
-                                              <ListBox.Item
+                                                <Label>
+                                                  {t(
+                                                    "models.actions.setDefault",
+                                                    "设为默认",
+                                                  )}
+                                                </Label>
+                                              </Dropdown.Item>
+                                              <Dropdown.Item
                                                 id="delete"
-                                                key="delete"
                                                 textValue="delete"
-                                                className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-danger hover:bg-danger-50"
-                                                isDisabled={isModelOperating}
+                                                variant="danger"
                                               >
                                                 <Trash2 className="h-4 w-4" />
-                                                {t("models.actions.delete")}
-                                              </ListBox.Item>
-                                            </ListBox>
-                                          </Popover.Content>
-                                        </Popover>
+                                                <Label>
+                                                  {t("models.actions.delete")}
+                                                </Label>
+                                              </Dropdown.Item>
+                                            </Dropdown.Menu>
+                                          </Dropdown.Popover>
+                                        </Dropdown>
                                       </div>
                                     </div>
                                   </div>

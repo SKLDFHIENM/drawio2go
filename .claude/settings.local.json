@@ -89,7 +89,11 @@
       "Bash(npm run type-check:*)",
       "Bash(node scripts/prepare-electron.js:*)",
       "mcp__codexmcp__codex",
-      "Bash(npx asar:*)"
+      "Bash(npx asar:*)",
+      "Bash(npm exec tsc:*)",
+      "Bash(test:*)",
+      "Bash(npm install:*)",
+      "Bash(pnpm run lint:ts:*)"
     ],
     "deny": [],
     "ask": []

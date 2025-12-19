@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Button,
-  Popover,
+  Dropdown,
   Spinner,
   TooltipContent,
   TooltipRoot,
@@ -24,7 +24,6 @@ interface ChatInputActionsProps {
   canSendNewMessage: boolean;
   lastMessageIsUser: boolean;
   isOnline: boolean;
-  isSocketConnected: boolean;
   onCancel?: () => void;
   onNewChat: () => void;
   onHistory: () => void;
@@ -47,7 +46,6 @@ export default function ChatInputActions({
   canSendNewMessage,
   lastMessageIsUser,
   isOnline,
-  isSocketConnected,
   onCancel,
   onNewChat,
   onHistory,
@@ -78,8 +76,8 @@ export default function ChatInputActions({
   };
   const sendButtonDisabled = getSendButtonDisabled();
   const [isModelPopoverOpen, setIsModelPopoverOpen] = useState(false);
+  const [isSelecting, setIsSelecting] = useState(false);
   const getSendDisabledReason = () => {
-    if (!isSocketConnected) return t("status.socketRequiredForChat");
     if (!isOnline) return t("status.networkOfflineDesc");
     return null;
   };
@@ -108,21 +106,31 @@ export default function ChatInputActions({
 
   const handleModelSelect = useCallback(
     async (modelId: string) => {
-      try {
-        await onSelectModel(modelId);
-        setIsModelPopoverOpen(false);
-      } catch (error) {
-        push({
-          variant: "danger",
-          title: t("modelSelector.selectFailedTitle"),
-          description:
-            (error as Error)?.message ??
-            t("modelSelector.selectFailedDescription"),
-        });
-        setIsModelPopoverOpen(true);
-      }
+      if (isSelecting) return; // 防止重复点击
+
+      setIsSelecting(true);
+
+      // 先关闭 Dropdown
+      setIsModelPopoverOpen(false);
+
+      // 延迟执行，让 Dropdown 有时间完成关闭动画
+      setTimeout(async () => {
+        try {
+          await onSelectModel(modelId);
+        } catch (error) {
+          push({
+            variant: "danger",
+            title: t("modelSelector.selectFailedTitle"),
+            description:
+              (error as Error)?.message ??
+              t("modelSelector.selectFailedDescription"),
+          });
+        } finally {
+          setIsSelecting(false);
+        }
+      }, 150);
     },
-    [onSelectModel, push, t],
+    [isSelecting, onSelectModel, push, t],
   );
 
   return (
@@ -210,35 +218,33 @@ export default function ChatInputActions({
           </Button>
         )}
 
-        <Popover
+        <Dropdown
           isOpen={isModelPopoverOpen}
           onOpenChange={setIsModelPopoverOpen}
         >
-          <Popover.Trigger>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              className="chat-model-button"
-              isDisabled={isModelSelectorDisabled}
-              aria-label={`${t("modelSelector.label")}: ${modelLabel}`}
-            >
-              {isModelSelectorLoading ? (
-                <Spinner size="sm" />
-              ) : (
-                <ModelIcon
-                  size={16}
-                  modelId={selectedModelId}
-                  modelName={activeModel?.modelName || activeModel?.displayName}
-                  providerId={activeProvider?.id}
-                  providerType={activeProvider?.providerType ?? null}
-                  className="text-primary"
-                />
-              )}
-              <span className="chat-model-button__label">{modelLabel}</span>
-            </Button>
-          </Popover.Trigger>
-          <Popover.Content className="chat-model-popover" placement="top end">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="chat-model-button"
+            isDisabled={isModelSelectorDisabled}
+            aria-label={`${t("modelSelector.label")}: ${modelLabel}`}
+          >
+            {isModelSelectorLoading ? (
+              <Spinner size="sm" />
+            ) : (
+              <ModelIcon
+                size={16}
+                modelId={selectedModelId}
+                modelName={activeModel?.modelName || activeModel?.displayName}
+                providerId={activeProvider?.id}
+                providerType={activeProvider?.providerType ?? null}
+                className="text-primary"
+              />
+            )}
+            <span className="chat-model-button__label">{modelLabel}</span>
+          </Button>
+          <Dropdown.Popover className="chat-model-popover" placement="top end">
             <ModelComboBox
               providers={providers}
               models={models}
@@ -248,8 +254,8 @@ export default function ChatInputActions({
               isLoading={isModelSelectorLoading}
               isOpen={isModelPopoverOpen}
             />
-          </Popover.Content>
-        </Popover>
+          </Dropdown.Popover>
+        </Dropdown>
 
         <TooltipRoot isDisabled={!sendDisabledReason} delay={0}>
           <Button

@@ -16,5 +16,4 @@ export { useAttachmentObjectUrl } from "./useAttachmentObjectUrl";
 export { useUpdateChecker } from "./useUpdateChecker";
 
 // Other Hooks - 其他 Hooks
-export { useDrawioSocket } from "./useDrawioSocket";
 export { useDrawioEditor } from "./useDrawioEditor";

@@ -109,7 +109,7 @@
 
 ### 4. ChatSidebar.tsx - 聊天侧边栏
 
-**Props**: `currentProjectId?`, `isSocketConnected?`
+**Props**: `currentProjectId?`
 
 **核心功能**:
 
@@ -157,13 +157,14 @@
 
 ### 7. ProjectSelector.tsx - 工程选择模态
 
-**Props**: `isOpen`, `onClose`, `currentProjectId`, `onSelectProject`, `projects`, `isLoading`, `onCreateProject`
+**Props**: `isOpen`, `onClose`, `currentProjectId`, `onSelectProject`, `projects`, `isLoading`, `onCreateProject`, `onUpdateProject?`, `onDeleteProject?`
 
 **核心功能**:
 
 - Skeleton 加载态（isLoading 时渲染 3 个占位卡片）
 - 空状态引导
 - 卡片样式：`Card.Root` + `Card.Content`，激活项加粗边框 + Check 图标
+- 操作区：编辑（内联表单）/ 删除（二次确认 ConfirmDialog；当前项目与默认项目禁用并 Tooltip 提示）
 - 模态关闭时重置表单
 
 ### 8. LanguageSwitcher.tsx - 语言切换器
@@ -191,6 +192,20 @@
 - 使用 `useAlertDialog()` → `{ open, close }`
 - `open(payload)` 结构参见 `app/types/alert-dialog.ts`（title/description/actionLabel/cancelLabel/isDismissable/onAction/onCancel）
 - 受控模式，按钮事件使用 `onPress`
+
+---
+
+### 10. GlobalUpdateChecker.tsx - 全局更新检查订阅
+
+**文件**: `app/components/GlobalUpdateChecker.tsx`
+
+**用途**:
+
+- 应用启动后即订阅 Electron 主进程广播的 `update:available`
+- 受 `update.autoCheck` 设置控制（设置变更会实时生效）
+- 发现新版本时通过 Toast 通知用户（按 `latestVersion` 去重）
+
+**接入位置**: `app/layout.tsx` 的 `ToastProvider` 内部
 
 ---
 

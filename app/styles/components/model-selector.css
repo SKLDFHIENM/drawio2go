@@ -1,3 +1,85 @@
+/* 统一面板容器 */
+.model-selector-panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 280px;
+  max-width: 400px;
+  background: var(--surface, #fff);
+  border-radius: var(--radius-md, 0.5rem);
+  overflow: hidden;
+}
+
+/* 搜索框区域 */
+.model-selector-search {
+  padding: var(--spacing-sm, 0.5rem);
+  border-bottom: 1px solid var(--border-default, var(--border));
+  flex-shrink: 0;
+}
+
+.model-selector-input {
+  width: 100%;
+  min-height: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm, 0.25rem);
+  background: var(--background, #fafafa);
+  border: 1px solid var(--border-default, var(--border));
+  box-shadow: none;
+}
+
+.model-selector-input:focus {
+  border-color: var(--border-focus, var(--primary));
+  outline: none;
+}
+
+/* 模型列表区域 */
+.model-selector-list {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 320px;
+  padding: var(--spacing-xs, 0.25rem) 0;
+}
+
+.model-selector-list .listbox {
+  padding: 0;
+}
+
+.model-selector-list .listbox__item {
+  padding: var(--spacing-sm, 0.5rem) var(--spacing-md, 0.75rem);
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+
+.model-selector-list .listbox__item:hover {
+  background: var(--surface-hover, rgba(0, 0, 0, 0.04));
+}
+
+.model-selector-list .listbox__item[data-selected="true"] {
+  background: var(--surface-selected, rgba(var(--primary-rgb), 0.08));
+}
+
+.model-selector-list .listbox__section-header {
+  padding: var(--spacing-xs, 0.25rem) var(--spacing-md, 0.75rem);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--foreground-secondary, var(--text-secondary));
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: var(--surface, #fff);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+/* 加载指示器 */
+.model-selector-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-md, 0.75rem);
+  border-top: 1px solid var(--border-default, var(--border));
+}
+
 .model-selector {
   width: 100%;
 }

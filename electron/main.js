@@ -16,6 +16,112 @@ let updateCheckIntervalId = null;
 // 更可靠的开发模式检测：检查是否打包或者环境变量
 const isDev = !app.isPackaged || process.env.NODE_ENV === "development";
 
+let serverShutdownPromise = null;
+let appQuitInProgress = false;
+
+const cleanupUpdateTimers = () => {
+  if (updateCheckTimeoutId) {
+    clearTimeout(updateCheckTimeoutId);
+    updateCheckTimeoutId = null;
+  }
+  if (updateCheckIntervalId) {
+    clearInterval(updateCheckIntervalId);
+    updateCheckIntervalId = null;
+  }
+};
+
+async function gracefulServerShutdown(trigger) {
+  if (isDev) return;
+  if (!serverProcess) return;
+  if (serverShutdownPromise) return serverShutdownPromise;
+
+  const proc = serverProcess;
+
+  serverShutdownPromise = (async () => {
+    if (proc.exitCode != null) {
+      console.log(
+        `[Electron] 内嵌服务器已退出（exitCode=${proc.exitCode}），跳过关闭（触发: ${trigger}）`,
+      );
+      return;
+    }
+
+    console.log(`[Electron] 正在关闭内嵌服务器（触发: ${trigger}）...`);
+
+    let exited = false;
+    let onExit = null;
+    const exitPromise = new Promise((resolve) => {
+      onExit = (code, signal) => {
+        exited = true;
+        resolve({ code, signal });
+      };
+      proc.once("exit", onExit);
+    });
+
+    try {
+      proc.kill("SIGTERM");
+    } catch (error) {
+      console.warn("[Electron] 发送 SIGTERM 失败，继续退出流程：", error);
+      if (onExit) proc.removeListener("exit", onExit);
+      return;
+    }
+
+    const forceKillTimeout = setTimeout(() => {
+      if (exited) return;
+      try {
+        console.warn("[Electron] 服务器 5 秒未退出，发送 SIGKILL 强制结束...");
+        proc.kill("SIGKILL");
+      } catch (error) {
+        console.warn("[Electron] 发送 SIGKILL 失败：", error);
+      }
+    }, 5000);
+    forceKillTimeout.unref();
+
+    let waitExitTimeout = null;
+    const waitExitPromise = new Promise((resolve) => {
+      waitExitTimeout = setTimeout(() => resolve({ timedOut: true }), 6500);
+      waitExitTimeout.unref();
+    });
+
+    const result = await Promise.race([exitPromise, waitExitPromise]);
+
+    clearTimeout(forceKillTimeout);
+    if (waitExitTimeout) clearTimeout(waitExitTimeout);
+
+    if (result && result.timedOut) {
+      console.warn(
+        "[Electron] 等待服务器退出超时（6.5 秒），继续退出流程（可能仍有残留进程）",
+      );
+      if (onExit) proc.removeListener("exit", onExit);
+      return;
+    }
+
+    const { code, signal } = result || {};
+    console.log(
+      `[Electron] 内嵌服务器已退出（code=${code}, signal=${signal}）`,
+    );
+  })().finally(() => {
+    serverShutdownPromise = null;
+  });
+
+  return serverShutdownPromise;
+}
+
+async function gracefulAppShutdown(trigger) {
+  await gracefulServerShutdown(trigger);
+
+  if (storageManager) {
+    try {
+      storageManager.close();
+      storageManager = null;
+      console.log("[Electron] 数据库已关闭");
+    } catch (error) {
+      console.error("[Electron] 关闭数据库失败：", error);
+    }
+  }
+
+  cleanupUpdateTimers();
+}
+
 /**
  * 将二进制字段统一转换为 Buffer，避免 SQLite 写入失败
  * @param payload 包含 preview_image / preview_svg / pages_svg 的对象
@@ -71,7 +177,7 @@ function findAvailablePort(startPort = 3000) {
 }
 
 /**
- * 启动内嵌的 Next.js + Socket.IO 服务器
+ * 启动内嵌的 Next.js HTTP 服务器
  * @returns {Promise<number>} 服务器端口
  */
 async function startEmbeddedServer() {
@@ -151,8 +257,8 @@ async function startEmbeddedServer() {
       }
     });
 
-    serverProcess.on("exit", (code) => {
-      console.log(`[Electron] 服务器进程退出，代码: ${code}`);
+    serverProcess.on("exit", (code, signal) => {
+      console.log(`[Electron] 服务器进程退出，code=${code}, signal=${signal}`);
       serverProcess = null;
     });
 
@@ -297,39 +403,58 @@ app.whenReady().then(async () => {
 });
 
 app.on("window-all-closed", () => {
-  // 关闭数据库连接
-  if (storageManager) {
-    storageManager.close();
-  }
-
-  // 关闭服务器进程
-  if (serverProcess && !serverProcess.killed) {
-    console.log("[Electron] 关闭服务器进程...");
-    serverProcess.kill("SIGTERM");
-    serverProcess = null;
-  }
-
   if (process.platform !== "darwin") {
+    gracefulServerShutdown("window-all-closed").catch((error) => {
+      console.warn("[Electron] window-all-closed：关闭内嵌服务器失败：", error);
+    });
     app.quit();
   }
 });
 
-app.on("before-quit", () => {
-  // 确保服务器进程被清理
-  if (serverProcess && !serverProcess.killed) {
-    serverProcess.kill("SIGTERM");
-    serverProcess = null;
-  }
+/**
+ * 通知渲染进程后端清理状态
+ * @param {"started" | "completed" | "failed"} status
+ */
+function notifyBackendCleanup(status) {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
 
-  // 清理更新检查定时器
-  if (updateCheckTimeoutId) {
-    clearTimeout(updateCheckTimeoutId);
-    updateCheckTimeoutId = null;
+  try {
+    mainWindow.webContents.send("backend:cleanup", { status });
+  } catch (error) {
+    console.error("[Electron] 发送 backend:cleanup 失败:", error);
   }
-  if (updateCheckIntervalId) {
-    clearInterval(updateCheckIntervalId);
-    updateCheckIntervalId = null;
-  }
+}
+
+app.on("before-quit", (event) => {
+  if (appQuitInProgress) return;
+  appQuitInProgress = true;
+
+  event.preventDefault();
+
+  console.log(
+    "[Electron] before-quit：开始退出流程（优雅关闭服务器 → 关闭数据库）",
+  );
+
+  // 通知渲染进程开始清理
+  notifyBackendCleanup("started");
+
+  const forceExitTimeout = setTimeout(() => {
+    console.error("[Electron] 退出流程超过 7 秒，强制退出（exit=1）");
+    app.exit(1);
+  }, 7000);
+  forceExitTimeout.unref();
+
+  gracefulAppShutdown("before-quit")
+    .catch((error) => {
+      console.error("[Electron] 退出流程异常：", error);
+      notifyBackendCleanup("failed");
+    })
+    .finally(() => {
+      clearTimeout(forceExitTimeout);
+      console.log("[Electron] 退出流程完成");
+      notifyBackendCleanup("completed");
+      app.exit(0);
+    });
 });
 
 app.on("activate", () => {

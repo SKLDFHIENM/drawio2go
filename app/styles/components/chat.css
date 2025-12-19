@@ -289,13 +289,13 @@
 .chat-model-popover {
   min-width: 320px;
   max-width: 420px;
-  max-height: 360px;
-  padding: 0.5rem 0.75rem;
+  max-height: 420px;
+  padding: 0;
   border-radius: 12px;
   border: 1px solid var(--border-default, var(--border));
   background: var(--surface, #ffffff);
   box-shadow: var(--shadow-3, var(--shadow-4));
-  overflow: auto;
+  overflow: hidden;
 }
 
 .dark .chat-model-popover {

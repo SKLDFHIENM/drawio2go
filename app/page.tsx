@@ -12,7 +12,6 @@ import DrawioEditorNative from "./components/DrawioEditorNative"; // 使用原�
 import TopBar from "./components/TopBar";
 import UnifiedSidebar, { type SidebarTab } from "./components/UnifiedSidebar";
 import ProjectSelector from "./components/ProjectSelector";
-import { useDrawioSocket } from "./hooks/useDrawioSocket";
 import { DrawioSelectionInfo } from "./types/drawio-tools";
 import { useStorageSettings } from "./hooks/useStorageSettings";
 import { useCurrentProject } from "./hooks/useCurrentProject";
@@ -47,12 +46,15 @@ export default function Home() {
     currentProject,
     loading: projectLoading,
     switchProject,
+    refreshCurrentProject,
   } = useCurrentProject();
 
   const {
     projects,
     createProject,
     getAllProjects,
+    updateProject,
+    deleteProject,
     loading: projectsLoading,
   } = useStorageProjects();
 
@@ -110,9 +112,6 @@ export default function Home() {
   useEffect(() => {
     activeProjectUuidRef.current = currentProjectUuid;
   }, [currentProjectUuid]);
-
-  // 初始化 Socket.IO 连接
-  const { isConnected } = useDrawioSocket(editorRef, currentProjectUuid);
 
   // 确保项目有 WIP 版本
   const ensureWIPVersion = useCallback(
@@ -555,6 +554,49 @@ export default function Home() {
     }
   };
 
+  const handleUpdateProject = useCallback(
+    async (uuid: string, name: string, description?: string) => {
+      try {
+        await updateProject(uuid, {
+          name,
+          description: description?.trim() || undefined,
+        });
+
+        if (uuid === currentProjectUuid) {
+          await refreshCurrentProject();
+        }
+      } catch (error) {
+        logger.error("更新工程失败", { uuid, error });
+        push({
+          description: t("toasts.requestFailed", {
+            error: toErrorString(error),
+          }),
+          variant: "danger",
+        });
+        throw error;
+      }
+    },
+    [currentProjectUuid, push, refreshCurrentProject, t, updateProject],
+  );
+
+  const handleDeleteProject = useCallback(
+    async (uuid: string) => {
+      try {
+        await deleteProject(uuid);
+      } catch (error) {
+        logger.error("删除工程失败", { uuid, error });
+        push({
+          description: t("toasts.requestFailed", {
+            error: toErrorString(error),
+          }),
+          variant: "danger",
+        });
+        throw error;
+      }
+    },
+    [deleteProject, push, t],
+  );
+
   const selectionLabelText = isElectronEnv
     ? (() => {
         const selectionIdsPreview = selectionInfo.cells
@@ -694,7 +736,6 @@ export default function Home() {
         projectUuid={currentProject?.uuid}
         onVersionRestore={handleVersionRestore}
         editorRef={editorRef}
-        isSocketConnected={isConnected}
       />
 
       {/* 工程选择器 */}
@@ -706,6 +747,8 @@ export default function Home() {
         projects={projects}
         isLoading={projectsLoading}
         onCreateProject={handleCreateProject}
+        onUpdateProject={handleUpdateProject}
+        onDeleteProject={handleDeleteProject}
       />
     </main>
   );
