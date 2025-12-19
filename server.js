@@ -22,13 +22,50 @@ app
       }
     });
 
+    // 跟踪所有连接（避免 httpServer.close() 因活跃连接无限等待）
+    const connections = new Set();
+    httpServer.on("connection", (conn) => {
+      connections.add(conn);
+      conn.on("close", () => connections.delete(conn));
+    });
+
     httpServer.listen(port, () =>
       console.log(`> Ready on http://${hostname}:${port}`),
     );
 
+    let shuttingDown = false;
     const shutdown = (signal) => {
-      console.log(`> ${signal} received, shutting down gracefully...`);
-      httpServer.close(() => process.exit(0));
+      if (shuttingDown) return;
+      shuttingDown = true;
+
+      console.log(`> 收到 ${signal}，开始优雅退出（最多等待 5 秒）...`);
+
+      const forceExitTimeout = setTimeout(() => {
+        console.error("> 超过 5 秒仍未退出，强制结束进程（exit=1）");
+        process.exit(1);
+      }, 5000);
+      forceExitTimeout.unref();
+
+      const destroyConnectionsTimeout = setTimeout(() => {
+        const count = connections.size;
+        if (count <= 0) return;
+
+        console.log(`> 仍有 ${count} 个活跃连接，开始强制断开...`);
+        if (typeof httpServer.closeAllConnections === "function") {
+          httpServer.closeAllConnections();
+          return;
+        }
+
+        connections.forEach((conn) => conn.destroy());
+      }, 3000);
+      destroyConnectionsTimeout.unref();
+
+      httpServer.close(() => {
+        clearTimeout(forceExitTimeout);
+        clearTimeout(destroyConnectionsTimeout);
+        console.log("> HTTP 服务器已关闭，进程退出（exit=0）");
+        process.exit(0);
+      });
     };
 
     process.on("SIGTERM", () => shutdown("SIGTERM"));
