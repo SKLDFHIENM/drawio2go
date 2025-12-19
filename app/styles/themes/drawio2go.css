@@ -64,7 +64,7 @@
     --warning: oklch(0.78 0.19 68);
     --warning-foreground: var(--eclipse);
     --info: oklch(0.62 0.23 290);
-    --info-foreground: var(--snow);
+    --info-foreground: var(--eclipse);
     --danger: oklch(0.65 0.24 25);
     --danger-foreground: var(--snow);
     --toast-surface-mix: 12%;

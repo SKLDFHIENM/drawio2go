@@ -76,6 +76,7 @@ export default function ChatInputActions({
   };
   const sendButtonDisabled = getSendButtonDisabled();
   const [isModelPopoverOpen, setIsModelPopoverOpen] = useState(false);
+  const [isSelecting, setIsSelecting] = useState(false);
   const getSendDisabledReason = () => {
     if (!isOnline) return t("status.networkOfflineDesc");
     return null;
@@ -105,10 +106,17 @@ export default function ChatInputActions({
 
   const handleModelSelect = useCallback(
     async (modelId: string) => {
-      setIsModelPopoverOpen(false); // 立即关闭弹窗，避免状态竞争
+      if (isSelecting) return; // 防止重复点击
+
+      setIsSelecting(true);
+
       try {
         await onSelectModel(modelId);
+        // 模型切换成功后再关闭 Popover
+        setIsModelPopoverOpen(false);
       } catch (error) {
+        // 错误时也关闭 Popover
+        setIsModelPopoverOpen(false);
         push({
           variant: "danger",
           title: t("modelSelector.selectFailedTitle"),
@@ -116,10 +124,11 @@ export default function ChatInputActions({
             (error as Error)?.message ??
             t("modelSelector.selectFailedDescription"),
         });
-        // 不再重新打开弹窗，用户可手动重试
+      } finally {
+        setIsSelecting(false);
       }
     },
-    [onSelectModel, push, t],
+    [isSelecting, onSelectModel, push, t],
   );
 
   return (
