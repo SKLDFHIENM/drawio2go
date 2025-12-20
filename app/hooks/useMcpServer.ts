@@ -122,7 +122,9 @@ export function useMcpServer(): UseMcpServerResult {
   const startServer = useCallback(
     async (config: McpConfig) => {
       if (!isElectronMcpAvailable()) {
-        const error = new Error("当前环境不支持 MCP 服务器（仅 Electron 可用）");
+        const error = new Error(
+          "当前环境不支持 MCP 服务器（仅 Electron 可用）",
+        );
         pushErrorToast(error.message);
         throw error;
       }
@@ -152,38 +154,35 @@ export function useMcpServer(): UseMcpServerResult {
     ],
   );
 
-  const stopServer = useCallback(
-    async () => {
-      if (!isElectronMcpAvailable()) {
-        const error = new Error("当前环境不支持 MCP 服务器（仅 Electron 可用）");
-        pushErrorToast(error.message);
-        throw error;
-      }
+  const stopServer = useCallback(async () => {
+    if (!isElectronMcpAvailable()) {
+      const error = new Error("当前环境不支持 MCP 服务器（仅 Electron 可用）");
+      pushErrorToast(error.message);
+      throw error;
+    }
 
-      beginOperation();
-      try {
-        await window.electronMcp?.stop?.();
-        showNotice("MCP 服务器已停止", "success");
-        const status = await fetchStatus();
-        applyStatus(status);
-      } catch (error) {
-        const message = extractErrorMessage(error) ?? "未知错误";
-        pushErrorToast(`MCP 服务器停止失败：${message}`);
-        throw error instanceof Error ? error : new Error(message);
-      } finally {
-        endOperation();
-      }
-    },
-    [
-      applyStatus,
-      beginOperation,
-      endOperation,
-      extractErrorMessage,
-      fetchStatus,
-      pushErrorToast,
-      showNotice,
-    ],
-  );
+    beginOperation();
+    try {
+      await window.electronMcp?.stop?.();
+      showNotice("MCP 服务器已停止", "success");
+      const status = await fetchStatus();
+      applyStatus(status);
+    } catch (error) {
+      const message = extractErrorMessage(error) ?? "未知错误";
+      pushErrorToast(`MCP 服务器停止失败：${message}`);
+      throw error instanceof Error ? error : new Error(message);
+    } finally {
+      endOperation();
+    }
+  }, [
+    applyStatus,
+    beginOperation,
+    endOperation,
+    extractErrorMessage,
+    fetchStatus,
+    pushErrorToast,
+    showNotice,
+  ]);
 
   useEffect(() => {
     refreshStatus().catch((error) => {

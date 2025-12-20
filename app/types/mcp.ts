@@ -59,7 +59,10 @@ export interface McpConfig {
 /**
  * MCP 侧暴露的 DrawIO 工具名（与前端工具执行架构保持一致）。
  */
-export type McpToolName = "drawio_read" | "drawio_edit_batch" | "drawio_overwrite";
+export type McpToolName =
+  | "drawio_read"
+  | "drawio_edit_batch"
+  | "drawio_overwrite";
 
 /**
  * MCP 工具调用请求（主进程转发到渲染进程）。

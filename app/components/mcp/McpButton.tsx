@@ -45,4 +45,3 @@ export function McpButton({ isActive, onPress, isDisabled }: McpButtonProps) {
     </Button>
   );
 }
-

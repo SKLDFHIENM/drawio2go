@@ -27,7 +27,8 @@ export interface McpConfigDisplayProps {
   port: number;
 }
 
-const buildMcpUrl = (host: string, port: number) => `http://${host}:${port}/mcp`;
+const buildMcpUrl = (host: string, port: number) =>
+  `http://${host}:${port}/mcp`;
 
 const toPrettyJson = (value: unknown) => JSON.stringify(value, null, 2);
 
@@ -123,7 +124,11 @@ export function McpConfigDisplay({
           aria-label={copied ? "已复制" : "复制配置"}
           onPress={handleCopy}
         >
-          {copied ? <Check size={16} aria-hidden /> : <Copy size={16} aria-hidden />}
+          {copied ? (
+            <Check size={16} aria-hidden />
+          ) : (
+            <Copy size={16} aria-hidden />
+          )}
         </Button>
       </div>
 
@@ -133,4 +138,3 @@ export function McpConfigDisplay({
     </div>
   );
 }
-

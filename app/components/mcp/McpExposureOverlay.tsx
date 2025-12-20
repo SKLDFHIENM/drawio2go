@@ -2,7 +2,14 @@
 
 import type { Key } from "react";
 import { useCallback, useMemo, useState } from "react";
-import { Button, Description, Label, ListBox, Select, Surface } from "@heroui/react";
+import {
+  Button,
+  Description,
+  Label,
+  ListBox,
+  Select,
+  Surface,
+} from "@heroui/react";
 import { XCircle } from "lucide-react";
 import {
   Dialog as AriaDialog,
@@ -62,19 +69,19 @@ export function McpExposureOverlay({
 }: McpExposureOverlayProps) {
   const [clientType, setClientType] = useState<McpClientType>("cursor");
 
-  const statusText = useMemo(
-    () => `正在暴露：${host}:${port}`,
-    [host, port],
-  );
+  const statusText = useMemo(() => `正在暴露：${host}:${port}`, [host, port]);
 
-  const handleClientSelectionChange = useCallback((keys: Selection | Key | null) => {
-    const selection = normalizeSelection(keys);
-    if (!selection || selection === "all") return;
-    const key = extractSingleKey(selection);
-    if (!key) return;
-    const next = CLIENT_OPTIONS.find((opt) => opt.id === key)?.id;
-    if (next) setClientType(next);
-  }, []);
+  const handleClientSelectionChange = useCallback(
+    (keys: Selection | Key | null) => {
+      const selection = normalizeSelection(keys);
+      if (!selection || selection === "all") return;
+      const key = extractSingleKey(selection);
+      if (!key) return;
+      const next = CLIENT_OPTIONS.find((opt) => opt.id === key)?.id;
+      if (next) setClientType(next);
+    },
+    [],
+  );
 
   return (
     <ModalOverlay
@@ -149,9 +156,7 @@ export function McpExposureOverlay({
               </div>
 
               <div className="rounded-xl border border-primary/30 bg-primary-50 px-4 py-3 text-sm text-foreground">
-                <span className="font-medium text-primary">
-                  版本控制提示
-                </span>
+                <span className="font-medium text-primary">版本控制提示</span>
                 <div className="mt-1 text-default-600">
                   版本控制功能在被外部 MCP 调用中依然有效
                 </div>
@@ -159,7 +164,11 @@ export function McpExposureOverlay({
             </div>
 
             <div className="min-w-0">
-              <McpConfigDisplay clientType={clientType} host={host} port={port} />
+              <McpConfigDisplay
+                clientType={clientType}
+                host={host}
+                port={port}
+              />
             </div>
           </AriaDialog>
         </Surface>

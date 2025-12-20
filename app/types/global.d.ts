@@ -214,7 +214,9 @@ declare global {
        *
        * @returns 取消监听函数
        */
-      onToolRequest: (callback: (request: McpToolRequest) => void) => () => void;
+      onToolRequest: (
+        callback: (request: McpToolRequest) => void,
+      ) => () => void;
 
       /**
        * 发送工具执行结果（渲染进程 -> 主进程）。

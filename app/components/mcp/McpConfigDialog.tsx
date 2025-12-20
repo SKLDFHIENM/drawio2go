@@ -1,6 +1,12 @@
 "use client";
 
-import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import {
+  type FormEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import {
   Alert,
   Button,
@@ -164,15 +170,7 @@ export function McpConfigDialog({
     } finally {
       setIsSubmitting(false);
     }
-  }, [
-    canUseMcp,
-    extractErrorMessage,
-    host,
-    isBusy,
-    onClose,
-    onConfirm,
-    port,
-  ]);
+  }, [canUseMcp, extractErrorMessage, host, isBusy, onClose, onConfirm, port]);
 
   const handleSubmit = useCallback(
     (event: FormEvent<HTMLFormElement>) => {
@@ -250,8 +248,8 @@ export function McpConfigDialog({
                 <Alert status="warning">
                   <Alert.Title>安全提示</Alert.Title>
                   <Alert.Description>
-                    绑定到 0.0.0.0 会让同一局域网内设备可访问 MCP 接口，请确保网络可信，
-                    并避免在公共 Wi‑Fi 下开启。
+                    绑定到 0.0.0.0 会让同一局域网内设备可访问 MCP
+                    接口，请确保网络可信， 并避免在公共 Wi‑Fi 下开启。
                   </Alert.Description>
                 </Alert>
               ) : null}

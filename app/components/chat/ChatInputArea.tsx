@@ -125,7 +125,8 @@ export default function ChatInputArea({
   const [isElectronMcpAvailable, setIsElectronMcpAvailable] = useState(false);
   useEffect(() => {
     setIsElectronMcpAvailable(
-      typeof window !== "undefined" && typeof window.electronMcp !== "undefined",
+      typeof window !== "undefined" &&
+        typeof window.electronMcp !== "undefined",
     );
   }, []);
 

@@ -1659,7 +1659,11 @@ export default function ChatSidebar({
       />
 
       <McpExposureOverlay
-        isOpen={mcpServer.running && Boolean(mcpServer.host) && Boolean(mcpServer.port)}
+        isOpen={
+          mcpServer.running &&
+          Boolean(mcpServer.host) &&
+          Boolean(mcpServer.port)
+        }
         host={mcpServer.host ?? "127.0.0.1"}
         port={mcpServer.port ?? 8000}
         onStop={handleStopMcp}

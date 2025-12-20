@@ -7,4 +7,3 @@ export type { McpButtonProps } from "./McpButton";
 export type { McpConfigDialogProps } from "./McpConfigDialog";
 export type { McpExposureOverlayProps } from "./McpExposureOverlay";
 export type { McpConfigDisplayProps } from "./McpConfigDisplay";
-
