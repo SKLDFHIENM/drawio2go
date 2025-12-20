@@ -219,7 +219,9 @@ export class DrainableToolQueue {
   private flushDrainWaiters(): void {
     if (this.drainWaiters.length === 0) return;
 
-    const ready = this.drainWaiters.filter((w) => w.targetId <= this.settledUpTo);
+    const ready = this.drainWaiters.filter(
+      (w) => w.targetId <= this.settledUpTo,
+    );
     if (ready.length === 0) return;
 
     logger.info("Queue drained for snapshot, resolving waiters", {
@@ -228,7 +230,9 @@ export class DrainableToolQueue {
     });
 
     ready.forEach((w) => w.resolve());
-    this.drainWaiters = this.drainWaiters.filter((w) => w.targetId > this.settledUpTo);
+    this.drainWaiters = this.drainWaiters.filter(
+      (w) => w.targetId > this.settledUpTo,
+    );
   }
 
   private countPendingUpTo(targetId: number): number {

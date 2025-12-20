@@ -14,6 +14,7 @@ const CANCEL: ChatRunEvent = "cancel";
 const CANCEL_COMPLETE: ChatRunEvent = "cancel-complete";
 const ERROR: ChatRunEvent = "error";
 const ERROR_CLEANUP: ChatRunEvent = "error-cleanup";
+const FORCE_RESET: ChatRunEvent = "force-reset";
 
 function runEvents(stateMachine: ChatRunStateMachine, events: ChatRunEvent[]) {
   events.forEach((event) => stateMachine.transition(event));
@@ -26,7 +27,11 @@ describe("ChatRunStateMachine", () => {
       events: ChatRunEvent[];
       expected: ChatRunState;
     }> = [
-      { name: "idle -> preparing（submit）", events: [SUBMIT], expected: "preparing" },
+      {
+        name: "idle -> preparing（submit）",
+        events: [SUBMIT],
+        expected: "preparing",
+      },
       {
         name: "preparing -> streaming（lock-acquired）",
         events: [SUBMIT, LOCK_ACQUIRED],
@@ -163,8 +168,14 @@ describe("ChatRunStateMachine", () => {
         { state: "idle", events: [] },
         { state: "preparing", events: [SUBMIT] },
         { state: "streaming", events: [SUBMIT, LOCK_ACQUIRED] },
-        { state: "tools-pending", events: [SUBMIT, LOCK_ACQUIRED, FINISH_WITH_TOOLS] },
-        { state: "finalizing", events: [SUBMIT, LOCK_ACQUIRED, FINISH_NO_TOOLS] },
+        {
+          state: "tools-pending",
+          events: [SUBMIT, LOCK_ACQUIRED, FINISH_WITH_TOOLS],
+        },
+        {
+          state: "finalizing",
+          events: [SUBMIT, LOCK_ACQUIRED, FINISH_NO_TOOLS],
+        },
         { state: "cancelled", events: [SUBMIT, LOCK_ACQUIRED, CANCEL] },
         { state: "errored", events: [SUBMIT, ERROR] },
       ];
@@ -174,10 +185,42 @@ describe("ChatRunStateMachine", () => {
         runEvents(stateMachine, events);
         expect(stateMachine.getState()).toBe(state);
         expect(stateMachine.canTransition("streaming-start")).toBe(false);
-        expect(stateMachine.transition.bind(stateMachine, "streaming-start")).toThrow(
-          /Invalid state transition/,
-        );
+        expect(
+          stateMachine.transition.bind(stateMachine, "streaming-start"),
+        ).toThrow(/Invalid state transition/);
       }
+    });
+
+    it("force-reset：任意非 idle 状态都可强制回到 idle", () => {
+      const cases: Array<{ state: ChatRunState; events: ChatRunEvent[] }> = [
+        { state: "preparing", events: [SUBMIT] },
+        { state: "streaming", events: [SUBMIT, LOCK_ACQUIRED] },
+        {
+          state: "tools-pending",
+          events: [SUBMIT, LOCK_ACQUIRED, FINISH_WITH_TOOLS],
+        },
+        {
+          state: "finalizing",
+          events: [SUBMIT, LOCK_ACQUIRED, FINISH_NO_TOOLS],
+        },
+        { state: "cancelled", events: [SUBMIT, LOCK_ACQUIRED, CANCEL] },
+        { state: "errored", events: [SUBMIT, ERROR] },
+      ];
+
+      for (const { state, events } of cases) {
+        const stateMachine = new ChatRunStateMachine();
+        runEvents(stateMachine, events);
+        expect(stateMachine.getState()).toBe(state);
+
+        expect(stateMachine.canTransition(FORCE_RESET)).toBe(true);
+        expect(() => stateMachine.transition(FORCE_RESET)).not.toThrow();
+        expect(stateMachine.getState()).toBe("idle");
+      }
+
+      // idle 默认不支持 force-reset（避免误用依赖此“空转换”）
+      const idleMachine = new ChatRunStateMachine();
+      expect(idleMachine.getState()).toBe("idle");
+      expect(idleMachine.canTransition(FORCE_RESET)).toBe(false);
     });
   });
 

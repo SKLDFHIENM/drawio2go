@@ -286,6 +286,7 @@
   - `onError`: 错误提示回调
 - **输出**:
   - `submitMessage`: 提交消息（接收已处理好的参数）
+  - `forceReset`: 强制重置（兜底，清理请求/工具/锁/上下文并回到 idle）
   - `handleCancel`: 取消当前请求
   - `stopStreamingSilently`: 静默停止流式传输
   - `getRunContext`: 获取当前运行上下文

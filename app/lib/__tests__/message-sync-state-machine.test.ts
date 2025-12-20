@@ -166,20 +166,17 @@ describe("MessageSyncStateMachine", () => {
         name: STATES.uiToStorage,
         events: [EVENTS.uiChanged] satisfies MessageSyncEvent[],
       },
-    ])(
-      "当状态是 $name 时，触发 stream-end 必须抛错",
-      ({ events, name }) => {
-        const stateMachine = new MessageSyncStateMachine();
-        runEvents(stateMachine, events);
-        expect(stateMachine.getState()).toBe(name);
+    ])("当状态是 $name 时，触发 stream-end 必须抛错", ({ events, name }) => {
+      const stateMachine = new MessageSyncStateMachine();
+      runEvents(stateMachine, events);
+      expect(stateMachine.getState()).toBe(name);
 
-        expect(stateMachine.canTransition(EVENTS.streamEnd)).toBe(false);
-        expect(() => stateMachine.transition(EVENTS.streamEnd)).toThrow(
-          INVALID_TRANSITION,
-        );
-        expect(stateMachine.getState()).toBe(name);
-      },
-    );
+      expect(stateMachine.canTransition(EVENTS.streamEnd)).toBe(false);
+      expect(() => stateMachine.transition(EVENTS.streamEnd)).toThrow(
+        INVALID_TRANSITION,
+      );
+      expect(stateMachine.getState()).toBe(name);
+    });
   });
 
   describe("辅助方法（P1）", () => {

@@ -13,6 +13,10 @@ import { fingerprintMessage } from "@/lib/chat-session-service";
 import type { ChatUIMessage } from "@/app/types/chat";
 import type { ChatSessionService } from "@/lib/chat-session-service";
 import { createLogger } from "@/lib/logger";
+import type {
+  ChatRunState,
+  ChatRunStateMachine,
+} from "@/lib/chat-run-state-machine";
 
 const logger = createLogger("useChatMessages");
 
@@ -50,6 +54,15 @@ export interface UseChatMessagesOptions {
    * - 流式时锁定同步，避免干扰
    */
   isChatStreaming: boolean;
+
+  /**
+   * 聊天运行状态机（ChatSidebar 内创建）
+   *
+   * 用于扩展锁范围：在 preparing/上传附件阶段同样锁住 storage ↔ UI 同步，
+   * 避免 saveUserMessage（storage 写入 + 订阅更新）与 sendMessage（useChat 内部追加）
+   * 产生竞态，导致 UI 中出现重复 message.id（React 重复 key）。
+   */
+  chatRunStateMachine: ChatRunStateMachine;
 
   /**
    * 会话消息缓存（来自 useChatSessionsController）
@@ -138,6 +151,7 @@ export function useChatMessages(
     activeConversationId,
     chatService,
     isChatStreaming,
+    chatRunStateMachine,
     conversationMessages,
     setMessages,
     messages,
@@ -248,25 +262,50 @@ export function useChatMessages(
   // ========== 流式状态管理 ========== //
 
   /**
-   * 监听流式状态变化
-   * - 流式开始时锁定同步
-   * - 流式结束时解锁同步
+   * 应用同步锁（扩展范围）
+   *
+   * 说明：
+   * - 过去只在流式阶段锁定同步（isChatStreaming）
+   * - 但图片对话会在 preparing 阶段先写入消息与附件（saveUserMessage），触发 storage 订阅更新，
+   *   与 sendMessage 产生竞态，可能把同一个 message.id 写入两次，触发 React 重复 key
+   * - 因此锁条件扩展为：isChatStreaming || chatRunState !== "idle"
    */
-  useEffect(() => {
-    const machine = syncStateMachine.current;
+  const applySyncLock = useCallback(
+    (runState: ChatRunState) => {
+      const machine = syncStateMachine.current;
+      const shouldLockSync = isChatStreaming || runState !== "idle";
 
-    if (isChatStreaming) {
-      if (machine.canTransition("stream-start")) {
-        logger.info(`${LOG_PREFIX} 流式开始，锁定消息同步`);
-        machine.transition("stream-start");
+      if (shouldLockSync) {
+        if (machine.canTransition("stream-start")) {
+          logger.info(`${LOG_PREFIX} 聊天运行中，锁定消息同步`, {
+            runState,
+            isChatStreaming,
+          });
+          machine.transition("stream-start");
+        }
+        return;
       }
-    } else {
+
       if (machine.canTransition("stream-end")) {
-        logger.info(`${LOG_PREFIX} 流式结束，解锁消息同步`);
+        logger.info(`${LOG_PREFIX} 聊天空闲，解锁消息同步`, {
+          runState,
+          isChatStreaming,
+        });
         machine.transition("stream-end");
       }
-    }
-  }, [isChatStreaming]);
+    },
+    [isChatStreaming],
+  );
+
+  useEffect(() => {
+    applySyncLock(chatRunStateMachine.getState());
+
+    const unsubscribe = chatRunStateMachine.subscribe((state) => {
+      applySyncLock(state);
+    });
+
+    return unsubscribe;
+  }, [applySyncLock, chatRunStateMachine]);
 
   // ========== Storage → UI 同步 ========== //
 
@@ -283,7 +322,7 @@ export function useChatMessages(
 
     // 流式时不同步
     if (machine.isLocked()) {
-      logger.debug(`${LOG_PREFIX} 同步被锁定（流式中），跳过 storage → UI`);
+      logger.debug(`${LOG_PREFIX} 同步被锁定（聊天运行中），跳过 storage → UI`);
       return;
     }
 
@@ -374,7 +413,7 @@ export function useChatMessages(
 
     // 流式时不同步
     if (machine.isLocked()) {
-      logger.debug(`${LOG_PREFIX} 同步被锁定（流式中），跳过 UI → storage`);
+      logger.debug(`${LOG_PREFIX} 同步被锁定（聊天运行中），跳过 UI → storage`);
       return;
     }
 

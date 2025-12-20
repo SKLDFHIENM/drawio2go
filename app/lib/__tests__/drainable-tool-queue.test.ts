@@ -79,7 +79,10 @@ describe("DrainableToolQueue", () => {
     const p2 = queue.drain(1000);
 
     gate.resolve();
-    await expect(Promise.all([p1, p2])).resolves.toEqual([undefined, undefined]);
+    await expect(Promise.all([p1, p2])).resolves.toEqual([
+      undefined,
+      undefined,
+    ]);
   });
 
   it("drain 超时路径（fake timers）", async () => {
@@ -110,7 +113,8 @@ describe("DrainableToolQueue", () => {
       expect(getDrainWaiterCount(queue)).toBe(0);
 
       const firstDrain = queue.drain(100);
-      const firstExpectation = expect(firstDrain).rejects.toThrow(/drain timeout/i);
+      const firstExpectation =
+        expect(firstDrain).rejects.toThrow(/drain timeout/i);
       expect(getDrainWaiterCount(queue)).toBe(1);
 
       await vi.advanceTimersByTimeAsync(100);

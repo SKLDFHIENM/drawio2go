@@ -385,6 +385,10 @@ idle → preparing → streaming → finalizing → idle
                   tools-pending → finalizing → idle
 ```
 
+**兜底转换（强制重置）**：
+
+- `force-reset`: `preparing/streaming/tools-pending/finalizing/cancelled/errored → idle`
+
 **主要 API**：
 
 ```typescript
@@ -484,7 +488,14 @@ class MessageSyncStateMachine {
 
   // 订阅状态变化
   subscribe(
-    listener: (state, context: { from: MessageSyncState; to: MessageSyncState; event: MessageSyncEvent }) => void,
+    listener: (
+      state,
+      context: {
+        from: MessageSyncState;
+        to: MessageSyncState;
+        event: MessageSyncEvent;
+      },
+    ) => void,
   ): () => void;
 
   // 检查是否被锁定（流式中）

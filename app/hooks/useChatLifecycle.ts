@@ -160,6 +160,18 @@ export interface UseChatLifecycleResult {
   submitMessage: (params: SubmitMessageParams) => Promise<void>;
 
   /**
+   * 强制重置聊天运行状态（兜底）
+   *
+   * - 中止正在进行的网络请求
+   * - 丢弃未开始的工具任务，并等待队列尽快清空
+   * - 释放聊天锁
+   * - 标记流式结束
+   * - 清理状态机上下文
+   * - 触发状态机 `force-reset` 事件回到 idle
+   */
+  forceReset: (reason?: string) => Promise<void>;
+
+  /**
    * 取消当前请求
    *
    * - 中止流式请求
@@ -280,6 +292,125 @@ export function useChatLifecycle(
   // ========== 核心方法 ========== //
 
   /**
+   * 强制重置（兜底）
+   */
+  const forceReset = useCallback(
+    async (reason?: string) => {
+      const currentState = stateMachine.current.getState();
+      const ctx = stateMachine.current.getContext();
+      const shouldMarkErrored =
+        typeof reason === "string" &&
+        (reason.includes("chatError") ||
+          reason.includes("toolError") ||
+          reason.includes("network-disconnect"));
+
+      logger.warn("[forceReset] 执行强制重置", {
+        reason,
+        currentState,
+        conversationId: ctx?.conversationId,
+        pendingToolCount: toolQueue.current.getPendingCount(),
+        isChatStreaming,
+        shouldMarkErrored,
+      });
+
+      // 1) 中止所有请求（网络 + 当前工具）
+      try {
+        stop();
+      } catch (error) {
+        logger.warn("[forceReset] stop() 失败（已忽略）", { error });
+      }
+
+      // 2) 丢弃未开始的工具任务
+      const cancelledCount = toolQueue.current.cancel();
+      if (cancelledCount > 0) {
+        logger.info("[forceReset] 已丢弃未开始的工具任务", { cancelledCount });
+      }
+
+      // 3) 等待工具队列尽快清空（避免遗留任务继续写入）
+      try {
+        await toolQueue.current.drain(2000);
+      } catch (error) {
+        logger.warn("[forceReset] 工具队列未能在超时内清空（已继续）", {
+          error,
+        });
+      }
+
+      // 4) 标记流式结束（避免遗留 is_streaming）
+      const targetConversationId = activeConversationId ?? ctx?.conversationId;
+      if (targetConversationId) {
+        try {
+          await updateStreamingFlag(targetConversationId, false);
+        } catch (error) {
+          logger.warn("[forceReset] 更新流式状态失败（已忽略）", {
+            conversationId: targetConversationId,
+            error,
+          });
+        }
+
+        try {
+          chatService.flushPending(targetConversationId);
+        } catch (error) {
+          logger.warn("[forceReset] flushPending 失败（已忽略）", {
+            conversationId: targetConversationId,
+            error,
+          });
+        }
+      }
+
+      // 5) 释放锁（兜底：不依赖 lockAcquired）
+      releaseLock();
+
+      // 6) 清理状态机状态与上下文
+      finishReasonRef.current = null;
+
+      if (ctx) {
+        ctx.pendingToolCount = 0;
+        ctx.abortController = null;
+        ctx.lockAcquired = false;
+      }
+
+      if (currentState !== "idle") {
+        const transitionSafely = (
+          event: Parameters<ChatRunStateMachine["transition"]>[0],
+        ) => {
+          try {
+            if (!stateMachine.current.canTransition(event)) return;
+            logger.info("[forceReset] 状态转换", {
+              event,
+              from: stateMachine.current.getState(),
+              reason,
+            });
+            stateMachine.current.transition(event);
+          } catch (error) {
+            logger.error("[forceReset] 状态转换失败", { event, error, reason });
+          }
+        };
+
+        if (shouldMarkErrored) {
+          transitionSafely("error");
+          transitionSafely("error-cleanup");
+          transitionSafely("force-reset");
+        } else {
+          transitionSafely("force-reset");
+        }
+      }
+
+      stateMachine.current.clearContext();
+    },
+    [
+      activeConversationId,
+      chatService,
+      finishReasonRef,
+      isChatStreaming,
+      releaseLock,
+      stateMachine,
+      stop,
+      toolQueue,
+      updateStreamingFlag,
+    ],
+  );
+
+  /**
    * 准备用户消息
    */
   const prepareUserMessage = useCallback(
@@ -381,6 +512,16 @@ export function useChatLifecycle(
       } = params;
 
       const hasReadyAttachments = readyAttachments.length > 0;
+
+      // 0. 兜底：如果状态机不在 idle，先强制重置
+      const currentState = stateMachine.current.getState();
+      if (currentState !== "idle") {
+        logger.warn("[submitMessage] 检测到非 idle 状态，先强制重置", {
+          currentState,
+          targetSessionId,
+        });
+        await forceReset("submitMessage");
+      }
 
       // 1. 状态机转换：idle → preparing
       try {
@@ -515,6 +656,7 @@ export function useChatLifecycle(
       }
     },
     [
+      forceReset,
       stateMachine,
       acquireLock,
       releaseLock,
@@ -736,6 +878,7 @@ export function useChatLifecycle(
 
   return {
     submitMessage,
+    forceReset,
     handleCancel,
     stopStreamingSilently,
     getRunContext,

@@ -252,6 +252,38 @@ export default function ChatSidebar({
   const stateMachine = useRef(new ChatRunStateMachine());
   const activeRequestAbortRef = useRef<AbortController | null>(null);
 
+  const safeTransition = useCallback(
+    (
+      event: Parameters<ChatRunStateMachine["transition"]>[0],
+      reason: string,
+    ): void => {
+      try {
+        if (!stateMachine.current.canTransition(event)) {
+          logger.warn("[ChatSidebar] 状态转换被跳过（不可转换）", {
+            event,
+            reason,
+            currentState: stateMachine.current.getState(),
+          });
+          return;
+        }
+
+        logger.info("[ChatSidebar] 状态转换", {
+          event,
+          reason,
+          from: stateMachine.current.getState(),
+        });
+        stateMachine.current.transition(event);
+      } catch (transitionError) {
+        logger.error("[ChatSidebar] 状态转换失败", {
+          event,
+          reason,
+          transitionError,
+        });
+      }
+    },
+    [],
+  );
+
   // ========== 派生状态 ==========
   const fallbackModelName = useMemo(
     () => llmConfig?.modelName ?? DEFAULT_LLM_CONFIG.modelName,
@@ -637,11 +669,25 @@ export default function ChatSidebar({
             hasToolPartsInLastAssistant(finishedMessages));
 
         if (shouldContinue) {
+          if (toolExecution.toolError) {
+            const toolErrorMessage =
+              extractErrorMessage(toolExecution.toolError) ??
+              toolExecution.toolError.message ??
+              "工具执行失败";
+            logger.error(
+              "[ChatSidebar] onFinish: shouldContinue 但检测到工具错误，转入错误恢复流程",
+              {
+                toolError: toolExecution.toolError,
+                toolErrorMessage,
+                finishReason,
+              },
+            );
+            throw new Error(`工具执行失败: ${toolErrorMessage}`);
+          }
+
           logger.info("[ChatSidebar] onFinish: 工具需要继续，等待下一轮");
           // 状态机转换：streaming → tools-pending（如果当前是 streaming）
-          if (stateMachine.current.canTransition("finish-with-tools")) {
-            stateMachine.current.transition("finish-with-tools");
-          }
+          safeTransition("finish-with-tools", "onFinish/shouldContinue");
           // 等待下一轮流式（sendAutomaticallyWhen 会触发）
           return;
         }
@@ -650,16 +696,10 @@ export default function ChatSidebar({
 
         // 状态机转换：streaming/tools-pending → finalizing
         const currentState = stateMachine.current.getState();
-        if (
-          currentState === "streaming" &&
-          stateMachine.current.canTransition("finish-no-tools")
-        ) {
-          stateMachine.current.transition("finish-no-tools");
-        } else if (
-          currentState === "tools-pending" &&
-          stateMachine.current.canTransition("tools-complete-done")
-        ) {
-          stateMachine.current.transition("tools-complete-done");
+        if (currentState === "streaming") {
+          safeTransition("finish-no-tools", "onFinish/finish-no-tools");
+        } else if (currentState === "tools-pending") {
+          safeTransition("tools-complete-done", "onFinish/tools-complete-done");
         }
 
         let resolvedConversationId: string | null = null;
@@ -687,9 +727,7 @@ export default function ChatSidebar({
         }
 
         // 状态机转换：finalizing → idle
-        if (stateMachine.current.canTransition("finalize-complete")) {
-          stateMachine.current.transition("finalize-complete");
-        }
+        safeTransition("finalize-complete", "onFinish/finalize-complete");
 
         stateMachine.current.clearContext();
         logger.info("[ChatSidebar] onFinish: 会话已最终化");
@@ -697,18 +735,8 @@ export default function ChatSidebar({
         logger.error("[ChatSidebar] onFinish: 发生错误", { error });
 
         // 错误时转换到 errored → idle
-        try {
-          if (stateMachine.current.canTransition("error")) {
-            stateMachine.current.transition("error");
-          }
-          if (stateMachine.current.canTransition("error-cleanup")) {
-            stateMachine.current.transition("error-cleanup");
-          }
-        } catch (transitionError) {
-          logger.error("[ChatSidebar] onFinish: 状态转换失败", {
-            transitionError,
-          });
-        }
+        safeTransition("error", "onFinish/catch");
+        safeTransition("error-cleanup", "onFinish/catch");
 
         if (ctx.lockAcquired) {
           releaseLock();
@@ -749,12 +777,13 @@ export default function ChatSidebar({
         logger.info(
           "[ChatSidebar] 工具完成后继续流式，状态转换: tools-pending → streaming",
         );
-        if (stateMachine.current.canTransition("tools-complete-continue")) {
-          stateMachine.current.transition("tools-complete-continue");
-        }
+        safeTransition(
+          "tools-complete-continue",
+          "chatStreaming/tools-complete-continue",
+        );
       }
     }
-  }, [isChatStreaming]);
+  }, [isChatStreaming, safeTransition]);
 
   const stop = useCallback(() => {
     activeRequestAbortRef.current?.abort();
@@ -800,32 +829,6 @@ export default function ChatSidebar({
     ],
   );
 
-  // 网络控制 Hook
-  const { showOnlineRecoveryHint } = useChatNetworkControl({
-    isOnline,
-    offlineReasonLabel: offlineReasonLabel ?? undefined,
-    isChatStreaming,
-    activeConversationId,
-    stateMachine: stateMachine.current,
-    releaseLock,
-    stop,
-    updateStreamingFlag,
-    markConversationAsCompleted,
-    resolveConversationId,
-    openAlertDialog: (config) =>
-      openAlertDialog({
-        ...config,
-        status: config.status as "warning" | "danger",
-      }),
-    t: (key: string, fallback?: string) => {
-      if (fallback) {
-        return t(key, { defaultValue: fallback });
-      }
-      return t(key);
-    },
-    toolQueue: toolQueue.current,
-  });
-
   // 生命周期管理 Hook
   const lifecycle = useChatLifecycle({
     stateMachine,
@@ -852,12 +855,41 @@ export default function ChatSidebar({
     finishReasonRef,
     onError: (message) => pushErrorToast(message),
   });
+  const forceReset = lifecycle.forceReset;
+
+  // 网络控制 Hook
+  const { showOnlineRecoveryHint } = useChatNetworkControl({
+    isOnline,
+    offlineReasonLabel: offlineReasonLabel ?? undefined,
+    isChatStreaming,
+    activeConversationId,
+    stateMachine: stateMachine.current,
+    releaseLock,
+    stop,
+    updateStreamingFlag,
+    markConversationAsCompleted,
+    resolveConversationId,
+    forceReset,
+    openAlertDialog: (config) =>
+      openAlertDialog({
+        ...config,
+        status: config.status as "warning" | "danger",
+      }),
+    t: (key: string, fallback?: string) => {
+      if (fallback) {
+        return t(key, { defaultValue: fallback });
+      }
+      return t(key);
+    },
+    toolQueue: toolQueue.current,
+  });
 
   // 消息同步 Hook
   const { displayMessages } = useChatMessages({
     activeConversationId,
     chatService,
     isChatStreaming,
+    chatRunStateMachine: stateMachine.current,
     conversationMessages,
     setMessages: (value) => {
       setMessages(
@@ -1038,21 +1070,51 @@ export default function ChatSidebar({
   }, [abnormalExitConversations, activeConversationId]);
 
   // ========== 错误处理 ==========
+  const lastHandledChatErrorRef = useRef<unknown>(null);
+  const lastHandledToolErrorRef = useRef<unknown>(null);
+
   useEffect(() => {
     const message = extractErrorMessage(chatError);
 
-    if (message) {
-      pushErrorToast(message, t("toasts.chatRequestFailed"));
+    if (!message) return;
+    if (lastHandledChatErrorRef.current === chatError) return;
+    lastHandledChatErrorRef.current = chatError;
+
+    pushErrorToast(message, t("toasts.chatRequestFailed"));
+
+    const currentState = stateMachine.current.getState();
+    if (currentState !== "idle") {
+      logger.warn("[ChatSidebar] chatError: 状态非 idle，触发强制重置", {
+        currentState,
+        message,
+      });
+      forceReset("chatError").catch((error) => {
+        logger.error("[ChatSidebar] chatError: forceReset 失败", { error });
+      });
     }
-  }, [chatError, extractErrorMessage, pushErrorToast, t]);
+  }, [chatError, extractErrorMessage, forceReset, pushErrorToast, t]);
 
   useEffect(() => {
     if (!toolExecution.toolError) return;
+    if (lastHandledToolErrorRef.current === toolExecution.toolError) return;
+    lastHandledToolErrorRef.current = toolExecution.toolError;
+
     pushErrorToast(
       toolExecution.toolError.message,
       t("toasts.chatRequestFailed"),
     );
-  }, [toolExecution.toolError, pushErrorToast, t]);
+
+    const currentState = stateMachine.current.getState();
+    if (currentState !== "idle") {
+      logger.warn("[ChatSidebar] toolError: 状态非 idle，触发强制重置", {
+        currentState,
+        toolError: toolExecution.toolError,
+      });
+      forceReset("toolError").catch((error) => {
+        logger.error("[ChatSidebar] toolError: forceReset 失败", { error });
+      });
+    }
+  }, [forceReset, pushErrorToast, t, toolExecution.toolError]);
 
   // ========== 事件处理函数 ==========
 

@@ -75,6 +75,12 @@ export interface UseChatNetworkControlOptions {
   resolveConversationId: (conversationId: string) => Promise<string>;
 
   /**
+   * 强制重置聊天运行状态（可选）
+   * - 优先使用 useChatLifecycle.forceReset，确保状态机/工具队列/锁/上下文完整清理
+   */
+  forceReset?: (reason?: string) => Promise<void>;
+
+  /**
    * 打开 Alert 对话框
    * - 用于显示网络断开/恢复提示
    */
@@ -177,6 +183,7 @@ export function useChatNetworkControl(
     updateStreamingFlag,
     markConversationAsCompleted,
     resolveConversationId,
+    forceReset,
     openAlertDialog,
     t,
     toolQueue,
@@ -227,22 +234,67 @@ export function useChatNetworkControl(
     const ctx = stateMachine.getContext();
     const targetConversationId = activeConversationId ?? ctx?.conversationId;
 
-    // 停止流式响应
-    stop();
-
-    // 释放聊天锁
-    releaseLock();
+    const currentState = stateMachine.getState();
 
     // 清空工具队列（如果存在）
     if (toolQueue) {
       try {
-        // DrainableToolQueue 没有直接的 clear 方法，
-        // 但我们可以通过设置一个很短的超时来快速失败
-        // 这里我们不调用 drain，因为网络断开时不需要等待工具完成
-        logger.info("[useChatNetworkControl] 网络断开，工具队列将被忽略");
+        const cancelledCount = toolQueue.cancel();
+        logger.info(
+          "[useChatNetworkControl] 网络断开，已丢弃未开始的工具任务",
+          {
+            cancelledCount,
+          },
+        );
       } catch (error) {
         logger.error("[useChatNetworkControl] 清空工具队列失败", { error });
       }
+    }
+
+    // 停止流式响应（forceReset 内部也会 stop，这里尽量保持幂等）
+    try {
+      stop();
+    } catch (error) {
+      logger.warn("[useChatNetworkControl] stop() 失败（已忽略）", { error });
+    }
+
+    // 网络断开时如果状态机不在 idle，触发强制重置（优先使用生命周期）
+    if (currentState !== "idle") {
+      logger.warn("[useChatNetworkControl] 网络断开，状态机非 idle，触发重置", {
+        currentState,
+        conversationId: targetConversationId,
+      });
+
+      if (forceReset) {
+        forceReset("network-disconnect").catch((error) => {
+          logger.error("[useChatNetworkControl] forceReset 失败", { error });
+        });
+      } else {
+        try {
+          if (stateMachine.canTransition("error")) {
+            stateMachine.transition("error");
+          }
+          if (stateMachine.canTransition("error-cleanup")) {
+            stateMachine.transition("error-cleanup");
+          } else if (stateMachine.canTransition("force-reset")) {
+            stateMachine.transition("force-reset");
+          }
+        } catch (transitionError) {
+          logger.error("[useChatNetworkControl] 状态转换失败（断网重置）", {
+            transitionError,
+            currentState,
+          });
+        }
+      }
+    }
+
+    // 释放聊天锁（forceReset 内部也会 releaseLock，这里保持幂等兜底）
+    try {
+      releaseLock();
+    } catch (error) {
+      logger.warn("[useChatNetworkControl] releaseLock() 失败（已忽略）", {
+        error,
+      });
     }
 
     // 更新会话流式状态
@@ -277,6 +329,7 @@ export function useChatNetworkControl(
     wasOfflineRef.current = true;
   }, [
     activeConversationId,
+    forceReset,
     isChatStreaming,
     markConversationAsCompleted,
     offlineReasonLabel,

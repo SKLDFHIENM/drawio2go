@@ -417,19 +417,39 @@ export function useChatToolExecution(
         // 7. 添加工具结果（成功）
         // AI SDK 5.0: 不要在 onToolCall 中 await addToolResult，否则会死锁
         // https://ai-sdk.dev/docs/migration-guides/migration-guide-5-0
-        void addToolResult({
+        addToolResult({
           tool: toolName,
           toolCallId,
           output,
+        }).catch((error) => {
+          const normalizedError =
+            error instanceof Error ? error : new Error(toErrorMessage(error));
+          logger.error("[useChatToolExecution] 提交工具结果失败（success）", {
+            error: normalizedError,
+            tool: toolName,
+            toolCallId,
+          });
+          setToolError(normalizedError);
         });
       } catch (error) {
         // 8. 处理中止错误
         if (isAbortError(error)) {
-          void addToolResult({
+          addToolResult({
             state: "output-error",
             tool: toolName,
             toolCallId,
             errorText: "已取消",
+          }).catch((submitError) => {
+            const normalizedError =
+              submitError instanceof Error
+                ? submitError
+                : new Error(toErrorMessage(submitError));
+            logger.error("[useChatToolExecution] 提交工具结果失败（abort）", {
+              error: normalizedError,
+              tool: toolName,
+              toolCallId,
+            });
+            setToolError(normalizedError);
           });
           return;
         }
@@ -438,11 +458,22 @@ export function useChatToolExecution(
         const errorText = toErrorMessage(error);
         setToolError(error instanceof Error ? error : new Error(errorText));
 
-        void addToolResult({
+        addToolResult({
           state: "output-error",
           tool: toolName,
           toolCallId,
           errorText,
+        }).catch((submitError) => {
+          const normalizedError =
+            submitError instanceof Error
+              ? submitError
+              : new Error(toErrorMessage(submitError));
+          logger.error("[useChatToolExecution] 提交工具结果失败（error）", {
+            error: normalizedError,
+            tool: toolName,
+            toolCallId,
+          });
+          setToolError(normalizedError);
         });
       } finally {
         // 10. 清理中止控制器和当前工具调用 ID

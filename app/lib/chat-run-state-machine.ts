@@ -34,6 +34,7 @@ export type ChatRunState =
  */
 export type ChatRunEvent =
   | "submit" // 用户提交消息
+  | "force-reset" // 强制重置（从任意非 idle 状态回到 idle）
   | "lock-acquired" // 锁获取成功
   | "lock-failed" // 锁获取失败
   | "streaming-start" // 开始流式响应
@@ -75,29 +76,35 @@ const STATE_TRANSITIONS: Record<
   preparing: {
     "lock-acquired": "streaming",
     "lock-failed": "idle",
+    "force-reset": "idle",
     error: "errored",
   },
   streaming: {
     "finish-with-tools": "tools-pending",
     "finish-no-tools": "finalizing",
+    "force-reset": "idle",
     cancel: "cancelled",
     error: "errored",
   },
   "tools-pending": {
     "tools-complete-continue": "streaming",
     "tools-complete-done": "finalizing",
+    "force-reset": "idle",
     cancel: "cancelled",
     error: "errored",
   },
   finalizing: {
     "finalize-complete": "idle",
+    "force-reset": "idle",
     error: "errored",
   },
   cancelled: {
     "cancel-complete": "idle",
+    "force-reset": "idle",
   },
   errored: {
     "error-cleanup": "idle",
+    "force-reset": "idle",
   },
 };
 
