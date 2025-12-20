@@ -39,47 +39,23 @@ const buildConfigTemplate = (
 ): string => {
   const url = buildMcpUrl(host, port);
 
-  // 里程碑 5 尚未实现：此处先提供“可复制”的占位模板，后续再替换为各客户端真实格式。
   switch (clientType) {
+    case "claude-code":
+      return `claude mcp add --transport http drawio2go ${url}`;
+    case "codex":
+      return `codex mcp add --url ${url} drawio2go`;
+    case "gemini-cli":
+      return `gemini mcp add --transport http drawio2go ${url}`;
     case "cursor":
+    case "generic":
+    default:
       return toPrettyJson({
         mcpServers: {
           drawio2go: {
             url,
+            type: "http",
           },
         },
-      });
-    case "claude-code":
-      return toPrettyJson({
-        mcp: {
-          servers: [
-            {
-              name: "drawio2go",
-              url,
-            },
-          ],
-        },
-      });
-    case "codex":
-      return toPrettyJson({
-        mcp: {
-          serverUrl: url,
-        },
-      });
-    case "gemini-cli":
-      return toPrettyJson({
-        mcpServers: [
-          {
-            name: "drawio2go",
-            url,
-          },
-        ],
-      });
-    case "generic":
-    default:
-      return toPrettyJson({
-        name: "drawio2go",
-        url,
       });
   }
 };
@@ -87,8 +63,8 @@ const buildConfigTemplate = (
 /**
  * MCP 配置展示组件
  *
- * - 根据客户端类型生成配置示例（当前为 JSON 占位模板）
- * - 提供右上角复制按钮，复制后 Toast 提示“配置已复制”
+ * - 根据客户端类型生成配置示例（JSON 格式或命令行格式）
+ * - 提供右上角复制按钮，复制后 Toast 提示"配置已复制"
  */
 export function McpConfigDisplay({
   clientType,
@@ -101,6 +77,15 @@ export function McpConfigDisplay({
   const configText = useMemo(
     () => buildConfigTemplate(clientType, host, port),
     [clientType, host, port],
+  );
+
+  // 根据客户端类型判断配置格式（命令行或 JSON）
+  const isCommandLine = useMemo(
+    () =>
+      clientType === "claude-code" ||
+      clientType === "codex" ||
+      clientType === "gemini-cli",
+    [clientType],
   );
 
   const handleCopy = useCallback(async () => {
@@ -133,7 +118,9 @@ export function McpConfigDisplay({
       </div>
 
       <pre className="m-0 max-h-96 overflow-auto px-4 pb-4 text-sm text-foreground">
-        <code className="language-json">{configText}</code>
+        <code className={isCommandLine ? "language-bash" : "language-json"}>
+          {configText}
+        </code>
       </pre>
     </div>
   );

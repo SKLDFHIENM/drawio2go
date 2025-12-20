@@ -29,9 +29,11 @@ MCP 配置对话框组件：
 
 MCP 配置展示组件（代码块 + 复制按钮）：
 
-- 根据 `McpClientType` 生成配置示例文本（里程碑 5 未落地前先使用简化 JSON 占位模板）
-- 使用 `<pre><code>` 展示，并为 `<code>` 添加 `language-json` class 便于后续接入语法高亮
-- 右上角复制按钮：复制到剪贴板后 Toast 提示“配置已复制”
+- 根据 `McpClientType` 生成配置示例文本（5 种客户端：Cursor、Claude Code、Codex、Gemini CLI、通用）
+- 配置格式：
+  - **命令行格式**（Claude Code、Codex、Gemini CLI）：使用 `language-bash` class
+  - **JSON 格式**（Cursor、通用）：使用 `language-json` class，包含 `type: "http"` 字段
+- 右上角复制按钮：复制到剪贴板后 Toast 提示"配置已复制"
 
 ### McpExposureOverlay.tsx
 
