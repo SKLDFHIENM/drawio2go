@@ -98,6 +98,7 @@ export default function Home() {
   const lastSavedXmlByProjectRef = useRef<Map<string, string>>(new Map());
   const diagramStateRef = useRef<DiagramState>(diagramState);
   const activeProjectUuidRef = useRef<string | null>(currentProjectUuid);
+  const selectionRef = useRef<string[]>([]);
   const projectLoadSeqRef = useRef(0);
   const isEditorDataReady =
     Boolean(currentProjectUuid) &&
@@ -348,6 +349,9 @@ export default function Home() {
   // 处理 DrawIO 选区变化
   const handleSelectionChange = (info: DrawioSelectionInfo) => {
     setSelectionInfo(info);
+    selectionRef.current = info.cells
+      .map((cell) => cell.id)
+      .filter((id): id is string => Boolean(id));
     logger.debug("选中元素详情", {
       projectId: currentProject?.uuid,
       cells: info.cells,
@@ -736,6 +740,7 @@ export default function Home() {
         projectUuid={currentProject?.uuid}
         onVersionRestore={handleVersionRestore}
         editorRef={editorRef}
+        selectionRef={selectionRef}
       />
 
       {/* 工程选择器 */}

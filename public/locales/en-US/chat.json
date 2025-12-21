@@ -111,6 +111,8 @@
     },
     "characterCount": "{{current}} / {{max}} chars"
   },
+  "canvasContext": "Canvas Context",
+  "canvasContextTooltip": "Auto-attach canvas elements info to chat, including selection info in APP",
   "toolCalls": {
     "title": "Tool calls",
     "parameters": "Input parameters",

@@ -28,6 +28,7 @@ import { toErrorString } from "@/app/lib/error-handler";
 import { dispatchSidebarNavigate } from "@/app/lib/ui-events";
 import { McpButton, McpConfigDialog } from "@/app/components/mcp";
 import type { McpConfig } from "@/app/types/mcp";
+import CanvasContextButton from "./CanvasContextButton";
 
 const MIN_BASE_TEXTAREA_HEIGHT = 60;
 
@@ -56,6 +57,9 @@ interface ChatInputAreaProps {
     isLoading: boolean;
     modelLabel: string;
   };
+
+  isCanvasContextEnabled: boolean;
+  onCanvasContextToggle: () => void;
 
   /**
    * MCP 配置弹窗（Popover/Dropdown）。
@@ -86,6 +90,8 @@ export default function ChatInputArea({
   imageAttachments,
   onAttachmentsChange,
   modelSelectorProps,
+  isCanvasContextEnabled,
+  onCanvasContextToggle,
   mcpConfigDialog,
 }: ChatInputAreaProps) {
   const { t } = useAppTranslation("chat");
@@ -262,8 +268,12 @@ export default function ChatInputArea({
           />
         ) : null}
 
-        {mcpConfigDialog ? (
-          <div className="flex items-center justify-end">
+        <div className="flex items-center justify-between gap-2">
+          <CanvasContextButton
+            enabled={isCanvasContextEnabled}
+            onPress={onCanvasContextToggle}
+          />
+          {mcpConfigDialog ? (
             <McpConfigDialog
               isOpen={mcpConfigDialog.isOpen}
               onOpenChange={mcpConfigDialog.onOpenChange}
@@ -271,6 +281,7 @@ export default function ChatInputArea({
               trigger={
                 <McpButton
                   isActive={mcpConfigDialog.isActive}
+                  size="sm"
                   isDisabled={
                     Boolean(mcpConfigDialog.isDisabled) ||
                     Boolean(mcpConfigDialog.isActive)
@@ -278,8 +289,8 @@ export default function ChatInputArea({
                 />
               }
             />
-          </div>
-        ) : null}
+          ) : null}
+        </div>
 
         {/* 多行文本输入框 */}
         <TextArea

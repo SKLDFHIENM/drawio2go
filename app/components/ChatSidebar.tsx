@@ -8,6 +8,7 @@ import {
   useCallback,
   type FormEvent,
   type RefObject,
+  type MutableRefObject,
 } from "react";
 import { Alert } from "@heroui/react";
 import { useChat } from "@ai-sdk/react";
@@ -36,6 +37,7 @@ import type { ChatUIMessage, MessageMetadata } from "@/app/types/chat";
 import { DEFAULT_LLM_CONFIG } from "@/app/lib/config-utils";
 import type { DrawioEditorRef } from "@/app/components/DrawioEditorNative";
 import { getDrawioXML, replaceDrawioXML } from "@/app/lib/drawio-tools";
+import type { DrawioReadResult } from "@/app/types/drawio-tools";
 import {
   createFrontendDrawioTools,
   type FrontendToolContext,
@@ -61,6 +63,8 @@ const logger = createLogger("ChatSidebar");
 type UseChatMessage = UIMessage<MessageMetadata>;
 
 // ========== 辅助函数 ==========
+
+const CANVAS_CONTEXT_MAX_ITEMS = 100;
 
 const hasImageParts = (msg: unknown): boolean => {
   if (!msg || typeof msg !== "object") return false;
@@ -157,6 +161,162 @@ function buildToolSchemaPayload(
   return payload;
 }
 
+function formatDrawioStatusTag(items: Array<{ id: string; type: string }>) {
+  const filtered = items.filter((item) => item.id !== "0" && item.id !== "1");
+
+  const total = filtered.length;
+  const sliced = filtered.slice(0, CANVAS_CONTEXT_MAX_ITEMS);
+
+  let payload = sliced.map((item) => `${item.id}:${item.type}`).join(",");
+  if (total > CANVAS_CONTEXT_MAX_ITEMS) {
+    payload = payload
+      ? `${payload},...(truncated, total: ${total})`
+      : `...(truncated, total: ${total})`;
+  }
+
+  return `<drawio_status content="id:type">${payload}</drawio_status>`;
+}
+
+function formatUserSelectTag(ids: readonly string[]) {
+  const normalized = ids.map((id) => id.trim()).filter((id) => id.length > 0);
+  if (normalized.length === 0) return null;
+  return `<user_select>${normalized.join(",")}</user_select>`;
+}
+
+async function buildCanvasContextPrefix(options: {
+  drawioReadTool: unknown;
+  isAppEnv: boolean;
+  selectionIds: readonly string[];
+}): Promise<string | null> {
+  const { drawioReadTool, isAppEnv, selectionIds } = options;
+
+  const tool = drawioReadTool as
+    | { execute?: (input: unknown) => Promise<unknown> }
+    | undefined;
+  if (!tool?.execute) return null;
+
+  const raw = (await tool.execute({ filter: "all" })) as unknown;
+  if (!raw || typeof raw !== "object") return null;
+
+  const result = raw as DrawioReadResult;
+  if (!("success" in result) || result.success !== true) return null;
+  const list = "list" in result ? result.list : undefined;
+  if (!Array.isArray(list)) return null;
+
+  const items = list
+    .map((entry) => ({
+      id: entry.id,
+      type: entry.type,
+    }))
+    .filter((entry) => Boolean(entry.id));
+
+  const lines: string[] = [formatDrawioStatusTag(items)];
+  if (isAppEnv) {
+    const selectTag = formatUserSelectTag(selectionIds);
+    if (selectTag) lines.push(selectTag);
+  }
+  return lines.join("\n");
+}
+
+function injectPrefixIntoLastUserMessage(options: {
+  messages: UseChatMessage[];
+  prefix: string;
+}): UseChatMessage[] {
+  const { messages, prefix } = options;
+
+  let targetIndex = -1;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i]?.role === "user") {
+      targetIndex = i;
+      break;
+    }
+  }
+  if (targetIndex < 0) return messages;
+
+  const target = messages[targetIndex] as unknown as {
+    parts?: unknown;
+    content?: unknown;
+  };
+
+  const parts = Array.isArray(target.parts) ? target.parts : null;
+  const originalContent = typeof target.content === "string" ? target.content : "";
+
+  const mergeText = (text: string) => (text ? `${prefix}\n${text}` : prefix);
+
+  let nextMessage: UseChatMessage | null = null;
+
+  if (parts) {
+    const firstTextIndex = parts.findIndex(
+      (part) =>
+        part &&
+        typeof part === "object" &&
+        (part as { type?: unknown }).type === "text",
+    );
+
+    if (firstTextIndex >= 0) {
+      const textPart = parts[firstTextIndex] as { text?: unknown };
+      const originalText = typeof textPart.text === "string" ? textPart.text : "";
+
+      const nextParts = parts.map((part, index) => {
+        if (index !== firstTextIndex) return part;
+        return {
+          ...(part as Record<string, unknown>),
+          text: mergeText(originalText),
+        };
+      });
+
+      nextMessage = {
+        ...(messages[targetIndex] as UseChatMessage),
+        parts: nextParts,
+        content: mergeText(originalContent),
+      } as UseChatMessage;
+    } else {
+      const nextParts = [{ type: "text", text: prefix }, ...parts];
+      nextMessage = {
+        ...(messages[targetIndex] as UseChatMessage),
+        parts: nextParts,
+        content: mergeText(originalContent),
+      } as UseChatMessage;
+    }
+  } else if (typeof target.content === "string") {
+    nextMessage = {
+      ...(messages[targetIndex] as UseChatMessage),
+      content: mergeText(target.content),
+    } as UseChatMessage;
+  }
+
+  if (!nextMessage) return messages;
+
+  const next = messages.slice();
+  next[targetIndex] = nextMessage;
+  return next;
+}
+
+async function maybeInjectCanvasContext(options: {
+  enabled: boolean;
+  messages: UseChatMessage[];
+  drawioReadTool: unknown;
+  isAppEnv: boolean;
+  selectionIds: readonly string[];
+}): Promise<UseChatMessage[]> {
+  const { enabled, messages, drawioReadTool, isAppEnv, selectionIds } = options;
+  if (!enabled) return messages;
+
+  try {
+    const prefix = await buildCanvasContextPrefix({
+      drawioReadTool,
+      isAppEnv,
+      selectionIds,
+    });
+    if (!prefix) return messages;
+
+    return injectPrefixIntoLastUserMessage({ messages, prefix });
+  } catch (error) {
+    console.error("[ChatSidebar] 获取画布上下文失败，已降级为不注入", error);
+    return messages;
+  }
+}
+
 async function getDrawioXmlFromRef(
   drawioRef: RefObject<DrawioEditorRef | null>,
 ): Promise<string> {
@@ -196,6 +356,7 @@ interface ChatSidebarProps {
   onClose: () => void;
   currentProjectId?: string;
   editorRef: RefObject<DrawioEditorRef | null>;
+  selectionRef?: MutableRefObject<string[]>;
 }
 
 // ========== 主组件 ==========
@@ -204,9 +365,12 @@ export default function ChatSidebar({
   isOpen = true,
   currentProjectId,
   editorRef,
+  selectionRef,
 }: ChatSidebarProps) {
   // ========== 基础状态 ==========
   const [input, setInput] = useState("");
+  const [isCanvasContextEnabled, setIsCanvasContextEnabled] = useState(false);
+  const isCanvasContextEnabledRef = useRef(false);
   const [expandedToolCalls, setExpandedToolCalls] = useState<
     Record<string, boolean>
   >({});
@@ -254,6 +418,10 @@ export default function ChatSidebar({
     setMcpOverlayPortalContainer(mcpOverlayContainerRef.current);
   }, []);
 
+  useEffect(() => {
+    isCanvasContextEnabledRef.current = isCanvasContextEnabled;
+  }, [isCanvasContextEnabled]);
+
   const isMcpExposureOverlayOpen =
     isOpen &&
     Boolean(mcpOverlayPortalContainer) &&
@@ -283,6 +451,10 @@ export default function ChatSidebar({
     },
     [mcpServer.isLoading, mcpServer.running],
   );
+
+  const handleCanvasContextToggle = useCallback(() => {
+    setIsCanvasContextEnabled((prev) => !prev);
+  }, []);
 
   const handleConfirmMcpConfig = useCallback(
     async (config: McpConfig) => {
@@ -525,6 +697,9 @@ export default function ChatSidebar({
       api: "/api/ai-proxy",
       fetch: fetchWithAbort,
       prepareSendMessagesRequest: async (options) => {
+        const isAppEnv =
+          typeof window !== "undefined" && Boolean(window.electron);
+
         const getOrCreateDataUrl = async (
           attachmentId: string,
         ): Promise<string | null> => {
@@ -655,6 +830,14 @@ export default function ChatSidebar({
           }),
         );
 
+        const requestMessages = await maybeInjectCanvasContext({
+          enabled: isCanvasContextEnabledRef.current,
+          messages: nextMessages,
+          drawioReadTool: frontendToolsRef.current["drawio_read"],
+          isAppEnv,
+          selectionIds: selectionRef?.current ?? [],
+        });
+
         const toolSchemas = buildToolSchemaPayload(frontendTools);
 
         const rawBody = (options.body ?? {}) as Record<string, unknown>;
@@ -670,12 +853,12 @@ export default function ChatSidebar({
             ...bodyRest,
             config,
             tools: toolSchemas,
-            messages: nextMessages,
+            messages: requestMessages,
           },
         };
       },
     });
-  }, [frontendTools]);
+  }, [frontendTools, selectionRef]);
 
   // ========== useChat 集成 ==========
   const {
@@ -1662,6 +1845,8 @@ export default function ChatSidebar({
                   isLoading: selectorLoading,
                   modelLabel: selectedModelLabel,
                 }}
+                isCanvasContextEnabled={isCanvasContextEnabled}
+                onCanvasContextToggle={handleCanvasContextToggle}
                 mcpConfigDialog={{
                   isActive: mcpServer.running,
                   isOpen: isMcpConfigOpen,
