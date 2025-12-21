@@ -24,6 +24,8 @@ import {
   useChatSessionsController,
   useLLMConfig,
   useOperationToast,
+  useStorageSettings,
+  useStorageXMLVersions,
   useMcpServer,
   useChatMessages,
   useChatToolExecution,
@@ -32,7 +34,12 @@ import {
 } from "@/app/hooks";
 import { useAlertDialog } from "@/app/components/alert";
 import { useI18n } from "@/app/i18n/hooks";
-import { DEFAULT_PROJECT_UUID, getStorage } from "@/app/lib/storage";
+import {
+  DEFAULT_FIRST_VERSION,
+  DEFAULT_PROJECT_UUID,
+  getStorage,
+  WIP_VERSION,
+} from "@/app/lib/storage";
 import type { ChatUIMessage, MessageMetadata } from "@/app/types/chat";
 import { DEFAULT_LLM_CONFIG } from "@/app/lib/config-utils";
 import type { DrawioEditorRef } from "@/app/components/DrawioEditorNative";
@@ -58,6 +65,8 @@ import Composer from "./chat/Composer";
 import { exportBlobContent } from "./chat/utils/fileExport";
 import { createLogger } from "@/lib/logger";
 import { hasConversationIdMetadata } from "@/app/lib/type-guards";
+import { getNextSubVersion, isSubVersion } from "@/app/lib/version-utils";
+import type { XMLVersion } from "@/app/lib/storage";
 
 const logger = createLogger("ChatSidebar");
 type UseChatMessage = UIMessage<MessageMetadata>;
@@ -102,6 +111,41 @@ const runWithConcurrency = async <T, R>(
 
 const CHAT_REQUEST_TIMEOUT_MS = 10 * 60_000;
 const MCP_TOOL_TIMEOUT_MS = 25_000;
+
+const isEnabledSetting = (raw: string | null): boolean =>
+  raw !== "0" && raw !== "false";
+
+const pickLatestMainVersion = (versions: XMLVersion[]): string | null => {
+  let picked: XMLVersion | null = null;
+  for (const version of versions) {
+    if (version.semantic_version === WIP_VERSION) continue;
+    if (isSubVersion(version.semantic_version)) continue;
+    if (!picked || version.created_at > picked.created_at) {
+      picked = version;
+    }
+  }
+  return picked?.semantic_version ?? null;
+};
+
+async function createDrawioXmlSnapshot(
+  editorRef: RefObject<DrawioEditorRef | null>,
+): Promise<string> {
+  try {
+    const editor = editorRef.current;
+    if (editor) {
+      const xml = await editor.exportDiagram();
+      if (typeof xml === "string" && xml.trim()) return xml;
+    }
+  } catch (error) {
+    logger.warn("[ChatSidebar] 获取编辑器 XML 快照失败，尝试降级到存储", {
+      error,
+    });
+  }
+
+  const storageResult = await getDrawioXML();
+  if (storageResult.success && storageResult.xml) return storageResult.xml;
+  throw new Error(storageResult.error || "无法获取 DrawIO XML 快照");
+}
 
 async function enqueueAndWait<T>(
   queue: DrainableToolQueue,
@@ -393,6 +437,9 @@ export default function ChatSidebar({
     useOperationToast();
   const imageAttachments = useImageAttachments();
   const mcpServer = useMcpServer();
+  const { getSetting } = useStorageSettings();
+  const { createHistoricalVersion, getAllXMLVersions } =
+    useStorageXMLVersions();
 
   const {
     llmConfig,
@@ -639,6 +686,95 @@ export default function ChatSidebar({
 
   // ========== 前端工具配置 ==========
   const currentToolCallIdRef = useRef<string | null>(null);
+  const autoVersionSnapshotQueueRef = useRef<Promise<void>>(Promise.resolve());
+
+  const enqueueAutoVersionSnapshot = useCallback(
+    (description: string) => {
+      const normalizedDescription = description?.trim() ?? "";
+      const projectUuid = resolvedProjectUuid;
+      const xmlSnapshotPromise = createDrawioXmlSnapshot(editorRef);
+
+      autoVersionSnapshotQueueRef.current = autoVersionSnapshotQueueRef.current
+        .catch(() => undefined)
+        .then(async () => {
+          try {
+            const raw = await getSetting("version.autoVersionOnAIEdit");
+            if (!isEnabledSetting(raw)) return;
+
+            let versions = await getAllXMLVersions(projectUuid);
+            let parentVersion = pickLatestMainVersion(versions);
+            if (!parentVersion) {
+              const shouldCreateDefault = !versions.some(
+                (version) => version.semantic_version === DEFAULT_FIRST_VERSION,
+              );
+
+              if (shouldCreateDefault) {
+                await createHistoricalVersion(
+                  projectUuid,
+                  DEFAULT_FIRST_VERSION,
+                  normalizedDescription || undefined,
+                  undefined,
+                  {
+                    xmlSnapshotPromise,
+                    skipSvgExport: true,
+                  },
+                );
+              }
+
+              versions = await getAllXMLVersions(projectUuid);
+              parentVersion = pickLatestMainVersion(versions);
+            }
+
+            if (!parentVersion) {
+              // 极端降级：仍然没有主版本（创建失败或竞态），保持“降级不阻塞”策略
+              throw new Error(t("toasts.autoVersionSnapshotMissingParent"));
+            }
+
+            const historicalVersions = versions.filter(
+              (version) => version.semantic_version !== WIP_VERSION,
+            );
+            const nextSubVersion = getNextSubVersion(
+              historicalVersions,
+              parentVersion,
+            );
+
+            await createHistoricalVersion(
+              projectUuid,
+              nextSubVersion,
+              normalizedDescription || undefined,
+              undefined,
+              {
+                xmlSnapshotPromise,
+                skipSvgExport: true,
+              },
+            );
+          } catch (error) {
+            const message =
+              extractErrorMessage(error) ??
+              (error instanceof Error ? error.message : String(error)) ??
+              t("toasts.unknownError");
+            showNotice(
+              t("toasts.autoVersionSnapshotFailed", { error: message }),
+              "warning",
+            );
+            logger.warn(
+              "[ChatSidebar] AI 自动版本快照失败（已降级，不阻塞 AI 编辑）",
+              { error, projectUuid, description: normalizedDescription },
+            );
+          }
+        });
+    },
+    [
+      createHistoricalVersion,
+      editorRef,
+      extractErrorMessage,
+      getAllXMLVersions,
+      getSetting,
+      resolvedProjectUuid,
+      showNotice,
+      t,
+    ],
+  );
 
   const frontendToolContext = useMemo<FrontendToolContext>(() => {
     return {
@@ -650,10 +786,10 @@ export default function ChatSidebar({
         });
       },
       onVersionSnapshot: (description) => {
-        logger.info("[ChatSidebar] 触发版本快照（占位）", { description });
+        enqueueAutoVersionSnapshot(description);
       },
     };
-  }, [editorRef]);
+  }, [editorRef, enqueueAutoVersionSnapshot]);
 
   const frontendTools = useMemo(
     () => createFrontendDrawioTools(frontendToolContext),

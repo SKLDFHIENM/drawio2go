@@ -78,7 +78,8 @@
       "Bash(npm install:*)",
       "Bash(wc:*)",
       "Bash(npm run format:*)",
-      "WebFetch(domain:docs.litellm.ai)"
+      "WebFetch(domain:docs.litellm.ai)",
+      "Bash(git show:*)"
     ],
     "deny": [],
     "ask": []

@@ -48,6 +48,8 @@
     "versionCreateDegradedTitle": "已降级保存",
     "versionCreateDegraded": "版本已保存（{{pageCount}} 页），但 SVG 导出失败已自动降级。",
     "versionCreateFailed": "版本 {{version}} 创建失败：{{error}}",
+    "autoVersionSnapshotFailed": "AI 自动版本快照失败：{{error}}",
+    "autoVersionSnapshotMissingParent": "自动创建主版本失败，无法创建 AI 子版本快照。请稍后重试或在版本管理中手动创建主版本。",
     "versionRollbackSuccessTitle": "回滚成功",
     "versionRollbackSuccess": "已回滚到版本 {{version}}",
     "versionRollbackFailedDetail": "回滚到版本 {{version}} 失败：{{error}}",

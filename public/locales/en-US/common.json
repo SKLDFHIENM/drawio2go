@@ -48,6 +48,8 @@
     "versionCreateDegradedTitle": "Saved with fallback",
     "versionCreateDegraded": "Version saved ({{pageCount}} pages), but SVG export failed and was downgraded.",
     "versionCreateFailed": "Version {{version}} failed to create: {{error}}",
+    "autoVersionSnapshotFailed": "AI auto version snapshot failed: {{error}}",
+    "autoVersionSnapshotMissingParent": "Failed to auto-create a main version. Unable to create an AI sub-version snapshot. Try again later or create a main version in Version Management.",
     "versionRollbackSuccessTitle": "Rollback succeeded",
     "versionRollbackSuccess": "Rolled back to version {{version}}",
     "versionRollbackFailedDetail": "Rollback to version {{version}} failed: {{error}}",
