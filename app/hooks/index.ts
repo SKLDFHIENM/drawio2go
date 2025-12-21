@@ -10,10 +10,15 @@ export { useNetworkStatus } from "./useNetworkStatus";
 export { useVersionPages } from "./useVersionPages";
 export { usePanZoomStage } from "./usePanZoomStage";
 export { useChatSessionsController } from "./useChatSessionsController";
+export { useChatMessages } from "./useChatMessages";
+export { useChatToolExecution } from "./useChatToolExecution";
+export { useChatNetworkControl } from "./useChatNetworkControl";
+export { useChatLifecycle } from "./useChatLifecycle";
 export { useLLMConfig } from "./useLLMConfig";
 export { useOperationToast } from "./useOperationToast";
 export { useAttachmentObjectUrl } from "./useAttachmentObjectUrl";
 export { useUpdateChecker } from "./useUpdateChecker";
+export { useMcpServer } from "./useMcpServer";
 
 // Other Hooks - 其他 Hooks
 export { useDrawioEditor } from "./useDrawioEditor";

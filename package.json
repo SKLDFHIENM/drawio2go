@@ -1,6 +1,6 @@
 {
   "name": "drawio2go",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Electron + Next.js DrawIO Application",
   "main": "electron/main.js",
   "scripts": {
@@ -31,12 +31,14 @@
   "dependencies": {
     "@ai-sdk/anthropic": "^2.0.56",
     "@ai-sdk/deepseek": "^1.0.31",
+    "@ai-sdk/google": "^2.0.49",
     "@ai-sdk/openai": "^2.0.77",
     "@ai-sdk/openai-compatible": "^1.0.28",
     "@ai-sdk/react": "^2.0.108",
     "@heroui/react": "3.0.0-beta.2",
     "@heroui/styles": "3.0.0-beta.2",
     "@lobehub/icons": "^2.44.0",
+    "@modelcontextprotocol/sdk": "^1.25.1",
     "@react-aria/interactions": "^3.25.6",
     "@tailwindcss/postcss": "^4.1.17",
     "@tanstack/react-virtual": "^3.13.12",
@@ -46,6 +48,7 @@
     "date-fns": "^4.1.0",
     "diff-match-patch": "^1.0.5",
     "electron-store": "^11.0.2",
+    "express": "^5.2.1",
     "i18next": "^25.7.1",
     "i18next-browser-languagedetector": "^8.2.0",
     "idb": "^8.0.3",

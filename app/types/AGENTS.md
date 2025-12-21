@@ -12,7 +12,7 @@ LLM 供应商与聊天消息相关的核心类型定义。
 
 #### 核心类型
 
-- **ProviderType**: 支持的供应商枚举（`openai-reasoning`、`openai-compatible`、`deepseek-native`、`anthropic`）。
+- **ProviderType**: 支持的供应商枚举（`gemini`、`openai-reasoning`、`openai-compatible`、`deepseek-native`、`anthropic`）。
 - **LLMConfig**: 设置页与后端共用的 LLM 配置（URL、密钥、温度、模型、系统提示、供应商、工具轮次数）。
 - **ToolInvocation/ToolInvocationState**: AI 工具调用的状态结构。
 - **ChatMessage**: 扩展 AI SDK Message 的聊天消息定义。
@@ -178,6 +178,16 @@ export interface DrawioCellInfo {
   };
 }
 ```
+
+### mcp.ts
+
+MCP（Model Context Protocol）相关的类型定义。
+
+#### 主要内容
+
+- **McpServerStatus/McpConfig**：MCP 服务器状态与启动配置（与里程碑 2 的 Electron IPC 保持一致）
+- **McpToolRequest/McpToolResponse**：工具调用请求/响应结构（与 `mcp-tool-request` / `sendToolResponse` 对齐）
+- **McpClientType**：客户端类型标记（cursor/claude-code/codex/gemini-cli/generic）
 
 ## 类型设计原则
 

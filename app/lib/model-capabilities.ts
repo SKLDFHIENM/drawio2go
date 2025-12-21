@@ -88,6 +88,24 @@ export const DEFAULT_MODEL_CAPABILITIES: Readonly<
     supportsThinking: true,
     supportsVision: true,
   }),
+
+  // Gemini 系列
+  "gemini-2.5-pro": Object.freeze({
+    supportsThinking: false,
+    supportsVision: true,
+  }),
+  "gemini-2.5-flash": Object.freeze({
+    supportsThinking: true,
+    supportsVision: true,
+  }),
+  "gemini-3-flash-preview": Object.freeze({
+    supportsThinking: true,
+    supportsVision: true,
+  }),
+  "gemini-3-pro-preview": Object.freeze({
+    supportsThinking: true,
+    supportsVision: true,
+  }),
 });
 
 /**
@@ -102,9 +120,14 @@ export const getDefaultCapabilities = (
     return FALLBACK_CAPABILITIES;
   }
 
-  const normalized = modelName.trim().toLowerCase();
+  let normalized = modelName.trim().toLowerCase();
   if (!normalized) {
     return FALLBACK_CAPABILITIES;
+  }
+
+  // 移除 Gemini API 的 "models/" 前缀（如 "models/gemini-3-flash-preview"）
+  if (normalized.startsWith("models/")) {
+    normalized = normalized.slice(7);
   }
 
   return DEFAULT_MODEL_CAPABILITIES[normalized] ?? FALLBACK_CAPABILITIES;

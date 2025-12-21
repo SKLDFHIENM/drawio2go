@@ -44,6 +44,17 @@ const logger = createLogger("useStorageXMLVersions");
  */
 export type CreateHistoricalVersionOptions = {
   onExportProgress?: (progress: SvgExportProgress) => void;
+  /**
+   * 允许调用方传入“预先捕获”的 XML 快照（或其 Promise），用于后台创建版本时避免竞态：
+   * - AI 批量编辑 / 覆写 XML 场景：快照必须代表“修改前”的 XML
+   * - 调用方可在工具执行前立即触发 exportDiagram() 并把 Promise 传入
+   */
+  xmlSnapshot?: string;
+  xmlSnapshotPromise?: Promise<string>;
+  /**
+   * 跳过 SVG 导出（仅存储 XML），用于后台快照以避免阻塞或与编辑器 merge/export 产生竞争。
+   */
+  skipSvgExport?: boolean;
 };
 
 export type CreateHistoricalVersionResult = {
@@ -406,8 +417,34 @@ export function useStorageXMLVersions() {
           }
 
           let wipXml = wipVersion.xml_content;
+
+          const snapshotFromOption =
+            typeof options?.xmlSnapshot === "string"
+              ? options.xmlSnapshot.trim()
+              : "";
+
+          if (snapshotFromOption) {
+            wipXml = snapshotFromOption;
+          } else if (options?.xmlSnapshotPromise) {
+            try {
+              const promised = await options.xmlSnapshotPromise;
+              if (typeof promised === "string" && promised.trim().length > 0) {
+                wipXml = promised.trim();
+              }
+            } catch (error) {
+              logger.warn("读取预先捕获的 XML 快照失败，改用存储的 WIP XML", {
+                projectUuid,
+                error,
+              });
+            }
+          }
+
           try {
-            if (editorRef?.current) {
+            if (
+              !snapshotFromOption &&
+              !options?.xmlSnapshotPromise &&
+              editorRef?.current
+            ) {
               const exportedXml = await editorRef.current.exportDiagram();
               if (exportedXml && exportedXml.trim().length > 0) {
                 wipXml = exportedXml;
@@ -431,7 +468,10 @@ export function useStorageXMLVersions() {
           let svgPageNames: string[] | null = null;
           let exportError: Error | null = null;
 
-          if (editorRef?.current) {
+          const shouldExportSvg =
+            Boolean(editorRef?.current) && options?.skipSvgExport !== true;
+
+          if (shouldExportSvg && editorRef?.current) {
             try {
               const svgPages = await exportAllPagesSVG(
                 editorRef.current,

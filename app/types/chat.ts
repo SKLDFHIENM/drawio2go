@@ -8,6 +8,7 @@ declare module "ai" {
 }
 
 export type ProviderType =
+  | "gemini"
   | "openai-reasoning"
   | "openai-compatible"
   | "deepseek-native"
@@ -131,10 +132,6 @@ export interface ChatMessage {
 export interface MessageMetadata {
   modelName?: string | null;
   createdAt?: number;
-  isCancelled?: boolean;
-  isDisconnected?: boolean;
-  isAbnormalExitNotice?: boolean;
-  disconnectReason?: string;
 }
 
 /**

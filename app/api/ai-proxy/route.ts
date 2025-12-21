@@ -1,5 +1,15 @@
 import { normalizeLLMConfig, isProviderType } from "@/app/lib/config-utils";
-import type { LLMConfig, ProviderType } from "@/app/types/chat";
+import {
+  checkVisionSupport,
+  convertImagePartsToFileUIParts,
+  validateImageParts,
+} from "@/app/lib/attachment-converter";
+import type {
+  ImagePart,
+  LLMConfig,
+  ModelCapabilities,
+  ProviderType,
+} from "@/app/types/chat";
 import { ErrorCodes, type ErrorCode } from "@/app/errors/error-codes";
 import { createLogger } from "@/lib/logger";
 import {
@@ -37,6 +47,7 @@ type AiProxyIncomingConfig = {
   systemPrompt?: string;
   temperature?: number;
   maxToolRounds?: number;
+  capabilities?: ModelCapabilities;
 };
 
 type AiProxyConfig = Omit<AiProxyIncomingConfig, "providerType"> & {
@@ -66,6 +77,19 @@ type ParseToolsError = {
 };
 type ParseToolsResult = ParseToolsOk | ParseToolsError;
 
+type ConvertImagesOk = {
+  ok: true;
+  messages: UIMessage[];
+  convertedImages: number;
+};
+
+type ConvertImagesError = {
+  ok: false;
+  error: { code: ErrorCode; message: string; status: number };
+};
+
+type ConvertImagesResult = ConvertImagesOk | ConvertImagesError;
+
 function apiError(
   code: ErrorCode,
   message: string,
@@ -80,7 +104,7 @@ function apiError(
       error: { code, message },
       ...(details ?? {}),
     },
-    { status, statusText: message },
+    { status },
   );
 }
 
@@ -268,6 +292,78 @@ function validateRequest(body: unknown): AiProxyRequestParamsResult {
   };
 }
 
+function isImagePart(value: unknown): value is ImagePart {
+  if (typeof value !== "object" || value === null) return false;
+  return (value as Record<string, unknown>).type === "image";
+}
+
+function convertImagePartsInMessages(
+  messages: UIMessage[],
+): ConvertImagesResult {
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return { ok: true, messages, convertedImages: 0 };
+  }
+
+  let convertedImages = 0;
+  const convertedMessages: UIMessage[] = [];
+
+  for (const message of messages) {
+    const parts = (message as unknown as { parts?: unknown }).parts;
+    if (!Array.isArray(parts) || parts.length === 0) {
+      convertedMessages.push(message);
+      continue;
+    }
+
+    const imageParts = parts.filter(isImagePart);
+    if (imageParts.length === 0) {
+      convertedMessages.push(message);
+      continue;
+    }
+
+    const validation = validateImageParts(imageParts);
+    if (!validation.valid) {
+      return {
+        ok: false,
+        error: {
+          code: ErrorCodes.CHAT_INVALID_IMAGE,
+          message: validation.error || "图片输入无效",
+          status: 400,
+        },
+      };
+    }
+
+    try {
+      const fileParts = convertImagePartsToFileUIParts(imageParts);
+
+      let fileIndex = 0;
+      const nextParts = parts.map((part) => {
+        if (!isImagePart(part)) return part;
+        const next = fileParts[fileIndex];
+        fileIndex += 1;
+        return next ?? part;
+      });
+
+      convertedImages += imageParts.length;
+      convertedMessages.push({ ...message, parts: nextParts } as UIMessage);
+    } catch (error: unknown) {
+      const messageText =
+        error instanceof Error && error.message
+          ? error.message
+          : "图片处理失败：无法解析图片内容。请重新上传图片或刷新后重试。";
+      return {
+        ok: false,
+        error: {
+          code: ErrorCodes.CHAT_INVALID_IMAGE,
+          message: messageText,
+          status: 400,
+        },
+      };
+    }
+  }
+
+  return { ok: true, messages: convertedMessages, convertedImages };
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = (await req.json()) as AiProxyRequest;
@@ -289,16 +385,49 @@ export async function POST(req: NextRequest) {
       systemPrompt: validation.rawConfig.systemPrompt,
       temperature: validation.rawConfig.temperature,
       maxToolRounds: validation.rawConfig.maxToolRounds,
+      capabilities: validation.rawConfig.capabilities,
     });
 
     const model = createModelFromConfig(normalizedConfig);
-    const modelMessages = convertToModelMessages(validation.messages);
+    const visionCheck = checkVisionSupport(
+      validation.messages,
+      normalizedConfig.capabilities.supportsVision,
+    );
+    if (visionCheck.shouldReject) {
+      logger.info("拒绝图片请求：模型不支持 vision", {
+        model: normalizedConfig.modelName,
+        provider: normalizedConfig.providerType,
+      });
+      return apiError(
+        ErrorCodes.CHAT_VISION_NOT_SUPPORTED,
+        visionCheck.errorMessage ||
+          "当前模型不支持视觉输入，无法处理图片消息。",
+        400,
+      );
+    }
+
+    const converted = convertImagePartsInMessages(validation.messages);
+    if (!converted.ok) {
+      logger.warn("图片转换失败", {
+        model: normalizedConfig.modelName,
+        provider: normalizedConfig.providerType,
+        error: converted.error.message,
+      });
+      return apiError(
+        converted.error.code,
+        converted.error.message,
+        converted.error.status,
+      );
+    }
+
+    const modelMessages = convertToModelMessages(converted.messages);
     const toolSet = toToolSet(validation.tools);
 
     logger.info("收到 AI 代理请求", {
       provider: normalizedConfig.providerType,
       model: normalizedConfig.modelName,
       messagesCount: modelMessages.length,
+      convertedImages: converted.convertedImages,
       toolsCount: validation.tools ? Object.keys(validation.tools).length : 0,
     });
 

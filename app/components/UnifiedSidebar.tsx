@@ -7,6 +7,7 @@ import {
   useMemo,
   type Key,
   type RefObject,
+  type MutableRefObject,
 } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { Tabs } from "@heroui/react";
@@ -34,6 +35,7 @@ interface UnifiedSidebarProps {
   projectUuid?: string | null;
   onVersionRestore?: (versionId: string) => void;
   editorRef: RefObject<DrawioEditorRef | null>;
+  selectionRef?: MutableRefObject<string[]>;
 }
 
 type SidebarPointerEvent = ReactPointerEvent<HTMLDivElement>;
@@ -48,6 +50,7 @@ export default function UnifiedSidebar({
   projectUuid,
   onVersionRestore,
   editorRef,
+  selectionRef,
 }: UnifiedSidebarProps) {
   const { t } = useAppTranslation("sidebar");
   // 存储 Hook
@@ -199,6 +202,7 @@ export default function UnifiedSidebar({
               onClose={onClose}
               currentProjectId={currentProjectId}
               editorRef={editorRef}
+              selectionRef={selectionRef}
             />
           </div>
 

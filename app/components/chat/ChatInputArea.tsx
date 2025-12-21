@@ -26,6 +26,9 @@ import { useDropzone } from "@/hooks/useDropzone";
 import ImagePreviewBar from "@/components/chat/ImagePreviewBar";
 import { toErrorString } from "@/app/lib/error-handler";
 import { dispatchSidebarNavigate } from "@/app/lib/ui-events";
+import { McpButton, McpConfigDialog } from "@/app/components/mcp";
+import type { McpConfig } from "@/app/types/mcp";
+import CanvasContextButton from "./CanvasContextButton";
 
 const MIN_BASE_TEXTAREA_HEIGHT = 60;
 
@@ -54,6 +57,20 @@ interface ChatInputAreaProps {
     isLoading: boolean;
     modelLabel: string;
   };
+
+  isCanvasContextEnabled: boolean;
+  onCanvasContextToggle: () => void;
+
+  /**
+   * MCP 配置弹窗（Popover/Dropdown）。
+   */
+  mcpConfigDialog?: {
+    isActive: boolean;
+    isOpen: boolean;
+    onOpenChange: (open: boolean) => void;
+    onConfirm: (config: McpConfig) => Promise<void>;
+    isDisabled?: boolean;
+  };
 }
 
 export default function ChatInputArea({
@@ -73,6 +90,9 @@ export default function ChatInputArea({
   imageAttachments,
   onAttachmentsChange,
   modelSelectorProps,
+  isCanvasContextEnabled,
+  onCanvasContextToggle,
+  mcpConfigDialog,
 }: ChatInputAreaProps) {
   const { t } = useAppTranslation("chat");
   const { t: tCommon } = useI18n();
@@ -247,6 +267,30 @@ export default function ChatInputArea({
             onRemove={removeAttachment}
           />
         ) : null}
+
+        <div className="flex items-center justify-between gap-2">
+          <CanvasContextButton
+            enabled={isCanvasContextEnabled}
+            onPress={onCanvasContextToggle}
+          />
+          {mcpConfigDialog ? (
+            <McpConfigDialog
+              isOpen={mcpConfigDialog.isOpen}
+              onOpenChange={mcpConfigDialog.onOpenChange}
+              onConfirm={mcpConfigDialog.onConfirm}
+              trigger={
+                <McpButton
+                  isActive={mcpConfigDialog.isActive}
+                  size="sm"
+                  isDisabled={
+                    Boolean(mcpConfigDialog.isDisabled) ||
+                    Boolean(mcpConfigDialog.isActive)
+                  }
+                />
+              }
+            />
+          ) : null}
+        </div>
 
         {/* 多行文本输入框 */}
         <TextArea

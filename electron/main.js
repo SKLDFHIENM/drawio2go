@@ -1,11 +1,15 @@
 const { app, BrowserWindow, ipcMain, dialog, shell } = require("electron");
 const { safeStorage } = require("electron");
+const { randomUUID } = require("crypto");
 const path = require("path");
 const fs = require("fs");
 const https = require("https");
 const { fork } = require("child_process");
 const net = require("net");
 const SQLiteManager = require("./storage/sqlite-manager");
+const mcpServer = require("./mcp/mcp-server");
+const { getRandomAvailablePort } = require("./mcp/mcp-port-utils");
+const { toErrorString } = require("./utils/to-error-string");
 
 let mainWindow;
 let storageManager = null;
@@ -108,6 +112,14 @@ async function gracefulServerShutdown(trigger) {
 
 async function gracefulAppShutdown(trigger) {
   await gracefulServerShutdown(trigger);
+
+  // 关闭 MCP 服务器
+  try {
+    await mcpServer.stop();
+    console.log("[Electron] MCP 服务器已关闭");
+  } catch (error) {
+    console.error("[Electron] 关闭 MCP 服务器失败：", error);
+  }
 
   if (storageManager) {
     try {
@@ -321,6 +333,52 @@ function createWindow() {
     },
   );
 
+  mainWindow.on("close", (event) => {
+    // 如果退出流程已经在进行中，直接返回不阻止
+    if (appQuitInProgress) {
+      return;
+    }
+
+    console.log("[Electron] close 事件：窗口即将关闭，开始优雅退出流程");
+
+    // 阻止窗口立即关闭
+    event.preventDefault();
+
+    // 标记退出流程开始
+    appQuitInProgress = true;
+
+    // 通知渲染进程开始清理
+    notifyBackendCleanup("started");
+
+    // 设置强制退出超时（7 秒）
+    const forceExitTimeout = setTimeout(() => {
+      console.error("[Electron] 退出流程超过 7 秒，强制退出");
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.destroy();
+      }
+      app.exit(1);
+    }, 7000);
+    forceExitTimeout.unref();
+
+    // 执行清理流程
+    gracefulAppShutdown("close-button")
+      .catch((error) => {
+        console.error("[Electron] 退出流程异常：", error);
+        notifyBackendCleanup("failed");
+      })
+      .finally(() => {
+        clearTimeout(forceExitTimeout);
+        console.log("[Electron] 退出流程完成，销毁窗口并退出应用");
+        notifyBackendCleanup("completed");
+
+        // 销毁窗口并退出应用
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.destroy();
+        }
+        app.quit();
+      });
+  });
+
   mainWindow.on("closed", () => {
     mainWindow = null;
 
@@ -371,6 +429,42 @@ function createWindow() {
   });
 }
 
+/**
+ * 初始化 MCP 工具执行桥接
+ * 通过 IPC 将工具调用转发到渲染进程执行
+ */
+function initMcpToolBridge() {
+  mcpServer.setToolExecutor(async (toolName, args) => {
+    return new Promise((resolve, reject) => {
+      if (!mainWindow || mainWindow.isDestroyed()) {
+        reject(new Error("Main window not available"));
+        return;
+      }
+
+      const requestId = randomUUID();
+      const timeout = setTimeout(() => {
+        ipcMain.removeAllListeners(`mcp-tool-response-${requestId}`);
+        reject(new Error("Tool execution timeout (30s)"));
+      }, 30000);
+
+      ipcMain.once(`mcp-tool-response-${requestId}`, (_event, result) => {
+        clearTimeout(timeout);
+        if (result.success) {
+          resolve(result.data);
+        } else {
+          reject(new Error(result.error || "Tool execution failed"));
+        }
+      });
+
+      mainWindow.webContents.send("mcp-tool-request", {
+        requestId,
+        toolName,
+        args,
+      });
+    });
+  });
+}
+
 app.whenReady().then(async () => {
   try {
     try {
@@ -395,9 +489,15 @@ app.whenReady().then(async () => {
 
     // 创建窗口
     createWindow();
+
+    // 初始化 MCP 工具桥接
+    initMcpToolBridge();
   } catch (error) {
     console.error("[Electron] 启动失败:", error);
-    dialog.showErrorBox("启动失败", `无法启动应用服务器: ${error.message}`);
+    dialog.showErrorBox(
+      "启动失败",
+      `无法启动应用服务器: ${toErrorString(error)}`,
+    );
     app.quit();
   }
 });
@@ -515,7 +615,7 @@ ipcMain.handle("save-diagram", async (event, xml, defaultPath) => {
     console.error("保存文件错误:", error);
     return {
       success: false,
-      message: error.message,
+      message: toErrorString(error),
     };
   }
 });
@@ -548,7 +648,7 @@ ipcMain.handle("load-diagram", async () => {
     console.error("加载文件错误:", error);
     return {
       success: false,
-      message: error.message,
+      message: toErrorString(error),
     };
   }
 });
@@ -826,7 +926,7 @@ ipcMain.handle("write-file", async (event, filePath, data) => {
     return { success: true };
   } catch (error) {
     console.error("写入文件错误:", error);
-    return { success: false, error: error.message };
+    return { success: false, error: toErrorString(error) };
   }
 });
 
@@ -1011,7 +1111,7 @@ ipcMain.handle("enable-selection-watcher", async () => {
     console.error("启用 DrawIO 选区监听失败:", error);
     return {
       success: false,
-      message: error instanceof Error ? error.message : "执行脚本失败",
+      message: toErrorString(error) || "执行脚本失败",
     };
   }
 });
@@ -1177,3 +1277,48 @@ ipcMain.handle(
     return storageManager.getAttachmentsByConversation(conversationId);
   },
 );
+
+// ==================== MCP IPC Handlers ====================
+
+// 启动 MCP 服务器
+ipcMain.handle("mcp:start", async (_event, config) => {
+  const { host, port } = config || {};
+
+  if (!host || typeof host !== "string") {
+    throw new Error("Invalid host");
+  }
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error("Invalid port");
+  }
+
+  // 检查是否已在运行
+  const status = mcpServer.getStatus();
+  if (status.running) {
+    throw new Error("MCP server is already running");
+  }
+
+  await mcpServer.start(host, port);
+  const newStatus = mcpServer.getStatus();
+  return { success: true, host: newStatus.host, port: newStatus.port };
+});
+
+// 停止 MCP 服务器
+ipcMain.handle("mcp:stop", async () => {
+  const status = mcpServer.getStatus();
+  if (!status.running) {
+    return { success: true, message: "Server was not running" };
+  }
+
+  await mcpServer.stop();
+  return { success: true };
+});
+
+// 查询 MCP 服务器状态
+ipcMain.handle("mcp:status", async () => {
+  return mcpServer.getStatus();
+});
+
+// 获取随机可用端口
+ipcMain.handle("mcp:getRandomPort", async () => {
+  return getRandomAvailablePort(8000, 9000);
+});

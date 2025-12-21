@@ -29,6 +29,9 @@
 - **utils.ts**: 通用工具函数（debounce 防抖函数，支持 flush/cancel 方法；runStorageTask、withTimeout）
 - **logger.ts**: 轻量日志工厂（`createLogger(componentName)`），自动加组件前缀并支持 debug/info/warn/error 级别过滤
 - **error-handler.ts**: 通用错误处理工具（AppError + i18n 翻译 + API/Toast 友好消息）
+- **drainable-tool-queue.ts**: 可等待清空的工具执行队列，确保 onFinish 等待所有工具完成后再保存消息和释放锁
+- **chat-run-state-machine.ts**: 聊天运行状态机，统一管理会话生命周期状态，避免 ref 竞态条件
+- **message-sync-state-machine.ts**: 消息同步状态机，统一管理消息同步状态（storage ↔ UI），避免循环同步和竞态条件
 
 ### svg-export-utils.ts
 
@@ -306,6 +309,247 @@ logger.error("save:failed", err);
 - 日志 key 采用 `模块:动作` 命名，便于过滤（如 `autosave:debounce`）
 - 传递结构化对象而非拼接字符串，方便后续接入日志收集
 - 生产环境关闭 `debug`，保留 `info` 以上；高频路径使用防抖/采样避免噪声
+
+### drainable-tool-queue.ts - 可等待工具队列
+
+可等待清空的工具执行队列，确保 onFinish 等待所有工具完成后再保存消息和释放锁。
+
+**核心功能**：
+
+- 串行执行工具任务，保持执行顺序
+- 提供 `drain()` 方法等待队列清空（**快照语义**：只等待调用时已入队的任务）
+- 支持多个调用者同时等待队列清空
+- 单个任务失败不影响队列继续执行
+- 带超时保护（默认 60 秒），防止永久阻塞
+- 支持 `cancel()` 丢弃未开始的任务（取消/断网等场景无需等待）
+
+**主要 API**：
+
+```typescript
+class DrainableToolQueue {
+  // 添加工具任务到队列
+  enqueue(task: () => Promise<void>): void;
+
+  // 等待队列清空（快照语义：只等待调用时已入队的任务）
+  async drain(timeout?: number): Promise<void>;
+
+  // 丢弃未开始的任务（不影响正在执行中的任务）
+  cancel(): number;
+
+  // 获取待执行任务数
+  getPendingCount(): number;
+}
+```
+
+**使用示例**：
+
+```typescript
+import { DrainableToolQueue } from "@/lib/drainable-tool-queue";
+
+const toolQueue = new DrainableToolQueue();
+
+// 添加工具任务
+toolQueue.enqueue(async () => {
+  await executeToolCall(toolCall);
+});
+
+// 等待所有工具完成
+await toolQueue.drain();
+```
+
+**用途**：在 ChatSidebar 的 onFinish 回调中，等待所有工具执行完成后再保存消息和释放锁，解决工具队列与 onFinish 不同步的问题。
+
+**单元测试**：
+
+- `app/lib/__tests__/drainable-tool-queue.test.ts`
+
+### chat-run-state-machine.ts - 聊天状态机
+
+状态机管理聊天会话生命周期，避免使用 ref 导致的竞态条件。
+
+**状态定义**：
+
+- `idle`: 空闲，无活动请求
+- `preparing`: 准备中（获取锁、验证输入）
+- `streaming`: 流式响应中
+- `tools-pending`: 工具执行中（流式已完成，等待工具）
+- `finalizing`: 最终化（保存消息、释放锁）
+- `cancelled`: 已取消
+- `errored`: 出错
+
+**状态转换路径**：
+
+```
+idle → preparing → streaming → finalizing → idle
+                       ↓
+                  tools-pending → finalizing → idle
+```
+
+**兜底转换（强制重置）**：
+
+- `force-reset`: `preparing/streaming/tools-pending/finalizing/cancelled/errored → idle`
+
+**主要 API**：
+
+```typescript
+class ChatRunStateMachine {
+  // 获取当前状态
+  getState(): ChatRunState;
+
+  // 初始化上下文
+  initContext(conversationId: string): void;
+
+  // 获取当前上下文
+  getContext(): ChatRunContext | null;
+
+  // 清理上下文
+  clearContext(): void;
+
+  // 状态转换
+  transition(event: ChatRunEvent): void;
+
+  // 订阅状态变化
+  subscribe(listener: (state, context) => void): () => void;
+}
+```
+
+**上下文结构**：
+
+```typescript
+interface ChatRunContext {
+  conversationId: string; // 目标会话 ID（替代 sendingSessionIdRef）
+  lockAcquired: boolean; // 锁是否已获取
+  abortController: AbortController | null;
+  pendingToolCount: number;
+  lastMessages: ChatUIMessage[];
+}
+```
+
+**使用示例**：
+
+```typescript
+import { ChatRunStateMachine } from "@/lib/chat-run-state-machine";
+
+const stateMachine = new ChatRunStateMachine();
+
+// 初始化上下文
+stateMachine.initContext(conversationId);
+const ctx = stateMachine.getContext()!;
+ctx.lockAcquired = true;
+
+// 获取会话 ID（替代 sendingSessionIdRef.current）
+const conversationId = ctx.conversationId;
+
+// 状态转换
+stateMachine.transition("submit");
+stateMachine.transition("lock-acquired");
+
+// 清理
+stateMachine.clearContext();
+```
+
+**单元测试**：
+
+- `app/lib/__tests__/chat-run-state-machine.test.ts`
+
+**用途**：替代 ChatSidebar 中的 `sendingSessionIdRef`，统一管理会话 ID 和生命周期，消除多处清空 ref 导致的竞态问题。
+
+### message-sync-state-machine.ts - 消息同步状态机
+
+状态机管理消息同步状态（storage ↔ UI），避免使用 ref 导致的循环同步和竞态条件。
+
+**状态定义**：
+
+- `idle`: 无同步
+- `storage-to-ui`: 存储 → UI
+- `ui-to-storage`: UI → 存储
+- `locked`: 流式时锁定同步
+
+**状态转换路径**：
+
+```
+idle -[STORAGE_CHANGED]→ storage-to-ui -[SYNC_COMPLETE]→ idle
+idle -[UI_CHANGED]→ ui-to-storage -[SYNC_COMPLETE]→ idle
+* -[STREAM_START]→ locked -[STREAM_END]→ idle
+```
+
+**主要 API**：
+
+```typescript
+class MessageSyncStateMachine {
+  // 获取当前状态
+  getState(): MessageSyncState;
+
+  // 状态转换
+  transition(event: MessageSyncEvent): void;
+
+  // 检查是否可以转换
+  canTransition(event: MessageSyncEvent): boolean;
+
+  // 订阅状态变化
+  subscribe(
+    listener: (
+      state,
+      context: {
+        from: MessageSyncState;
+        to: MessageSyncState;
+        event: MessageSyncEvent;
+      },
+    ) => void,
+  ): () => void;
+
+  // 检查是否被锁定（流式中）
+  isLocked(): boolean;
+
+  // 检查是否正在同步
+  isSyncing(): boolean;
+}
+```
+
+**使用示例**：
+
+```typescript
+import { MessageSyncStateMachine } from "@/lib/message-sync-state-machine";
+
+const syncStateMachine = new MessageSyncStateMachine();
+
+// 流式开始，锁定同步
+syncStateMachine.transition("stream-start");
+console.log(syncStateMachine.isLocked()); // true
+
+// 流式结束，解锁
+syncStateMachine.transition("stream-end");
+
+// 存储变更，同步到 UI
+if (syncStateMachine.canTransition("storage-changed")) {
+  syncStateMachine.transition("storage-changed");
+  // ... 执行同步逻辑
+  syncStateMachine.transition("sync-complete");
+}
+
+// UI 变更，同步到存储
+if (
+  !syncStateMachine.isLocked() &&
+  syncStateMachine.canTransition("ui-changed")
+) {
+  syncStateMachine.transition("ui-changed");
+  // ... 执行同步逻辑
+  syncStateMachine.transition("sync-complete");
+}
+```
+
+**单元测试**：
+
+- `app/lib/__tests__/message-sync-state-machine.test.ts`
+
+**用途**：替代 ChatSidebar 中的 `applyingFromStorageRef`，统一管理消息同步方向和状态，防止循环同步（storage → UI → storage）和流式时的干扰。
+
+**核心优势**：
+
+- **防止循环同步**: 明确同步方向，避免 storage 和 UI 之间的无限循环
+- **流式保护**: 流式期间自动锁定同步，避免干扰正在进行的消息流
+- **状态可见**: 通过状态机清晰展示当前同步状态，便于调试和监控
+- **类型安全**: 所有状态转换都有类型检查，防止非法转换
 
 ## 工具链工作流
 
