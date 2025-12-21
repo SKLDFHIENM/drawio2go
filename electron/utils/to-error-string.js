@@ -39,7 +39,10 @@ function toErrorString(error) {
       return "[Unknown error]";
     };
 
+    // Error 对象优先（需检测循环引用，防止 cause 自引用导致栈溢出）
     if (value instanceof Error) {
+      if (seen.has(value)) return "[Circular]";
+      seen.add(value);
       return formatErrorLike(value);
     }
 
