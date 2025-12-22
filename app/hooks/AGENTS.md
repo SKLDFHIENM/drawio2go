@@ -404,29 +404,33 @@ export { useDrawioEditor } from "./useDrawioEditor";
 
 ## 代码腐化清理记录
 
+### 2025-12-22 清理
+
+**执行的操作**：
+
+- `useChatToolExecution` / `useOperationToast` / `usePageSelection` 复用 `lib/error-utils.ts` 与 `lib/set-utils.ts`，移除重复实现
+
+**影响文件**：3 个文件（useChatToolExecution.ts、useOperationToast.ts、usePageSelection.ts）
+
+**下次关注**：
+
+- useImageAttachments 的中文错误字符串待结构化（统一错误码/国际化）
+- hooks 间共享的集合/错误工具继续下沉到 lib，避免粘贴式复用
+
 ### 2025-12-19 清理（ChatSidebar 生命周期提取）
 
 **执行的操作**：
 
-- 新增 `useChatLifecycle` Hook，提取 ChatSidebar 的核心生命周期逻辑：
-  - 消息提交流程（锁获取、状态机初始化、发送消息、错误回滚）
-  - 取消流程（中止请求、等待工具队列、释放锁）
-  - 页面卸载处理（beforeunload/pagehide 监听）
-  - 组件卸载清理
-- 完全使用 ChatRunStateMachine 的 transition() 方法进行状态转换
-- 提取 `prepareUserMessage` 和 `saveUserMessage` 辅助函数，降低 submitMessage 的认知复杂度
-- 状态转换流程清晰：
-  - 提交：`idle → preparing → streaming → tools-pending → finalizing → idle`
-  - 取消：`streaming/tools-pending → cancelled → idle`
-  - 错误：`* → errored → idle`
+- 新增 `useChatLifecycle`，提取提交/取消/错误/卸载清理等流程
+- 状态转换统一使用 `ChatRunStateMachine.transition()`，减少直接 ref 操作
+- 提取 `prepareUserMessage` / `saveUserMessage`，降低 submitMessage 复杂度
 
 **影响文件**：3 个文件（useChatLifecycle.ts、index.ts、AGENTS.md）
 
 **下次关注**：
 
-- ChatSidebar 可以使用此 Hook 替代现有的生命周期逻辑
-- 观察状态机转换是否覆盖所有边界情况
-- 考虑是否需要添加更多生命周期钩子（如 onStateChange）
+- ChatSidebar 全量替换为该 Hook，移除重复生命周期代码
+- 状态机边界状态补充测试用例（取消/异常关闭/离线）
 
 ### 2025-12-08 清理
 

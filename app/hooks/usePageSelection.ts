@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { buildPageMetadataFromXml } from "@/app/lib/storage/page-metadata";
 import type { DrawioPageInfo } from "@/app/lib/storage/page-metadata";
 import { createLogger } from "@/app/lib/logger";
+import { areAllSelected, areSetsEqual, buildIdSet } from "@/lib/set-utils";
 
 const logger = createLogger("usePageSelection");
 
@@ -20,28 +21,6 @@ export interface UsePageSelectionResult {
   selectAll: () => void;
   togglePage: (pageId: string) => void;
   toggleAll: () => void;
-}
-
-function areAllSelected(selectedPageIds: Set<string>, pageIds: Set<string>) {
-  if (selectedPageIds.size !== pageIds.size) return false;
-  for (const id of pageIds) {
-    if (!selectedPageIds.has(id)) return false;
-  }
-  return true;
-}
-
-function areSetsEqual(a: Set<string>, b: Set<string>) {
-  if (a.size !== b.size) return false;
-  for (const value of a) {
-    if (!b.has(value)) return false;
-  }
-  return true;
-}
-
-function buildIdSet(pages: DrawioPageInfo[]): Set<string> {
-  const ids = new Set<string>();
-  for (const page of pages) ids.add(page.id);
-  return ids;
 }
 
 export function usePageSelection(

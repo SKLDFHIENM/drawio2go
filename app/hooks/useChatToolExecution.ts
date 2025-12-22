@@ -7,6 +7,7 @@ import { TOOL_TIMEOUT_CONFIG } from "@/lib/constants/tool-config";
 import { AI_TOOL_NAMES } from "@/lib/constants/tool-names";
 import { createLogger } from "@/lib/logger";
 import { ErrorCodes } from "@/app/errors/error-codes";
+import { normalizeToError, toErrorString } from "@/lib/error-utils";
 import {
   drawioEditBatchInputSchema,
   drawioOverwriteInputSchema,
@@ -172,22 +173,6 @@ export interface UseChatToolExecutionResult {
  */
 function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === "AbortError";
-}
-
-/**
- * 将错误转换为错误消息字符串
- *
- * @param error 错误对象
- * @returns 错误消息字符串
- */
-function toErrorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  if (typeof error === "string") return error;
-  return "未知错误";
-}
-
-function normalizeToError(error: unknown): Error {
-  return error instanceof Error ? error : new Error(toErrorMessage(error));
 }
 
 /**
@@ -457,7 +442,7 @@ export function useChatToolExecution(
         }
 
         // 9. 处理其他错误
-        const errorText = toErrorMessage(error);
+        const errorText = toErrorString(error);
         setToolError(error instanceof Error ? error : new Error(errorText));
 
         try {

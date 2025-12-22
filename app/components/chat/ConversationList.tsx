@@ -4,6 +4,7 @@ import { useRef, useMemo } from "react";
 import { Card, Checkbox } from "@heroui/react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { MessagesSquare } from "lucide-react";
+import { usePress } from "@react-aria/interactions";
 import type { Conversation } from "@/app/lib/storage";
 import {
   formatConversationDate,
@@ -15,6 +16,96 @@ import { useAppTranslation } from "@/app/i18n/hooks";
 const VIRTUAL_SCROLL_THRESHOLD = 5;
 // 估计每个卡片的高度（根据真实测量约 84-90px，设为 90 以确保虚拟滚动计算准确）
 const ESTIMATED_ITEM_HEIGHT = 90;
+
+interface ConversationCardItemProps {
+  conv: Conversation;
+  index: number;
+  selectionMode: boolean;
+  selectedIds: Set<string>;
+  onToggleSelect: (id: string) => void;
+  onOpenConversation: (id: string) => void;
+  t: ReturnType<typeof useAppTranslation>["t"];
+  language: string;
+}
+
+function ConversationCardItem({
+  conv,
+  index,
+  selectionMode,
+  selectedIds,
+  onToggleSelect,
+  onOpenConversation,
+  t,
+  language,
+}: ConversationCardItemProps) {
+  const fallbackTitle = t("conversations.defaultName", {
+    number: index + 1,
+  });
+  const title = conv.title || fallbackTitle;
+  const isSelected = selectedIds.has(conv.id);
+  const relativeTime = formatRelativeTime(
+    conv.updated_at ?? conv.created_at,
+    t,
+  );
+
+  const handlePress = () => {
+    if (selectionMode) {
+      onToggleSelect(conv.id);
+    } else {
+      onOpenConversation(conv.id);
+    }
+  };
+
+  const { pressProps } = usePress({ onPress: handlePress });
+
+  return (
+    <Card.Root
+      className="history-card"
+      data-selected={isSelected}
+      role="listitem"
+    >
+      <Card.Content className="history-card__content">
+        {selectionMode && (
+          <Checkbox
+            aria-label={t("aria.selectConversation", { title })}
+            isSelected={isSelected}
+            onChange={() => onToggleSelect(conv.id)}
+          />
+        )}
+
+        <div
+          className="history-card__body"
+          role="button"
+          tabIndex={0}
+          {...pressProps}
+        >
+          <div className="history-card__meta">
+            <div className="history-card__title" title={title}>
+              {title}
+            </div>
+            <div className="history-card__subtitle">
+              <span>
+                {t("conversations.lastUpdated", { time: relativeTime })}
+              </span>
+              <span className="history-card__dot" aria-hidden>
+                •
+              </span>
+              <span>
+                {t("conversations.createdAt", {
+                  time: formatConversationDate(
+                    conv.created_at,
+                    "date",
+                    language,
+                  ),
+                })}
+              </span>
+            </div>
+          </div>
+        </div>
+      </Card.Content>
+    </Card.Root>
+  );
+}
 
 interface ConversationListProps {
   conversations: Conversation[];
@@ -59,80 +150,7 @@ export default function ConversationList({
     );
   }
 
-  const renderConversationCard = (conv: Conversation, index: number) => {
-    const fallbackTitle = t("conversations.defaultName", {
-      number: index + 1,
-    });
-    const title = conv.title || fallbackTitle;
-    const isSelected = selectedIds.has(conv.id);
-    const relativeTime = formatRelativeTime(
-      conv.updated_at ?? conv.created_at,
-      t,
-    );
-
-    return (
-      <Card.Root
-        key={conv.id}
-        className="history-card"
-        data-selected={isSelected}
-        role="listitem"
-      >
-        <Card.Content className="history-card__content">
-          {selectionMode && (
-            <Checkbox
-              aria-label={t("aria.selectConversation", { title })}
-              isSelected={isSelected}
-              onChange={() => onToggleSelect(conv.id)}
-            />
-          )}
-
-          <div
-            className="history-card__body"
-            role="button"
-            tabIndex={0}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
-                if (selectionMode) {
-                  onToggleSelect(conv.id);
-                } else {
-                  onOpenConversation(conv.id);
-                }
-              }
-            }}
-            onClick={() =>
-              selectionMode
-                ? onToggleSelect(conv.id)
-                : onOpenConversation(conv.id)
-            }
-          >
-            <div className="history-card__meta">
-              <div className="history-card__title" title={title}>
-                {title}
-              </div>
-              <div className="history-card__subtitle">
-                <span>
-                  {t("conversations.lastUpdated", { time: relativeTime })}
-                </span>
-                <span className="history-card__dot" aria-hidden>
-                  •
-                </span>
-                <span>
-                  {t("conversations.createdAt", {
-                    time: formatConversationDate(
-                      conv.created_at,
-                      "date",
-                      i18n.language,
-                    ),
-                  })}
-                </span>
-              </div>
-            </div>
-          </div>
-        </Card.Content>
-      </Card.Root>
-    );
-  };
+  const language = i18n.language;
 
   // 渲染虚拟滚动列表
   if (enableVirtualScroll) {
@@ -168,7 +186,16 @@ export default function ConversationList({
                   transform: `translateY(${virtualItem.start}px)`,
                 }}
               >
-                {renderConversationCard(conv, virtualItem.index)}
+                <ConversationCardItem
+                  conv={conv}
+                  index={virtualItem.index}
+                  selectionMode={selectionMode}
+                  selectedIds={selectedIds}
+                  onToggleSelect={onToggleSelect}
+                  onOpenConversation={onOpenConversation}
+                  t={t}
+                  language={language}
+                />
               </div>
             );
           })}
@@ -180,7 +207,19 @@ export default function ConversationList({
   // 渲染普通列表（无虚拟滚动）
   return (
     <div className="history-list" role="list">
-      {conversations.map((conv, index) => renderConversationCard(conv, index))}
+      {conversations.map((conv, index) => (
+        <ConversationCardItem
+          key={conv.id}
+          conv={conv}
+          index={index}
+          selectionMode={selectionMode}
+          selectedIds={selectedIds}
+          onToggleSelect={onToggleSelect}
+          onOpenConversation={onOpenConversation}
+          t={t}
+          language={language}
+        />
+      ))}
     </div>
   );
 }

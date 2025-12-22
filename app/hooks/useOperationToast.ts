@@ -3,6 +3,7 @@
 import { useCallback } from "react";
 import { useToast } from "@/app/components/toast";
 import { useI18n } from "@/app/i18n/hooks";
+import { extractErrorMessage as extractErrorMessageUtil } from "@/lib/error-utils";
 
 type ToastStatus = "success" | "warning" | "danger";
 
@@ -55,16 +56,10 @@ export function useOperationToast() {
     [push, t],
   );
 
-  const extractErrorMessage = useCallback((error: unknown): string | null => {
-    if (!error) return null;
-    if (typeof error === "string") return error;
-    if (error instanceof Error) return error.message;
-    if (typeof error === "object" && "message" in error) {
-      const maybeMessage = (error as { message?: unknown }).message;
-      if (typeof maybeMessage === "string") return maybeMessage;
-    }
-    return null;
-  }, []);
+  const extractErrorMessage = useCallback(
+    (error: unknown): string | null => extractErrorMessageUtil(error),
+    [],
+  );
 
   return { pushErrorToast, showNotice, extractErrorMessage };
 }

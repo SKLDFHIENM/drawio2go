@@ -1,6 +1,7 @@
 "use client";
 
 import { Loader2, Sparkles } from "lucide-react";
+import { usePress } from "@react-aria/interactions";
 import { useEffect, useRef, useState } from "react";
 import { useAppTranslation } from "@/app/i18n/hooks";
 
@@ -22,10 +23,12 @@ export default function ThinkingBlock({
   const { t } = useAppTranslation("chat");
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const isMountedRef = useRef(true);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const Icon = isStreaming ? Loader2 : Sparkles;
   const iconClassName = `thinking-block-icon ${
     isStreaming ? "thinking-block-icon--spinning" : ""
   }`.trim();
+  const { pressProps } = usePress({ onPress: onToggle });
 
   useEffect(() => {
     if (!isStreaming) return;
@@ -65,9 +68,10 @@ export default function ThinkingBlock({
       className={`thinking-block ${isStreaming ? "thinking-block--active" : "thinking-block--completed"} ${expanded ? "thinking-block--expanded" : ""}`.trim()}
     >
       <button
+        ref={buttonRef}
         type="button"
         className="thinking-block-header"
-        onClick={onToggle}
+        {...pressProps}
       >
         <div className="thinking-block-title">
           <span className={iconClassName} aria-hidden>

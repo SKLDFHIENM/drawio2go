@@ -360,7 +360,7 @@ async function maybeInjectCanvasContext(options: {
 
     return injectPrefixIntoLastUserMessage({ messages, prefix });
   } catch (error) {
-    console.error("[ChatSidebar] 获取画布上下文失败，已降级为不注入", error);
+    logger.error("获取画布上下文失败，已降级为不注入", { error });
     return messages;
   }
 }
@@ -1443,7 +1443,6 @@ export default function ChatSidebar({
 
   // ========== 初始化副作用 ==========
   useEffect(() => {
-    console.info("[ChatSidebar] calling loadModelSelector on mount");
     void loadModelSelector();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -1463,57 +1462,6 @@ export default function ChatSidebar({
     if (!activeConversationId) return;
     void handleAbnormalExitIfNeeded(activeConversationId);
   }, [activeConversationId, handleAbnormalExitIfNeeded]);
-
-  useEffect(() => {
-    if (typeof localStorage === "undefined") return;
-
-    const recoverUnloadData = async () => {
-      const keys = Object.keys(localStorage).filter((key) =>
-        key.startsWith("chat:unload:"),
-      );
-
-      for (const key of keys) {
-        try {
-          const raw = localStorage.getItem(key);
-          if (!raw) {
-            localStorage.removeItem(key);
-            continue;
-          }
-
-          const parsed = JSON.parse(raw) as {
-            conversationId?: string;
-            messages?: ChatUIMessage[];
-          };
-
-          if (
-            !parsed ||
-            typeof parsed.conversationId !== "string" ||
-            !Array.isArray(parsed.messages)
-          ) {
-            localStorage.removeItem(key);
-            continue;
-          }
-
-          logger.info("[ChatSidebar] 恢复卸载时未保存的消息", { key });
-
-          await chatService.saveNow(parsed.conversationId, parsed.messages, {
-            resolveConversationId,
-            onConversationResolved: (resolvedId) => {
-              // eslint-disable-next-line sonarjs/no-nested-functions -- setState 函数式更新需要回调，且此处嵌套层级较深
-              setActiveConversationId((prev) => prev ?? resolvedId);
-            },
-          });
-
-          localStorage.removeItem(key);
-        } catch (error) {
-          logger.error("[ChatSidebar] 恢复卸载数据失败", { key, error });
-          localStorage.removeItem(key);
-        }
-      }
-    };
-
-    void recoverUnloadData();
-  }, [chatService, resolveConversationId, setActiveConversationId]);
 
   // ========== 推理时长计算 ==========
   useEffect(() => {

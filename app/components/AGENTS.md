@@ -126,7 +126,7 @@
 
 #### 4.1 聊天子组件（app/components/chat/）
 
-**核心组件**: ModelComboBox、ChatSessionMenu、MessageList、MessageItem、MessageContent、ChatInputArea、ChatInputActions
+**核心组件**: ModelComboBox、MessageList、MessageItem、MessageContent、ChatInputArea、ChatInputActions
 
 **辅助组件**: EmptyState、ToolCallCard、ThinkingBlock
 
@@ -298,6 +298,20 @@ import { Button } from '@heroui/react';
 
 ## 代码腐化清理记录
 
+### 2025-12-22 清理
+
+**执行的操作**：
+
+- 删除 ChatSidebar 的 `chat:unload:` localStorage 卸载恢复逻辑（死代码）
+- 清理 ChatSidebar 的 console 调试输出（改为 logger）
+
+**影响文件**：1 个（ChatSidebar.tsx）
+
+**下次关注**：
+
+- ChatSidebar 仍偏大，可继续拆分状态/视图层以降低耦合
+- 统一侧边栏交互的可访问性细节（焦点管理、键盘导航）
+
 ### 2025-12-08 清理
 
 **执行的操作**：
@@ -363,7 +377,7 @@ import { Button } from '@heroui/react';
 
 - `VersionSidebar.tsx` 删除本地 `loadVersions` 状态，改用 `useStorageXMLVersions` 的订阅机制
 - 所有日期展示改用 `format-utils.ts`（formatVersionTimestamp/formatConversationDate）
-- 聊天与版本子组件（MessageItem/ChatSessionMenu/ConversationList/VersionCard/VersionCompare/ProjectSelector）统一日期格式
+- 聊天与版本子组件（MessageItem/ConversationList/VersionCard/VersionCompare/ProjectSelector）统一日期格式
 
 **影响文件**：9 个文件
 
