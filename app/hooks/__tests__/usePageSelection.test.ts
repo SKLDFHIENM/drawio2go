@@ -39,7 +39,7 @@ describe("usePageSelection", () => {
     expect(result.current.selectedPageIndices).toEqual([]);
   });
 
-  it("XML 变化：保留仍存在的选中项，并自动选中新页面", async () => {
+  it("XML 变化：部分选择时保留仍存在的选中项，新页面默认不选中", async () => {
     const xml1 = buildXml([
       { id: "a", name: "A" },
       { id: "b", name: "B" },
@@ -62,13 +62,41 @@ describe("usePageSelection", () => {
 
     await waitFor(() => {
       expect(result.current.pages.map((p) => p.id)).toEqual(["b", "c"]);
-      expect(sortIds(result.current.selectedPageIds)).toEqual(["b", "c"]);
+      expect(sortIds(result.current.selectedPageIds)).toEqual(["b"]);
+      expect(result.current.isAllSelected).toBe(false);
+      expect(result.current.selectedPageIndices).toEqual([0]);
+    });
+  });
+
+  it("XML 变化：全选模式下新增页面应自动选中", async () => {
+    const xml1 = buildXml([
+      { id: "a", name: "A" },
+      { id: "b", name: "B" },
+    ]);
+    const xml2 = buildXml([
+      { id: "a", name: "A" },
+      { id: "b", name: "B" },
+      { id: "c", name: "C" },
+    ]);
+
+    const { result, rerender } = renderHook(
+      ({ xml }) => usePageSelection({ xml }),
+      { initialProps: { xml: xml1 } },
+    );
+
+    expect(result.current.isAllSelected).toBe(true);
+
+    rerender({ xml: xml2 });
+
+    await waitFor(() => {
+      expect(result.current.pages.map((p) => p.id)).toEqual(["a", "b", "c"]);
+      expect(sortIds(result.current.selectedPageIds)).toEqual(["a", "b", "c"]);
       expect(result.current.isAllSelected).toBe(true);
       expect(result.current.selectedPageIndices).toEqual([]);
     });
   });
 
-  it("XML 变化：若所有选中项都消失，回退到全选", async () => {
+  it("XML 变化：若选中项都消失，允许变为空选", async () => {
     const xml1 = buildXml([
       { id: "a", name: "A" },
       { id: "b", name: "B" },
@@ -88,8 +116,9 @@ describe("usePageSelection", () => {
 
     await waitFor(() => {
       expect(result.current.pages.map((p) => p.id)).toEqual(["b"]);
-      expect(sortIds(result.current.selectedPageIds)).toEqual(["b"]);
-      expect(result.current.isAllSelected).toBe(true);
+      expect(sortIds(result.current.selectedPageIds)).toEqual([]);
+      expect(result.current.isAllSelected).toBe(false);
+      expect(result.current.selectedPageIndices).toEqual([]);
     });
   });
 
@@ -130,7 +159,7 @@ describe("usePageSelection", () => {
     expect(result.current.selectedPageIndices).toEqual([0]);
   });
 
-  it("setSelectedPageIds：传入空集合时应回退到全选", () => {
+  it("setSelectedPageIds：传入空集合时允许空选", () => {
     const xml = buildXml([
       { id: "a", name: "A" },
       { id: "b", name: "B" },
@@ -142,12 +171,12 @@ describe("usePageSelection", () => {
       result.current.setSelectedPageIds(new Set());
     });
 
-    expect(sortIds(result.current.selectedPageIds)).toEqual(["a", "b"]);
-    expect(result.current.isAllSelected).toBe(true);
+    expect(sortIds(result.current.selectedPageIds)).toEqual([]);
+    expect(result.current.isAllSelected).toBe(false);
     expect(result.current.selectedPageIndices).toEqual([]);
   });
 
-  it("togglePage：只剩最后一页被选中时不允许取消选择", () => {
+  it("togglePage：允许取消到 0 个页面", () => {
     const xml = buildXml([
       { id: "a", name: "A" },
       { id: "b", name: "B" },
@@ -163,9 +192,9 @@ describe("usePageSelection", () => {
       result.current.togglePage("a");
     });
 
-    expect(sortIds(result.current.selectedPageIds)).toEqual(["a"]);
+    expect(sortIds(result.current.selectedPageIds)).toEqual([]);
     expect(result.current.isAllSelected).toBe(false);
-    expect(result.current.selectedPageIndices).toEqual([0]);
+    expect(result.current.selectedPageIndices).toEqual([]);
   });
 
   it("toggleAll：全选状态下保持全选不变", () => {

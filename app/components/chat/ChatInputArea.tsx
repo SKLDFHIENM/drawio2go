@@ -23,6 +23,7 @@ import {
   type AttachmentItem,
 } from "@/hooks/useImageAttachments";
 import { useDropzone } from "@/hooks/useDropzone";
+import { useContainerQuery } from "@/hooks/useContainerQuery";
 import ImagePreviewBar from "@/components/chat/ImagePreviewBar";
 import { toErrorString } from "@/app/lib/error-handler";
 import { dispatchSidebarNavigate } from "@/app/lib/ui-events";
@@ -30,6 +31,7 @@ import { McpButton, McpConfigDialog } from "@/app/components/mcp";
 import type { McpConfig } from "@/app/types/mcp";
 import CanvasContextButton from "./CanvasContextButton";
 import PageSelectorButton from "./PageSelectorButton";
+import type { DrawioPageInfo } from "@/app/lib/storage/page-metadata";
 
 const MIN_BASE_TEXTAREA_HEIGHT = 60;
 
@@ -63,14 +65,15 @@ interface ChatInputAreaProps {
   onCanvasContextToggle: () => void;
 
   /**
-   * 当前 DrawIO XML（用于页面选择器 M3）。
+   * 页面选择器（Milestone M5：受控模式）。
    */
-  drawioXml: string | null;
-
-  /**
-   * 页面选择变化（返回页面索引数组，0-based；全选时返回 []）。
-   */
-  onPageSelectionChange?: (selectedPageIndices: number[]) => void;
+  pageSelector?: {
+    pages: DrawioPageInfo[];
+    selectedPageIds: Set<string>;
+    onSelectionChange: (ids: Set<string>) => void;
+    onRequestRefresh?: () => Promise<string | null>;
+    isDisabled?: boolean;
+  };
 
   /**
    * MCP 配置弹窗（Popover/Dropdown）。
@@ -103,14 +106,14 @@ export default function ChatInputArea({
   modelSelectorProps,
   isCanvasContextEnabled,
   onCanvasContextToggle,
-  drawioXml,
-  onPageSelectionChange,
+  pageSelector,
   mcpConfigDialog,
 }: ChatInputAreaProps) {
   const { t } = useAppTranslation("chat");
   const { t: tCommon } = useI18n();
   const { push } = useToast();
   const textareaContainerRef = useRef<HTMLDivElement | null>(null);
+  const inputContainerRef = useRef<HTMLFormElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const baseHeightRef = useRef<number | null>(null);
   const internalAttachments = useImageAttachments();
@@ -142,6 +145,13 @@ export default function ChatInputArea({
     isModelConfigMissing ||
     !canSendNewMessage ||
     !isOnline;
+
+  const shouldRenderPageSelector =
+    Boolean(pageSelector) && (pageSelector?.pages?.length ?? 0) > 0;
+
+  const isCompactActions = useContainerQuery(inputContainerRef, {
+    maxWidth: 400,
+  });
 
   useEffect(() => {
     onAttachmentsChange?.(attachmentItems);
@@ -273,7 +283,11 @@ export default function ChatInputArea({
       ref={textareaContainerRef}
       {...rootProps}
     >
-      <form onSubmit={onSubmit} className="chat-input-container gap-2">
+      <form
+        onSubmit={onSubmit}
+        className="chat-input-container gap-2"
+        ref={inputContainerRef}
+      >
         {hasAttachments ? (
           <ImagePreviewBar
             attachments={attachmentItems}
@@ -286,10 +300,16 @@ export default function ChatInputArea({
             enabled={isCanvasContextEnabled}
             onPress={onCanvasContextToggle}
           />
-          <PageSelectorButton
-            xml={drawioXml}
-            onSelectionChange={onPageSelectionChange}
-          />
+          {shouldRenderPageSelector ? (
+            <PageSelectorButton
+              pages={pageSelector!.pages}
+              selectedPageIds={pageSelector!.selectedPageIds}
+              onSelectionChange={pageSelector!.onSelectionChange}
+              onRequestRefresh={pageSelector!.onRequestRefresh}
+              isDisabled={pageSelector!.isDisabled ?? isInputDisabled}
+              isIconOnly={isCompactActions}
+            />
+          ) : null}
           {mcpConfigDialog ? (
             <div className="ml-auto">
               <McpConfigDialog
@@ -300,6 +320,7 @@ export default function ChatInputArea({
                   <McpButton
                     isActive={mcpConfigDialog.isActive}
                     size="sm"
+                    isIconOnly={isCompactActions}
                     isDisabled={
                       Boolean(mcpConfigDialog.isDisabled) ||
                       Boolean(mcpConfigDialog.isActive)
@@ -358,6 +379,7 @@ export default function ChatInputArea({
           onRetry={onRetry}
           onImageUpload={handleImageUpload}
           modelSelectorProps={modelSelectorProps}
+          isCompact={isCompactActions}
         />
       </form>
 

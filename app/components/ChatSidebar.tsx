@@ -31,6 +31,7 @@ import {
   useChatToolExecution,
   useChatNetworkControl,
   useChatLifecycle,
+  usePageSelection,
 } from "@/app/hooks";
 import { useAlertDialog } from "@/app/components/alert";
 import { useI18n } from "@/app/i18n/hooks";
@@ -431,6 +432,41 @@ export default function ChatSidebar({
   const [mcpOverlayPortalContainer, setMcpOverlayPortalContainer] =
     useState<Element | null>(null);
   const chatShellContainerRef = useRef<HTMLDivElement | null>(null);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  const refreshPageSelectorXml = useCallback(async (): Promise<
+    string | null
+  > => {
+    try {
+      const xmlSnapshot = await createDrawioXmlSnapshot(editorRef);
+      if (isMountedRef.current) {
+        setPageSelectorXml(xmlSnapshot);
+      }
+      return xmlSnapshot;
+    } catch (error) {
+      logger.warn("[ChatSidebar] 获取页面选择器 XML 快照失败", { error });
+      if (isMountedRef.current) {
+        setPageSelectorXml(null);
+      }
+      return null;
+    }
+  }, [editorRef]);
+
+  const pageSelection = usePageSelection({ xml: pageSelectorXml });
+  const selectedPageIdsRef = useRef<Set<string>>(new Set());
+  const isAllSelectedPagesRef = useRef(true);
+
+  useEffect(() => {
+    selectedPageIdsRef.current = pageSelection.selectedPageIds;
+    isAllSelectedPagesRef.current = pageSelection.isAllSelected;
+  }, [pageSelection.isAllSelected, pageSelection.selectedPageIds]);
 
   // ========== Hooks 聚合 ==========
   const { t, i18n } = useI18n();
@@ -472,23 +508,10 @@ export default function ChatSidebar({
   useEffect(() => {
     if (!isOpen) return;
 
-    let cancelled = false;
-    void (async () => {
-      try {
-        const xmlSnapshot = await createDrawioXmlSnapshot(editorRef);
-        if (cancelled) return;
-        setPageSelectorXml(xmlSnapshot);
-      } catch (error) {
-        logger.warn("[ChatSidebar] 获取页面选择器 XML 快照失败", { error });
-        if (cancelled) return;
-        setPageSelectorXml(null);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [editorRef, isOpen, resolvedProjectUuid]);
+    refreshPageSelectorXml().catch((error) => {
+      logger.warn("[ChatSidebar] 初始化页面选择器 XML 快照失败", { error });
+    });
+  }, [isOpen, refreshPageSelectorXml, resolvedProjectUuid]);
 
   useEffect(() => {
     isCanvasContextEnabledRef.current = isCanvasContextEnabled;
@@ -789,6 +812,28 @@ export default function ChatSidebar({
     ],
   );
 
+  const handleFrontendToolVersionSnapshot = useCallback(
+    async (description: string) => {
+      try {
+        await createAutoVersionSnapshot(description);
+      } catch (error) {
+        // 降级处理：快照失败仅警告，不阻止工具执行
+        const message =
+          extractErrorMessage(error) ??
+          (toErrorString(error) || t("toasts.unknownError"));
+        showNotice(
+          t("toasts.autoVersionSnapshotFailed", { error: message }),
+          "warning",
+        );
+        logger.warn(
+          "[ChatSidebar] AI 自动版本快照失败（已降级，不阻塞 AI 编辑）",
+          { error, description },
+        );
+      }
+    },
+    [createAutoVersionSnapshot, extractErrorMessage, showNotice, t],
+  );
+
   const frontendToolContext = useMemo<FrontendToolContext>(() => {
     return {
       getDrawioXML: async () => await getDrawioXmlFromRef(editorRef),
@@ -798,32 +843,32 @@ export default function ChatSidebar({
           description: ctxOptions?.description,
         });
       },
-      onVersionSnapshot: async (description) => {
-        try {
-          await createAutoVersionSnapshot(description);
-        } catch (error) {
-          // 降级处理：快照失败仅警告，不阻止工具执行
-          const message =
-            extractErrorMessage(error) ??
-            (toErrorString(error) || t("toasts.unknownError"));
-          showNotice(
-            t("toasts.autoVersionSnapshotFailed", { error: message }),
-            "warning",
-          );
-          logger.warn(
-            "[ChatSidebar] AI 自动版本快照失败（已降级，不阻塞 AI 编辑）",
-            { error, description },
-          );
-        }
-      },
+      onVersionSnapshot: handleFrontendToolVersionSnapshot,
+      getPageFilterContext: () => ({
+        selectedPageIds: isAllSelectedPagesRef.current
+          ? []
+          : Array.from(selectedPageIdsRef.current),
+        isMcpContext: false,
+      }),
     };
-  }, [
-    editorRef,
-    createAutoVersionSnapshot,
-    extractErrorMessage,
-    showNotice,
-    t,
-  ]);
+  }, [editorRef, handleFrontendToolVersionSnapshot]);
+
+  const mcpFrontendToolContext = useMemo<FrontendToolContext>(() => {
+    return {
+      getDrawioXML: async () => await getDrawioXmlFromRef(editorRef),
+      replaceDrawioXML: async (xml, ctxOptions) => {
+        return await replaceDrawioXmlFromRef(editorRef, xml, {
+          requestId: currentToolCallIdRef.current ?? undefined,
+          description: ctxOptions?.description,
+        });
+      },
+      onVersionSnapshot: handleFrontendToolVersionSnapshot,
+      getPageFilterContext: () => ({
+        selectedPageIds: [],
+        isMcpContext: true,
+      }),
+    };
+  }, [editorRef, handleFrontendToolVersionSnapshot]);
 
   const frontendTools = useMemo(
     () => createFrontendDrawioTools(frontendToolContext),
@@ -834,6 +879,16 @@ export default function ChatSidebar({
   useEffect(() => {
     frontendToolsRef.current = frontendTools;
   }, [frontendTools]);
+
+  const mcpFrontendTools = useMemo(
+    () => createFrontendDrawioTools(mcpFrontendToolContext),
+    [mcpFrontendToolContext],
+  );
+
+  const mcpFrontendToolsRef = useRef(mcpFrontendTools);
+  useEffect(() => {
+    mcpFrontendToolsRef.current = mcpFrontendTools;
+  }, [mcpFrontendTools]);
 
   const llmConfigRef = useRef(llmConfig);
   useEffect(() => {
@@ -1186,7 +1241,7 @@ export default function ChatSidebar({
     if (!api?.onToolRequest || !api?.sendToolResponse) return;
 
     const handleToolRequest = (request: McpToolRequest) => {
-      const tool = frontendToolsRef.current[request.toolName];
+      const tool = mcpFrontendToolsRef.current[request.toolName];
       const execute = tool?.execute;
       if (!tool || typeof execute !== "function") {
         api.sendToolResponse(request.requestId, {
@@ -1656,6 +1711,18 @@ export default function ChatSidebar({
       return;
     }
 
+    // 如果不是全选模式，检查选择数量（允许空选，但发送时拦截并提示）。
+    if (
+      !isAllSelectedPagesRef.current &&
+      selectedPageIdsRef.current.size === 0
+    ) {
+      showNotice(
+        t("chat:pageSelector.noPagesSelected", "请至少选择一个页面"),
+        "warning",
+      );
+      return;
+    }
+
     await lifecycle.submitMessage({
       input: trimmedInput,
       readyAttachments,
@@ -1922,6 +1989,13 @@ export default function ChatSidebar({
   };
 
   const modelSelectorDisabled = isChatStreaming || selectorLoading;
+  const isModelConfigMissing = providers.length === 0 || models.length === 0;
+  const isInputDisabled =
+    configLoading ||
+    !llmConfig ||
+    isModelConfigMissing ||
+    !canSendNewMessage ||
+    !isOnline;
 
   // ========== 渲染 ==========
 
@@ -2023,7 +2097,13 @@ export default function ChatSidebar({
                 }}
                 isCanvasContextEnabled={isCanvasContextEnabled}
                 onCanvasContextToggle={handleCanvasContextToggle}
-                drawioXml={pageSelectorXml}
+                pageSelector={{
+                  pages: pageSelection.pages,
+                  selectedPageIds: pageSelection.selectedPageIds,
+                  onSelectionChange: pageSelection.setSelectedPageIds,
+                  onRequestRefresh: refreshPageSelectorXml,
+                  isDisabled: isInputDisabled,
+                }}
                 mcpConfigDialog={{
                   isActive: mcpServer.running,
                   isOpen: isMcpConfigOpen,

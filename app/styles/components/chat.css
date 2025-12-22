@@ -211,6 +211,9 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  /* Container Query：基于侧边栏（输入区域）宽度，而非 viewport。 */
+  container-type: inline-size;
+  container-name: chat-input-container;
 }
 
 .chat-config-status {
@@ -339,7 +342,7 @@
   white-space: pre;
 }
 
-@media (max-width: 640px) {
+@container chat-input-container (max-width: 400px) {
   .chat-input-actions {
     flex-wrap: nowrap;
     align-items: stretch;
@@ -348,7 +351,7 @@
 
   .chat-actions-left {
     flex: 1 1 0;
-    min-width: 180px;
+    min-width: 0;
     gap: var(--spacing-compact-md, 0.25rem);
   }
 
@@ -357,34 +360,45 @@
     gap: var(--spacing-compact-md, 0.25rem);
   }
 
+  .chat-model-button,
+  .mcp-button,
+  .page-selector-button {
+    justify-content: center;
+  }
+
   .chat-model-button__label {
     display: none;
   }
 
-  .chat-model-popover {
-    min-width: 240px;
-    max-width: min(90vw, 360px);
+  .mcp-button__label,
+  .page-selector-button__label {
+    display: none;
   }
 
-  .message-body--user {
-    max-width: 90%;
+  .chat-model-popover {
+    min-width: min(240px, 100cqi);
+    max-width: min(90cqi, 360px);
   }
 }
 
-@media (max-width: 480px) {
+@container chat-input-container (max-width: 360px) {
   .chat-input-actions {
     gap: var(--spacing-compact-md, 0.25rem);
-  }
-
-  .chat-actions-left {
-    min-width: 160px;
   }
 
   .chat-actions-right button,
   .chat-actions-right [role="button"] {
     min-height: 44px;
   }
+}
 
+@media (max-width: 640px) {
+  .message-body--user {
+    max-width: 90%;
+  }
+}
+
+@media (max-width: 480px) {
   .messages-scroll-area {
     padding: 0.5rem 0.25rem 0.75rem;
   }
@@ -402,4 +416,9 @@
 .page-selector-menu {
   max-height: 18.75rem; /* 300px */
   overflow-y: auto;
+}
+
+.page-selector-menu [data-selected="true"],
+.page-selector-menu [aria-selected="true"] {
+  background: var(--bg-secondary);
 }

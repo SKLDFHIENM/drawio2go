@@ -1,7 +1,8 @@
 {
   "button": {
     "active": "Exposed",
-    "inactive": "MCP Server"
+    "inactive": "MCP Server",
+    "tooltip": "Configure and start the MCP server so external clients can connect and call this app."
   },
   "dialog": {
     "title": "MCP Configuration",

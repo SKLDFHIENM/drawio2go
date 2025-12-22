@@ -1,7 +1,8 @@
 {
   "button": {
     "active": "暴露中",
-    "inactive": "MCP 服务"
+    "inactive": "MCP 服务",
+    "tooltip": "配置并启动 MCP 服务，允许外部客户端连接并调用本应用"
   },
   "dialog": {
     "title": "MCP 配置",

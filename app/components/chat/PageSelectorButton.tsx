@@ -1,95 +1,142 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Button, Dropdown, Label, type ButtonProps } from "@heroui/react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Button,
+  Dropdown,
+  Label,
+  TooltipContent,
+  TooltipRoot,
+  type ButtonProps,
+} from "@heroui/react";
 import { Layers } from "lucide-react";
 import { useAppTranslation } from "@/app/i18n/hooks";
-import { usePageSelection } from "@/app/hooks";
-
-const EMPTY_INDICES: number[] = [];
+import type { DrawioPageInfo } from "@/app/lib/storage/page-metadata";
 
 export interface PageSelectorButtonProps {
-  /**
-   * DrawIO XML（用于解析页面列表与默认选中状态）。
-   *
-   * 说明：
-   * - 本组件会在 Dropdown 打开时“捕获”一次最新 xml（实现懒加载/刷新）。
-   * - 解析失败或 xml 为空时会回退到默认单页。
-   */
-  xml: string | null;
-  /**
-   * 选中页面索引变化回调。
-   *
-   * - 返回值为页面索引（0-based，升序）。
-   * - 当“全选”时返回空数组 `[]`（表示包含全部页面）。
-   */
-  onSelectionChange?: (selectedPageIndices: number[]) => void;
+  pages: DrawioPageInfo[];
+  selectedPageIds: Set<string>;
+  onSelectionChange: (ids: Set<string>) => void;
+  onRequestRefresh?: () => Promise<string | null>;
+  isDisabled?: boolean;
+  isIconOnly?: boolean;
 }
 
 /**
- * 页面选择器按钮（Milestone M3）
+ * 页面选择器按钮（Milestone M5：受控组件）
  *
  * - 使用 HeroUI v3 Dropdown + Dropdown.Menu
- * - 支持多选，且不允许取消到 0 个页面
- * - 仅负责 UI 与本地状态管理（不做持久化）
+ * - 支持多选，允许取消到 0 个页面（发送时由上层拦截）
+ * - 页面解析与选中状态由上层（ChatSidebar）管理
  */
 export default function PageSelectorButton({
-  xml,
+  pages,
+  selectedPageIds,
   onSelectionChange,
+  onRequestRefresh,
+  isDisabled,
+  isIconOnly,
 }: PageSelectorButtonProps) {
   const { t } = useAppTranslation("chat");
   const [isOpen, setIsOpen] = useState(false);
-  const [effectiveXml, setEffectiveXml] = useState<string | null>(null);
   const suppressNextCloseRef = useRef(false);
+  const openRequestSeqRef = useRef(0);
 
-  const {
-    pages,
-    selectedPageIds,
-    setSelectedPageIds,
-    isAllSelected,
-    selectAll,
-  } = usePageSelection({
-    xml: effectiveXml,
-  });
+  useEffect(() => {
+    if (isDisabled && isOpen) {
+      openRequestSeqRef.current += 1;
+      setIsOpen(false);
+    }
+  }, [isDisabled, isOpen]);
 
   const total = pages.length;
+  const isAllSelected =
+    total > 0 && pages.every((page) => selectedPageIds.has(page.id));
   const selectedCount = isAllSelected ? total : selectedPageIds.size;
+  const isNoneSelected = total > 0 && selectedCount === 0;
 
-  const buttonVariant: ButtonProps["variant"] = isAllSelected
-    ? "secondary"
-    : "primary";
+  let buttonVariant: ButtonProps["variant"] = "primary";
+  if (isAllSelected) buttonVariant = "secondary";
+  else if (isNoneSelected) buttonVariant = "danger";
 
   const buttonLabel = isAllSelected
     ? t("pageSelector.allPagesLabel", `页面: ${t("pageSelector.allPages")}`)
     : t("pageSelector.selectedPages", { selected: selectedCount, total });
+  const tooltip = t("pageSelector.tooltip");
 
-  const disabledKeys = useMemo(() => {
-    if (selectedPageIds.size !== 1) return [];
-    return Array.from(selectedPageIds);
-  }, [selectedPageIds]);
+  const allPageIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const page of pages) ids.add(page.id);
+    return ids;
+  }, [pages]);
 
-  useEffect(() => {
-    if (!onSelectionChange) return;
-    const indices = isAllSelected
-      ? EMPTY_INDICES
-      : pages
-          .filter((page) => selectedPageIds.has(page.id))
-          .map((page) => page.index)
-          .sort((a, b) => a - b);
-    onSelectionChange(indices);
-  }, [isAllSelected, onSelectionChange, pages, selectedPageIds]);
+  const selectAll = useCallback(
+    () => onSelectionChange(new Set(allPageIds)),
+    [allPageIds, onSelectionChange],
+  );
+
+  const suppressNextClose = useCallback(() => {
+    suppressNextCloseRef.current = true;
+    queueMicrotask(() => {
+      suppressNextCloseRef.current = false;
+    });
+  }, []);
+
+  const deselectAll = useCallback(
+    () => onSelectionChange(new Set()),
+    [onSelectionChange],
+  );
+
+  const handleToggleAll = useCallback(() => {
+    suppressNextClose();
+    if (isAllSelected) {
+      deselectAll();
+    } else {
+      selectAll();
+    }
+  }, [isAllSelected, selectAll, deselectAll, suppressNextClose]);
+
+  const openWithRefresh = useCallback(async () => {
+    const requestSeq = openRequestSeqRef.current + 1;
+    openRequestSeqRef.current = requestSeq;
+
+    try {
+      await onRequestRefresh?.();
+    } catch {
+      // 刷新失败时仍允许打开，避免阻塞交互（上层会回退到默认页面集合）。
+    }
+
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => resolve());
+    });
+
+    if (openRequestSeqRef.current !== requestSeq) return;
+    if (isDisabled) return;
+    setIsOpen(true);
+  }, [isDisabled, onRequestRefresh]);
 
   return (
     <Dropdown
       isOpen={isOpen}
       onOpenChange={(open) => {
+        if (isDisabled) {
+          openRequestSeqRef.current += 1;
+          setIsOpen(false);
+          return;
+        }
+
         if (!open && suppressNextCloseRef.current) {
           suppressNextCloseRef.current = false;
           return;
         }
 
-        setIsOpen(open);
-        if (open) setEffectiveXml(xml);
+        if (!open) {
+          openRequestSeqRef.current += 1;
+          setIsOpen(false);
+          return;
+        }
+
+        void openWithRefresh();
       }}
     >
       <Button
@@ -98,9 +145,18 @@ export default function PageSelectorButton({
         variant={buttonVariant}
         className="page-selector-button"
         aria-label={t("pageSelector.ariaLabel")}
+        isDisabled={isDisabled}
+        isIconOnly={isIconOnly}
       >
-        <Layers size={16} aria-hidden />
-        {buttonLabel}
+        <TooltipRoot delay={0}>
+          <span className="inline-flex items-center gap-2">
+            <Layers size={16} aria-hidden />
+            <span className="page-selector-button__label">{buttonLabel}</span>
+          </span>
+          <TooltipContent placement="top">
+            <p>{tooltip}</p>
+          </TooltipContent>
+        </TooltipRoot>
       </Button>
       <Dropdown.Popover placement="top start" className="min-w-[220px]">
         <div className="px-2 pt-2">
@@ -109,11 +165,17 @@ export default function PageSelectorButton({
             size="sm"
             variant="tertiary"
             className="w-full justify-start"
-            onPress={selectAll}
-            isDisabled={isAllSelected}
-            aria-label={t("pageSelector.selectAll")}
+            onPress={handleToggleAll}
+            isDisabled={isDisabled}
+            aria-label={
+              isAllSelected
+                ? t("pageSelector.deselectAll")
+                : t("pageSelector.selectAll")
+            }
           >
-            {t("pageSelector.selectAll")}
+            {isAllSelected
+              ? t("pageSelector.deselectAll")
+              : t("pageSelector.selectAll")}
           </Button>
         </div>
 
@@ -121,15 +183,10 @@ export default function PageSelectorButton({
           aria-label={t("pageSelector.togglePage")}
           className="page-selector-menu"
           selectionMode="multiple"
-          disallowEmptySelection
           selectedKeys={selectedPageIds}
-          disabledKeys={disabledKeys}
           onSelectionChange={(keys) => {
             // HeroUI/React Aria MenuTrigger 会在选择项后默认关闭，这里做一次拦截以支持多选连续操作。
-            suppressNextCloseRef.current = true;
-            queueMicrotask(() => {
-              suppressNextCloseRef.current = false;
-            });
+            suppressNextClose();
 
             if (keys === "all") {
               selectAll();
@@ -138,7 +195,7 @@ export default function PageSelectorButton({
 
             const next = new Set<string>();
             for (const key of keys) next.add(String(key));
-            setSelectedPageIds(next);
+            onSelectionChange(next);
           }}
         >
           {pages.map((page) => (
@@ -147,6 +204,7 @@ export default function PageSelectorButton({
               id={page.id}
               textValue={`${page.index + 1}. ${page.name}`}
             >
+              <Dropdown.ItemIndicator type="checkmark" />
               <Label>{`${page.index + 1}. ${page.name}`}</Label>
             </Dropdown.Item>
           ))}

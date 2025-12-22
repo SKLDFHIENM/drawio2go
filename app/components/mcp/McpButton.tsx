@@ -1,7 +1,12 @@
 "use client";
 
-import { Button, type ButtonProps } from "@heroui/react";
-import { Server as ServerIcon } from "lucide-react";
+import {
+  Button,
+  TooltipContent,
+  TooltipRoot,
+  type ButtonProps,
+} from "@heroui/react";
+import { MCP as McpIcon } from "@lobehub/icons";
 import { useAppTranslation } from "@/app/i18n/hooks";
 
 /**
@@ -35,6 +40,8 @@ export function McpButton({
 }: McpButtonProps) {
   const { t } = useAppTranslation("mcp");
   const label = isActive ? t("button.active") : t("button.inactive");
+  const tooltip = t("button.tooltip");
+  const { className, ...restButtonProps } = buttonProps;
 
   return (
     <Button
@@ -42,10 +49,18 @@ export function McpButton({
       aria-label={label}
       aria-pressed={isActive}
       onPress={onPress}
-      {...buttonProps}
+      className={["mcp-button", className].filter(Boolean).join(" ")}
+      {...restButtonProps}
     >
-      <ServerIcon size={16} aria-hidden />
-      {label}
+      <TooltipRoot delay={0}>
+        <span className="inline-flex items-center gap-2">
+          <McpIcon size={16} aria-hidden />
+          <span className="mcp-button__label">{label}</span>
+        </span>
+        <TooltipContent placement="top">
+          <p>{tooltip}</p>
+        </TooltipContent>
+      </TooltipRoot>
     </Button>
   );
 }

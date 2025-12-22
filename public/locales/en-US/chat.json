@@ -118,9 +118,12 @@
     "allPages": "All pages",
     "allPagesLabel": "Pages: All pages",
     "selectedPages": "Pages: {{selected}}/{{total}}",
+    "tooltip": "Choose which pages the AI operations apply to (multi-select).",
     "selectAll": "Select all",
+    "deselectAll": "Deselect all",
     "togglePage": "Toggle page selection",
-    "ariaLabel": "Select page scope"
+    "ariaLabel": "Select page scope",
+    "noPagesSelected": "Please select at least one page"
   },
   "toolCalls": {
     "title": "Tool calls",

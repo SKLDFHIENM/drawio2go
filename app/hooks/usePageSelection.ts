@@ -75,16 +75,18 @@ export function usePageSelection(
     }
 
     setSelectedPageIdsInternal((prevSelected) => {
+      const wasAllSelected =
+        prevPageIds.size === 0
+          ? true
+          : areAllSelected(prevSelected, prevPageIds);
       const nextSelected = new Set<string>();
 
       for (const id of prevSelected) {
         if (currentPageIds.has(id)) nextSelected.add(id);
       }
 
-      for (const id of newPageIds) nextSelected.add(id);
-
-      if (nextSelected.size === 0) {
-        for (const id of currentPageIds) nextSelected.add(id);
+      if (wasAllSelected) {
+        for (const id of newPageIds) nextSelected.add(id);
       }
 
       return areSetsEqual(prevSelected, nextSelected)
@@ -100,14 +102,6 @@ export function usePageSelection(
       const validIds = new Set<string>();
       for (const id of ids) {
         if (pageIdSet.has(id)) validIds.add(id);
-      }
-
-      if (validIds.size === 0) {
-        const fallbackAll = new Set(pageIdSet);
-        setSelectedPageIdsInternal((prevSelected) =>
-          areSetsEqual(prevSelected, fallbackAll) ? prevSelected : fallbackAll,
-        );
-        return;
       }
 
       setSelectedPageIdsInternal((prevSelected) =>
@@ -134,10 +128,6 @@ export function usePageSelection(
       }
 
       setSelectedPageIdsInternal((prevSelected) => {
-        if (prevSelected.has(pageId) && prevSelected.size === 1) {
-          return prevSelected;
-        }
-
         const nextSelected = new Set(prevSelected);
         if (nextSelected.has(pageId)) nextSelected.delete(pageId);
         else nextSelected.add(pageId);

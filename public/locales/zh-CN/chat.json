@@ -115,9 +115,12 @@
     "allPages": "全部页面",
     "allPagesLabel": "页面: 全部页面",
     "selectedPages": "页面: {{selected}}/{{total}}",
+    "tooltip": "选择 AI 操作生效的页面范围（支持多选）",
     "selectAll": "全选",
+    "deselectAll": "取消全选",
     "togglePage": "切换页面选择",
-    "ariaLabel": "选择页面范围"
+    "ariaLabel": "选择页面范围",
+    "noPagesSelected": "请至少选择一个页面"
   },
   "toolCalls": {
     "title": "工具调用",

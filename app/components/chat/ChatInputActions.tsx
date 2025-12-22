@@ -24,6 +24,7 @@ interface ChatInputActionsProps {
   canSendNewMessage: boolean;
   lastMessageIsUser: boolean;
   isOnline: boolean;
+  isCompact?: boolean;
   onCancel?: () => void;
   onNewChat: () => void;
   onHistory: () => void;
@@ -46,6 +47,7 @@ export default function ChatInputActions({
   canSendNewMessage,
   lastMessageIsUser,
   isOnline,
+  isCompact,
   onCancel,
   onNewChat,
   onHistory,
@@ -228,6 +230,7 @@ export default function ChatInputActions({
             size="sm"
             className="chat-model-button"
             isDisabled={isModelSelectorDisabled}
+            isIconOnly={isCompact}
             aria-label={`${t("modelSelector.label")}: ${modelLabel}`}
           >
             {isModelSelectorLoading ? (
