@@ -1,7 +1,7 @@
 {
   "button": {
     "active": "暴露中",
-    "inactive": "MCP 接口"
+    "inactive": "MCP 服务"
   },
   "dialog": {
     "title": "MCP 配置",
@@ -37,7 +37,7 @@
     }
   },
   "overlay": {
-    "title": "MCP 接口已暴露",
+    "title": "MCP 服务已暴露",
     "status": "正在暴露：{{host}}:{{port}}",
     "stop": "停止",
     "stopAriaLabel": "停止暴露",

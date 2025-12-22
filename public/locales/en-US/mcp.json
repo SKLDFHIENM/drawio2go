@@ -1,7 +1,7 @@
 {
   "button": {
     "active": "Exposed",
-    "inactive": "MCP Interface"
+    "inactive": "MCP Server"
   },
   "dialog": {
     "title": "MCP Configuration",
@@ -37,7 +37,7 @@
     }
   },
   "overlay": {
-    "title": "MCP Interface Exposed",
+    "title": "MCP Server Exposed",
     "status": "Exposing: {{host}}:{{port}}",
     "stop": "Stop",
     "stopAriaLabel": "Stop exposure",

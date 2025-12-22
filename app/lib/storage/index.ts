@@ -25,11 +25,12 @@ export {
   detectStorageType,
   isStorageInitialized,
 } from "./storage-factory";
-export { buildPageMetadataFromXml } from "./page-metadata";
+export { buildPageMetadataFromXml, extractPagesFromXml } from "./page-metadata";
 
 // ==================== 类型定义 ====================
 
 export type { StorageAdapter } from "./adapter";
+export type { DrawioPageInfo, PageMetadataSummary } from "./page-metadata";
 
 export type {
   Setting,
