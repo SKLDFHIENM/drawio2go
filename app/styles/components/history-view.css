@@ -93,7 +93,8 @@
 }
 
 /* 深色模式下日历图标反色 */
-[data-theme="drawio2go-dark"] .history-date-input::-webkit-calendar-picker-indicator,
+[data-theme="drawio2go-dark"]
+  .history-date-input::-webkit-calendar-picker-indicator,
 .dark .history-date-input::-webkit-calendar-picker-indicator {
   filter: invert(1);
 }

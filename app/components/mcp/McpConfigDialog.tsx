@@ -292,9 +292,14 @@ export function McpConfigDialog({
                 </Select.Trigger>
                 <Select.Popover>
                   <ListBox>
-                    <ListBox.Item id="127.0.0.1" textValue={t("dialog.host.localhost")}>
+                    <ListBox.Item
+                      id="127.0.0.1"
+                      textValue={t("dialog.host.localhost")}
+                    >
                       <div className="flex min-w-0 flex-col">
-                        <span className="truncate">{t("dialog.host.localhost")}</span>
+                        <span className="truncate">
+                          {t("dialog.host.localhost")}
+                        </span>
                         <Description className="text-xs text-default-500">
                           {t("dialog.host.localhostDesc")}
                         </Description>
@@ -331,18 +336,28 @@ export function McpConfigDialog({
                 </Select.Trigger>
                 <Select.Popover>
                   <ListBox>
-                    <ListBox.Item id="manual" textValue={t("dialog.portMode.manual")}>
+                    <ListBox.Item
+                      id="manual"
+                      textValue={t("dialog.portMode.manual")}
+                    >
                       <div className="flex min-w-0 flex-col">
-                        <span className="truncate">{t("dialog.portMode.manual")}</span>
+                        <span className="truncate">
+                          {t("dialog.portMode.manual")}
+                        </span>
                         <Description className="text-xs text-default-500">
                           {t("dialog.portMode.manualDesc")}
                         </Description>
                       </div>
                       <ListBox.ItemIndicator />
                     </ListBox.Item>
-                    <ListBox.Item id="random" textValue={t("dialog.portMode.random")}>
+                    <ListBox.Item
+                      id="random"
+                      textValue={t("dialog.portMode.random")}
+                    >
                       <div className="flex min-w-0 flex-col">
-                        <span className="truncate">{t("dialog.portMode.random")}</span>
+                        <span className="truncate">
+                          {t("dialog.portMode.random")}
+                        </span>
                         <Description className="text-xs text-default-500">
                           {t("dialog.portMode.randomDesc")}
                         </Description>

@@ -99,7 +99,9 @@ export function McpConfigDisplay({
           size="sm"
           isIconOnly
           variant="tertiary"
-          aria-label={copied ? t("config.copiedAriaLabel") : t("config.copyAriaLabel")}
+          aria-label={
+            copied ? t("config.copiedAriaLabel") : t("config.copyAriaLabel")
+          }
           onPress={handleCopy}
         >
           {copied ? (
