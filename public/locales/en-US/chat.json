@@ -113,6 +113,15 @@
   },
   "canvasContext": "Canvas Context",
   "canvasContextTooltip": "Auto-inject compressed canvas elements into conversations, in App will injecting mouse-selected element data",
+  "pageSelector": {
+    "title": "Page Selector",
+    "allPages": "All pages",
+    "allPagesLabel": "Pages: All pages",
+    "selectedPages": "Pages: {{selected}}/{{total}}",
+    "selectAll": "Select all",
+    "togglePage": "Toggle page selection",
+    "ariaLabel": "Select page scope"
+  },
   "toolCalls": {
     "title": "Tool calls",
     "parameters": "Input parameters",

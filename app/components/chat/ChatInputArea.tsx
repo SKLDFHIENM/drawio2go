@@ -29,6 +29,7 @@ import { dispatchSidebarNavigate } from "@/app/lib/ui-events";
 import { McpButton, McpConfigDialog } from "@/app/components/mcp";
 import type { McpConfig } from "@/app/types/mcp";
 import CanvasContextButton from "./CanvasContextButton";
+import PageSelectorButton from "./PageSelectorButton";
 
 const MIN_BASE_TEXTAREA_HEIGHT = 60;
 
@@ -62,6 +63,16 @@ interface ChatInputAreaProps {
   onCanvasContextToggle: () => void;
 
   /**
+   * 当前 DrawIO XML（用于页面选择器 M3）。
+   */
+  drawioXml: string | null;
+
+  /**
+   * 页面选择变化（返回页面索引数组，0-based；全选时返回 []）。
+   */
+  onPageSelectionChange?: (selectedPageIndices: number[]) => void;
+
+  /**
    * MCP 配置弹窗（Popover/Dropdown）。
    */
   mcpConfigDialog?: {
@@ -92,6 +103,8 @@ export default function ChatInputArea({
   modelSelectorProps,
   isCanvasContextEnabled,
   onCanvasContextToggle,
+  drawioXml,
+  onPageSelectionChange,
   mcpConfigDialog,
 }: ChatInputAreaProps) {
   const { t } = useAppTranslation("chat");
@@ -268,27 +281,33 @@ export default function ChatInputArea({
           />
         ) : null}
 
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <CanvasContextButton
             enabled={isCanvasContextEnabled}
             onPress={onCanvasContextToggle}
           />
+          <PageSelectorButton
+            xml={drawioXml}
+            onSelectionChange={onPageSelectionChange}
+          />
           {mcpConfigDialog ? (
-            <McpConfigDialog
-              isOpen={mcpConfigDialog.isOpen}
-              onOpenChange={mcpConfigDialog.onOpenChange}
-              onConfirm={mcpConfigDialog.onConfirm}
-              trigger={
-                <McpButton
-                  isActive={mcpConfigDialog.isActive}
-                  size="sm"
-                  isDisabled={
-                    Boolean(mcpConfigDialog.isDisabled) ||
-                    Boolean(mcpConfigDialog.isActive)
-                  }
-                />
-              }
-            />
+            <div className="ml-auto">
+              <McpConfigDialog
+                isOpen={mcpConfigDialog.isOpen}
+                onOpenChange={mcpConfigDialog.onOpenChange}
+                onConfirm={mcpConfigDialog.onConfirm}
+                trigger={
+                  <McpButton
+                    isActive={mcpConfigDialog.isActive}
+                    size="sm"
+                    isDisabled={
+                      Boolean(mcpConfigDialog.isDisabled) ||
+                      Boolean(mcpConfigDialog.isActive)
+                    }
+                  />
+                }
+              />
+            </div>
           ) : null}
         </div>
 

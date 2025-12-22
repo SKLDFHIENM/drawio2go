@@ -418,6 +418,7 @@ export default function ChatSidebar({
   const [input, setInput] = useState("");
   const [isCanvasContextEnabled, setIsCanvasContextEnabled] = useState(true);
   const isCanvasContextEnabledRef = useRef(false);
+  const [pageSelectorXml, setPageSelectorXml] = useState<string | null>(null);
   const [expandedToolCalls, setExpandedToolCalls] = useState<
     Record<string, boolean>
   >({});
@@ -467,6 +468,27 @@ export default function ChatSidebar({
   useEffect(() => {
     setMcpOverlayPortalContainer(mcpOverlayContainerRef.current);
   }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const xmlSnapshot = await createDrawioXmlSnapshot(editorRef);
+        if (cancelled) return;
+        setPageSelectorXml(xmlSnapshot);
+      } catch (error) {
+        logger.warn("[ChatSidebar] 获取页面选择器 XML 快照失败", { error });
+        if (cancelled) return;
+        setPageSelectorXml(null);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [editorRef, isOpen, resolvedProjectUuid]);
 
   useEffect(() => {
     isCanvasContextEnabledRef.current = isCanvasContextEnabled;
@@ -2001,6 +2023,7 @@ export default function ChatSidebar({
                 }}
                 isCanvasContextEnabled={isCanvasContextEnabled}
                 onCanvasContextToggle={handleCanvasContextToggle}
+                drawioXml={pageSelectorXml}
                 mcpConfigDialog={{
                   isActive: mcpServer.running,
                   isOpen: isMcpConfigOpen,

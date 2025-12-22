@@ -29,6 +29,7 @@
 | **ModelComboBox**       | 模型选择器       | 按供应商分组的模型下拉/搜索，支持禁用、加载态和默认标记 |
 | **ChatInputArea**       | 输入区域         | 多行文本框，表单处理，按 Enter 发送                     |
 | **CanvasContextButton** | 画布上下文按钮   | 切换是否在对话中附带画布上下文信息                      |
+| **PageSelectorButton**  | 页面选择器按钮   | 选择 AI 生效页面范围（多选/全选），用于后续工具执行     |
 | **ChatInputActions**    | 输入操作按钮组   | 新建/历史/模型选择 Popover/发送/取消按钮                |
 | **ChatSessionMenu**     | 会话菜单         | 切换会话列表（可能在侧边栏中使用）                      |
 | **ChatHistoryView**     | 历史记录视图     | 搜索/筛选对话、日期范围、批量操作、预览                 |

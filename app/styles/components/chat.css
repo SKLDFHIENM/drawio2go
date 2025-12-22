@@ -393,3 +393,13 @@
     max-width: 94%;
   }
 }
+
+/* Page selector (Milestone M3) */
+.page-selector-button {
+  flex-shrink: 0;
+}
+
+.page-selector-menu {
+  max-height: 18.75rem; /* 300px */
+  overflow-y: auto;
+}

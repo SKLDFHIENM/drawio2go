@@ -110,6 +110,15 @@
   },
   "canvasContext": "画布上下文",
   "canvasContextTooltip": "对话自动注入压缩后的画布元素信息，App 中还会自动注入鼠标选中元素信息",
+  "pageSelector": {
+    "title": "页面选择器",
+    "allPages": "全部页面",
+    "allPagesLabel": "页面: 全部页面",
+    "selectedPages": "页面: {{selected}}/{{total}}",
+    "selectAll": "全选",
+    "togglePage": "切换页面选择",
+    "ariaLabel": "选择页面范围"
+  },
   "toolCalls": {
     "title": "工具调用",
     "parameters": "输入参数",
