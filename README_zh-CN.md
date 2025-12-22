@@ -18,49 +18,62 @@
 
 ---
 
-一款现代化的 DrawIO 编辑器应用，致力于在AI加持下构建更好的**人机协同**建模工具。以用户为中心，不追求简单替代，探索如何让更好与AI取长补短。
+一款现代化的 DrawIO 编辑器应用，致力于在AI加持下构建更好的**人机协同**建模工具。以用户为中心，提升人机功效，探索如何让更好与AI取长补短。提供开箱即用的应用(Windows/Linux/Mac OS)或作为网页部署。
 
 <div align="center">
 <img alt="image" src="https://github.com/user-attachments/assets/4ede9b64-dfe0-4aa7-be5c-4440ca520db7" width="60%" />
 </div>
-
 <div align="center">
 <table width="100%">
   <tr>
-    <td width="50%" valign="top" align="center">
+    <td width="33.33%" valign="top" align="center">
       <h3>版本管理</h3>
-      <p>手动创建主要版本+AI修改时自动创建子版本</p>
+      <p>手动创建版本/AI自动创建版本</p>
       <img src="https://github.com/user-attachments/assets/59d8c33a-af5c-4433-ae94-99827509e632" alt="版本控制" width="60%" />
       <br />
     </td>
-    <td width="50%" valign="top" align="center">
-      <h3>多提供商管理</h3>
-      <p>支持多LLM提供商/多模型切换</p>
-      <img src="https://github.com/user-attachments/assets/eeda8d0e-0d80-45c6-a51b-104724bf2094" alt="多供应商控制" width="50%" />
+    <td width="33.33%" valign="top" align="center">
+      <h3>AI加持修改</h3>
+      <p>基于XPath的精准删改查工具，效果好省token</p>
+      <img src="https://github.com/user-attachments/assets/db4c17b7-49f9-407d-a046-227092e70708" alt="演示" width="60%" />
       <br />
-      <sub>目前仅支持Openai/Deepseek/Anthropic格式</sub>
+    </td>
+    <td width="33.33%" valign="top" align="center">
+      <h3>MCP服务</h3>
+      <p>启动带版本管理的MCP服务，连接其他应用</p>
+      <img src="https://github.com/user-attachments/assets/2109487f-b597-41b6-881a-8ac69a3d787c" alt="MCP" />
+      <br />
     </td>
   </tr>
-    <tr>
-    <td width="50%" valign="top" align="center">
+  <tr>
+    <td width="33.33%" valign="top" align="center">
+      <h3>多供应商管理</h3>
+      <p>支持多LLM供应商/多模型切换*</p>
+      <img src="https://github.com/user-attachments/assets/eeda8d0e-0d80-45c6-a51b-104724bf2094" alt="多供应商控制" width="50%" />
+      <br />
+    </td>
+    <td width="33.33%" valign="top" align="center">
       <h3>版本对比</h3>
       <p>轻松对比/回滚不同修改版本之间的差异</p>
       <img src="https://github.com/user-attachments/assets/b264ee8f-dedd-429d-8501-fb02efe12b44" alt="对比页面" width="100%" />
       <br />
-      <sub>智能对比目前处于beta阶段，可能存在效果不佳/渲染慢的问题</sub>
       <br />
     </td>
-    <td width="50%" valign="top" align="center">
-      <h3>AI加持修改</h3>
-      <p>基于Xpath/drawio元素ID的精准修改工具</p>
-      <img src="https://github.com/user-attachments/assets/db4c17b7-49f9-407d-a046-227092e70708" alt="演示" width="60%" />
+    <td width="33.33%" valign="top" align="center">
+      <h3>画布上下文</h3>
+      <p>不再需要描述“最右边的几个xxx”，直接鼠标框选，自动解析元素为上下文**</p>
+      <img src="https://github.com/user-attachments/assets/07ec5631-21bc-4a11-853a-62058061c49f" alt="上下文" width="100%" />
+      <br />
       <br />
     </td>
   </tr>
 </table>
 </div>
-
-提供了开箱即用的Electron APP，此外还可以部署为WEB应用，具体请参见下方快速开始章节
+<sub>* 目前支持Openai/Deepseek/Anthropic/Gemini格式</sub>
+<br />
+<sub>** 受限于Web API限制，鼠标选中感知功能在Web端不可用。但是Web端依然有基础的压缩画布内容上下文注入功能</sub>
+<br />
+<br />
 
 以下是一些实际的演示以及其提示词：
 
