@@ -7,6 +7,7 @@ import {
   Label,
   TooltipContent,
   TooltipRoot,
+  TooltipTrigger,
   type ButtonProps,
 } from "@heroui/react";
 import { Layers } from "lucide-react";
@@ -139,25 +140,46 @@ export default function PageSelectorButton({
         void openWithRefresh();
       }}
     >
-      <Button
-        type="button"
-        size="sm"
-        variant={buttonVariant}
-        className="page-selector-button"
-        aria-label={t("pageSelector.ariaLabel")}
-        isDisabled={isDisabled}
-        isIconOnly={isIconOnly}
-      >
-        <TooltipRoot delay={0}>
-          <span className="inline-flex items-center gap-2">
-            <Layers size={16} aria-hidden />
-            <span className="page-selector-button__label">{buttonLabel}</span>
-          </span>
-          <TooltipContent placement="top">
-            <p>{tooltip}</p>
-          </TooltipContent>
-        </TooltipRoot>
-      </Button>
+      <TooltipRoot delay={0} isDisabled={isOpen}>
+        {isDisabled ? (
+          <TooltipTrigger className="inline-flex" aria-disabled="true">
+            <Button
+              type="button"
+              size="sm"
+              variant={buttonVariant}
+              className="page-selector-button"
+              aria-label={t("pageSelector.ariaLabel")}
+              isDisabled={isDisabled}
+              isIconOnly={isIconOnly}
+            >
+              <span className="inline-flex items-center gap-2">
+                <Layers size={16} aria-hidden />
+                <span className="page-selector-button__label">
+                  {buttonLabel}
+                </span>
+              </span>
+            </Button>
+          </TooltipTrigger>
+        ) : (
+          <Button
+            type="button"
+            size="sm"
+            variant={buttonVariant}
+            className="page-selector-button"
+            aria-label={t("pageSelector.ariaLabel")}
+            isDisabled={isDisabled}
+            isIconOnly={isIconOnly}
+          >
+            <span className="inline-flex items-center gap-2">
+              <Layers size={16} aria-hidden />
+              <span className="page-selector-button__label">{buttonLabel}</span>
+            </span>
+          </Button>
+        )}
+        <TooltipContent placement="top">
+          <p>{tooltip}</p>
+        </TooltipContent>
+      </TooltipRoot>
       <Dropdown.Popover placement="top start" className="min-w-[220px]">
         <div className="px-2 pt-2">
           <Button

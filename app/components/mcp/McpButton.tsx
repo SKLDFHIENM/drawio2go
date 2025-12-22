@@ -4,6 +4,7 @@ import {
   Button,
   TooltipContent,
   TooltipRoot,
+  TooltipTrigger,
   type ButtonProps,
 } from "@heroui/react";
 import { MCP as McpIcon } from "@lobehub/icons";
@@ -42,8 +43,9 @@ export function McpButton({
   const label = isActive ? t("button.active") : t("button.inactive");
   const tooltip = t("button.tooltip");
   const { className, ...restButtonProps } = buttonProps;
+  const isDisabled = Boolean(restButtonProps.isDisabled);
 
-  return (
+  const button = (
     <Button
       variant={isActive ? "primary" : "secondary"}
       aria-label={label}
@@ -52,15 +54,25 @@ export function McpButton({
       className={["mcp-button", className].filter(Boolean).join(" ")}
       {...restButtonProps}
     >
-      <TooltipRoot delay={0}>
-        <span className="inline-flex items-center gap-2">
-          <McpIcon size={16} aria-hidden />
-          <span className="mcp-button__label">{label}</span>
-        </span>
-        <TooltipContent placement="top">
-          <p>{tooltip}</p>
-        </TooltipContent>
-      </TooltipRoot>
+      <span className="inline-flex items-center gap-2">
+        <McpIcon size={16} aria-hidden />
+        <span className="mcp-button__label">{label}</span>
+      </span>
     </Button>
+  );
+
+  return (
+    <TooltipRoot delay={0}>
+      {isDisabled ? (
+        <TooltipTrigger className="inline-flex" aria-disabled="true">
+          {button}
+        </TooltipTrigger>
+      ) : (
+        button
+      )}
+      <TooltipContent placement="top">
+        <p>{tooltip}</p>
+      </TooltipContent>
+    </TooltipRoot>
   );
 }
