@@ -2,6 +2,7 @@
 
 import { memo } from "react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import ThinkingBlock from "./ThinkingBlock";
 import ToolCallCard from "./ToolCallCard";
 import ImageContent from "./ImageContent";
@@ -69,7 +70,10 @@ export default memo(function MessageContent({
               className="message-markdown-wrapper"
             >
               <div className="message-markdown">
-                <ReactMarkdown components={markdownComponents}>
+                <ReactMarkdown
+                  components={markdownComponents}
+                  remarkPlugins={[remarkGfm]}
+                >
                   {part.text ?? ""}
                 </ReactMarkdown>
               </div>

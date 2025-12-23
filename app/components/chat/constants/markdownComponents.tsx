@@ -42,4 +42,26 @@ export const markdownComponents: MarkdownComponents = {
   ol({ node: _node, ...props }) {
     return <ol className="message-list message-list-ordered" {...props} />;
   },
+  table({ node: _node, ...props }) {
+    return (
+      <div className="message-table-wrapper">
+        <table className="message-table" {...props} />
+      </div>
+    );
+  },
+  thead({ node: _node, ...props }) {
+    return <thead className="message-table-head" {...props} />;
+  },
+  tbody({ node: _node, ...props }) {
+    return <tbody className="message-table-body" {...props} />;
+  },
+  tr({ node: _node, ...props }) {
+    return <tr className="message-table-row" {...props} />;
+  },
+  th({ node: _node, ...props }) {
+    return <th className="message-table-header-cell" {...props} />;
+  },
+  td({ node: _node, ...props }) {
+    return <td className="message-table-data-cell" {...props} />;
+  },
 };
