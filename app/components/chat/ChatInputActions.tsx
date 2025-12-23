@@ -24,6 +24,7 @@ interface ChatInputActionsProps {
   canSendNewMessage: boolean;
   lastMessageIsUser: boolean;
   isOnline: boolean;
+  isCompact?: boolean;
   onCancel?: () => void;
   onNewChat: () => void;
   onHistory: () => void;
@@ -46,6 +47,7 @@ export default function ChatInputActions({
   canSendNewMessage,
   lastMessageIsUser,
   isOnline,
+  isCompact,
   onCancel,
   onNewChat,
   onHistory,
@@ -77,11 +79,6 @@ export default function ChatInputActions({
   const sendButtonDisabled = getSendButtonDisabled();
   const [isModelPopoverOpen, setIsModelPopoverOpen] = useState(false);
   const [isSelecting, setIsSelecting] = useState(false);
-  const getSendDisabledReason = () => {
-    if (!isOnline) return t("status.networkOfflineDesc");
-    return null;
-  };
-  const sendDisabledReason = getSendDisabledReason();
 
   useEffect(() => {
     if (isModelSelectorDisabled) {
@@ -228,6 +225,7 @@ export default function ChatInputActions({
             size="sm"
             className="chat-model-button"
             isDisabled={isModelSelectorDisabled}
+            isIconOnly={isCompact}
             aria-label={`${t("modelSelector.label")}: ${modelLabel}`}
           >
             {isModelSelectorLoading ? (
@@ -239,6 +237,7 @@ export default function ChatInputActions({
                 modelName={activeModel?.modelName || activeModel?.displayName}
                 providerId={activeProvider?.id}
                 providerType={activeProvider?.providerType ?? null}
+                apiUrl={activeProvider?.apiUrl ?? null}
                 className="text-primary"
               />
             )}
@@ -257,7 +256,7 @@ export default function ChatInputActions({
           </Dropdown.Popover>
         </Dropdown>
 
-        <TooltipRoot isDisabled={!sendDisabledReason} delay={0}>
+        <TooltipRoot isDisabled={true} delay={0}>
           <Button
             type={sendButtonType}
             variant={sendButtonVariant}
@@ -299,16 +298,7 @@ export default function ChatInputActions({
             )}
             {canCancel ? t("input.stop") : t("input.send")}
           </Button>
-          {sendDisabledReason ? (
-            <TooltipContent placement="top">
-              <p>{sendDisabledReason}</p>
-            </TooltipContent>
-          ) : null}
         </TooltipRoot>
-
-        {!canSendNewMessage && !isChatStreaming && (
-          <span className="chat-waiting-hint">{t("input.waitingForAI")}</span>
-        )}
       </div>
     </div>
   );

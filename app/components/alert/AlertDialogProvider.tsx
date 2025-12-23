@@ -15,6 +15,7 @@ import type {
   AlertDialogPayload,
   AlertDialogState,
 } from "@/app/types/alert-dialog";
+import { useAppTranslation } from "@/app/i18n/hooks";
 
 type AlertDialogInternalState = AlertDialogState & { isProcessing: boolean };
 
@@ -68,39 +69,46 @@ const alertDialogReducer = (
 
 export function AlertDialogProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(alertDialogReducer, initialState);
+  const { t } = useAppTranslation(["common", "errors"]);
 
-  const open = useCallback((payload: AlertDialogPayload) => {
-    const normalize = (value?: string) => value?.trim() ?? "";
-    const normalizedTitle = normalize(payload.title);
-    const normalizedDescription = normalize(payload.description);
-    const isContentMissing =
-      normalizedTitle.length === 0 && normalizedDescription.length === 0;
+  const open = useCallback(
+    (payload: AlertDialogPayload) => {
+      const normalize = (value?: string) => value?.trim() ?? "";
+      const normalizedTitle = normalize(payload.title);
+      const normalizedDescription = normalize(payload.description);
+      const isContentMissing =
+        normalizedTitle.length === 0 && normalizedDescription.length === 0;
 
-    if (isContentMissing) {
-      // 避免出现空白弹窗，输出调试信息并使用兜底文案
-      console.error(
-        "[AlertDialogProvider] open() skipped empty title/description",
-        payload,
+      if (isContentMissing) {
+        // 避免出现空白弹窗，输出调试信息并使用兜底文案
+        console.error(
+          "[AlertDialogProvider] open() fallback applied for empty content",
+          payload,
+        );
+      }
+
+      const fallbackTitle = t("common:errorBoundary.title", "应用发生错误");
+      const fallbackDescription = t(
+        "errors:common.unknownError",
+        "发生未知错误",
       );
-    }
 
-    const fallbackTitle = "错误";
-    const fallbackDescription = "发生未知错误";
-
-    dispatch({
-      type: "OPEN",
-      payload: {
-        ...payload,
-        title: isContentMissing ? fallbackTitle : normalizedTitle,
-        description: isContentMissing
-          ? fallbackDescription
-          : normalizedDescription,
-        isDismissable:
-          payload.isDismissable ??
-          (isContentMissing ? true : initialState.isDismissable),
-      },
-    });
-  }, []);
+      dispatch({
+        type: "OPEN",
+        payload: {
+          ...payload,
+          title: isContentMissing ? fallbackTitle : normalizedTitle,
+          description: isContentMissing
+            ? fallbackDescription
+            : normalizedDescription,
+          isDismissable:
+            payload.isDismissable ??
+            (isContentMissing ? true : initialState.isDismissable),
+        },
+      });
+    },
+    [t],
+  );
 
   const close = useCallback(() => {
     dispatch({ type: "CLOSE" });

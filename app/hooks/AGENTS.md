@@ -199,13 +199,26 @@
 
 **附件 Object URL 生命周期 Hook** - 用于 Milestone 5 图片展示的懒加载与缓存管理。
 
-- **输入**: `attachmentId`（可为空），`options.enabled` 控制是否加载
-- **输出**: `objectUrl` / `isLoading` / `error` / `retry`
-- **特性**:
-  - Promise 去重：同一 `attachmentId` 并发请求共享同一个读取 Promise
-  - 引用计数：多个组件引用同一图片时复用 Object URL，最后一个卸载后延迟 30 秒 `revoke`
-  - LRU 缓存：最多缓存 50 张图片，超出时淘汰最久未使用且未被引用的条目
-  - 跨端读取：Web 端从 IndexedDB Blob 生成 URL；Electron 端通过 `file_path` + `window.electronFS.readFile()` 读取二进制生成 URL
+### 18. usePageSelection _(新增，2025-12-22)_
+
+**页面范围选择状态 Hook** - 管理 DrawIO 页面列表与多选状态（默认全选），并在 XML 变化时智能同步选中项（保留仍存在项、自动选中新页面、选中项全失效时回退全选）。
+
+- **输入**: `xml: string | null`
+- **输出**:
+  - `pages: DrawioPageInfo[]` - 当前页面列表
+  - `selectedPageIds: Set<string>` - 选中的页面 ID 集合
+  - `setSelectedPageIds: (ids: Set<string>) => void` - 设置选中页面
+  - `isAllSelected: boolean` - 是否全选
+  - `selectedPageIndices: number[]` - 选中页面索引数组（全选时为 []）
+  - `selectAll: () => void` - 重置为全选
+  - `togglePage: (pageId: string) => void` - 切换单个页面选中状态（禁止全不选）
+  - `toggleAll: () => void` - 切换全选状态
+- **核心特性**:
+  - 默认全选所有页面
+  - XML 变化时智能同步：保留仍存在项、自动选中新页面、选中项全失效时回退全选
+  - 禁止全不选：至少保留一页被选中
+  - Set 克隆保护：防止外部修改影响内部状态
+  - 全选时 `selectedPageIndices` 返回 `[]` 以表示全部页面（符合 M4 语义）
 
 ### 18. useChatToolExecution _(新增，2025-12-19)_
 
@@ -391,29 +404,33 @@ export { useDrawioEditor } from "./useDrawioEditor";
 
 ## 代码腐化清理记录
 
+### 2025-12-22 清理
+
+**执行的操作**：
+
+- `useChatToolExecution` / `useOperationToast` / `usePageSelection` 复用 `lib/error-utils.ts` 与 `lib/set-utils.ts`，移除重复实现
+
+**影响文件**：3 个文件（useChatToolExecution.ts、useOperationToast.ts、usePageSelection.ts）
+
+**下次关注**：
+
+- useImageAttachments 的中文错误字符串待结构化（统一错误码/国际化）
+- hooks 间共享的集合/错误工具继续下沉到 lib，避免粘贴式复用
+
 ### 2025-12-19 清理（ChatSidebar 生命周期提取）
 
 **执行的操作**：
 
-- 新增 `useChatLifecycle` Hook，提取 ChatSidebar 的核心生命周期逻辑：
-  - 消息提交流程（锁获取、状态机初始化、发送消息、错误回滚）
-  - 取消流程（中止请求、等待工具队列、释放锁）
-  - 页面卸载处理（beforeunload/pagehide 监听）
-  - 组件卸载清理
-- 完全使用 ChatRunStateMachine 的 transition() 方法进行状态转换
-- 提取 `prepareUserMessage` 和 `saveUserMessage` 辅助函数，降低 submitMessage 的认知复杂度
-- 状态转换流程清晰：
-  - 提交：`idle → preparing → streaming → tools-pending → finalizing → idle`
-  - 取消：`streaming/tools-pending → cancelled → idle`
-  - 错误：`* → errored → idle`
+- 新增 `useChatLifecycle`，提取提交/取消/错误/卸载清理等流程
+- 状态转换统一使用 `ChatRunStateMachine.transition()`，减少直接 ref 操作
+- 提取 `prepareUserMessage` / `saveUserMessage`，降低 submitMessage 复杂度
 
 **影响文件**：3 个文件（useChatLifecycle.ts、index.ts、AGENTS.md）
 
 **下次关注**：
 
-- ChatSidebar 可以使用此 Hook 替代现有的生命周期逻辑
-- 观察状态机转换是否覆盖所有边界情况
-- 考虑是否需要添加更多生命周期钩子（如 onStateChange）
+- ChatSidebar 全量替换为该 Hook，移除重复生命周期代码
+- 状态机边界状态补充测试用例（取消/异常关闭/离线）
 
 ### 2025-12-08 清理
 

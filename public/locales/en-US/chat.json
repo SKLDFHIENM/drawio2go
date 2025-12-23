@@ -101,7 +101,6 @@
     "newChat": "New chat",
     "openHistory": "History",
     "retry": "Retry Last Message",
-    "waitingForAI": "Waiting for AI response...",
     "reset": "Clear input",
     "attachFile": "Attach file",
     "dropImageHint": "Drag an image here to upload",
@@ -112,7 +111,19 @@
     "characterCount": "{{current}} / {{max}} chars"
   },
   "canvasContext": "Canvas Context",
-  "canvasContextTooltip": "Auto-attach canvas elements info to chat, including selection info in APP",
+  "canvasContextTooltip": "Auto-inject compressed canvas elements into conversations, in App will injecting mouse-selected element data",
+  "pageSelector": {
+    "title": "Page Selector",
+    "allPages": "All pages",
+    "allPagesLabel": "Pages: All pages",
+    "selectedPages": "Pages: {{selected}}/{{total}}",
+    "tooltip": "Choose which pages the AI operations apply to (multi-select).",
+    "selectAll": "Select all",
+    "deselectAll": "Deselect all",
+    "togglePage": "Toggle page selection",
+    "ariaLabel": "Select page scope",
+    "noPagesSelected": "Please select at least one page"
+  },
   "toolCalls": {
     "title": "Tool calls",
     "parameters": "Input parameters",
@@ -141,6 +152,7 @@
       "expand": "Expand details",
       "collapse": "Collapse details",
       "copyInput": "Copy input",
+      "copyError": "Copy error",
       "copyOutput": "Copy output",
       "retry": "Retry call"
     },
@@ -267,7 +279,6 @@
     "expand": "Expand content",
     "collapse": "Collapse content",
     "toggleTool": "Toggle tool call details",
-    "openPreview": "Open preview",
     "selectConversation": "Select conversation {{title}}",
     "deselectConversation": "Deselect conversation {{title}}",
     "selectAll": "Select all conversations",

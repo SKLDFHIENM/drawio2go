@@ -8,7 +8,7 @@
 
 - **constants/tool-names.ts**: 工具名称常量与类型定义（AI 工具 / 前端执行工具）
 - **constants/tool-config.ts**: 工具默认超时配置（毫秒），覆盖所有工具
-- **drawio-tools.ts**: 浏览器端的 XML 存储桥接（统一存储抽象层 + 事件通知）
+- **drawio-tools.ts**: 浏览器端的 XML 存储桥接（统一存储抽象层 + 事件通知），包含 `waitForMergeValidation()`（返回含 `requestId/context/rawError` 的 merge 结果）
 - **frontend-tools.ts**: 前端 AI 工具定义与执行（`drawio_read` / `drawio_edit_batch` / `drawio_overwrite`），通过注入回调直接读取/写入编辑器 XML
 - **schemas/drawio-tool-schemas.ts**: DrawIO AI 工具参数的统一 Zod Schema 单一真源（含类型导出）
 - **svg-export-utils.ts**: DrawIO 多页面 SVG 导出工具（页面拆分、单页 XML 重建、结果序列化）
@@ -29,9 +29,11 @@
 - **utils.ts**: 通用工具函数（debounce 防抖函数，支持 flush/cancel 方法；runStorageTask、withTimeout）
 - **logger.ts**: 轻量日志工厂（`createLogger(componentName)`），自动加组件前缀并支持 debug/info/warn/error 级别过滤
 - **error-handler.ts**: 通用错误处理工具（AppError + i18n 翻译 + API/Toast 友好消息）
+- **error-utils.ts**: 轻量错误提取与归一化（unknown → message/string/Error），用于 UI/Hook 层保持既有行为
 - **drainable-tool-queue.ts**: 可等待清空的工具执行队列，确保 onFinish 等待所有工具完成后再保存消息和释放锁
 - **chat-run-state-machine.ts**: 聊天运行状态机，统一管理会话生命周期状态，避免 ref 竞态条件
 - **message-sync-state-machine.ts**: 消息同步状态机，统一管理消息同步状态（storage ↔ UI），避免循环同步和竞态条件
+- **set-utils.ts**: Set 相关通用工具函数（比较、全选判断、从页面列表构建 ID Set）
 
 ### svg-export-utils.ts
 
@@ -777,6 +779,20 @@ const tools = [
 7. **日志级别控制**: 生产环境应关闭 debug 级别日志，避免性能影响
 
 ## 代码腐化清理记录
+
+### 2025-12-22 清理
+
+**执行的操作**：
+
+- 新增 `error-utils.ts` 与 `set-utils.ts`，合并重复工具函数并提供统一导出
+- 调用方（hooks/components）改用 lib 统一能力，减少散落的错误/集合处理实现
+
+**影响文件**：2 个文件（error-utils.ts、set-utils.ts）
+
+**下次关注**：
+
+- 继续收敛各模块中的“临时错误字符串”为结构化错误（码 + i18n）
+- 检查 lib 层工具的命名与导出边界，避免循环依赖
 
 ### 2025-12-08 清理
 

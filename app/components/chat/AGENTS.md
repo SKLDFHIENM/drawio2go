@@ -29,12 +29,11 @@
 | **ModelComboBox**       | 模型选择器       | 按供应商分组的模型下拉/搜索，支持禁用、加载态和默认标记 |
 | **ChatInputArea**       | 输入区域         | 多行文本框，表单处理，按 Enter 发送                     |
 | **CanvasContextButton** | 画布上下文按钮   | 切换是否在对话中附带画布上下文信息                      |
+| **PageSelectorButton**  | 页面选择器按钮   | 选择 AI 生效页面范围（多选/全选），用于后续工具执行     |
 | **ChatInputActions**    | 输入操作按钮组   | 新建/历史/模型选择 Popover/发送/取消按钮                |
-| **ChatSessionMenu**     | 会话菜单         | 切换会话列表（可能在侧边栏中使用）                      |
 | **ChatHistoryView**     | 历史记录视图     | 搜索/筛选对话、日期范围、批量操作、预览                 |
 | **HistoryToolbar**      | 历史工具栏       | 搜索框、日期选择、批量操作切换、全选/清除               |
 | **ConversationList**    | 对话列表         | 显示过滤后的对话卡片，选择模式，预览和打开操作          |
-| **MessagePreviewPanel** | 消息预览面板     | 侧边栏预览对话内容，显示消息角色和内容                  |
 | **EmptyState**          | 空状态占位符     | 加载中、未配置、无消息三种状态提示                      |
 | **TypingIndicator**     | 打字指示器       | 流式输出时的动画指示                                    |
 | **ChatShell**           | 布局壳层         | 统一包裹聊天/历史视图，承载顶部提示与导航               |
@@ -66,7 +65,6 @@
 1. **ChatHistoryView** 是历史视图的主容器
 2. **HistoryToolbar** 提供搜索、日期筛选、批量操作
 3. **ConversationList** 渲染过滤后的对话列表
-4. **MessagePreviewPanel** 在侧边栏展示对话内容预览
 
 ### 工具调用追踪
 
@@ -82,9 +80,8 @@
 ```
 ChatHistoryView（历史视图容器）
 ├── HistoryToolbar（搜索、筛选、批量操作）
-├── ConversationList（过滤后的对话列表）
-│   └── Conversation Item（单个对话卡片）
-└── MessagePreviewPanel（侧边栏预览）
+└── ConversationList（过滤后的对话列表）
+    └── Conversation Item（单个对话卡片）
 
 MessageList（消息列表容器）
 ├── MessageItem（单条消息）
@@ -105,52 +102,37 @@ ChatInputArea（输入组件）
 
 ## 代码腐化清理记录
 
+### 2025-12-22 清理
+
+**执行的操作**：
+
+- 删除 `fileOperations.ts` 的 3 个未使用函数（showOpenDialog、readFile、selectFile）
+- 删除未被引用的 `ChatSessionMenu` 组件
+- 统一事件处理：`ThinkingBlock`、`ConversationList` 改用 React Aria `usePress`
+
+**影响文件**：约 4 个（ThinkingBlock.tsx、ConversationList.tsx、fileOperations.ts、ChatSessionMenu 等）
+
+**下次关注**：
+
+- ImagePreview/ImageContent 的内联样式待迁移到 CSS 文件
+- useImageAttachments 的中文错误字符串待结构化
+
 ### 2025-12-19 清理（架构重构）
 
 **执行的操作**：
 
-- **ChatSidebar 架构重构**：完全基于状态机和新 hooks 重写 ChatSidebar.tsx
-  - 从 2117 行减少到 1402 行，减少 715 行（约 33.8%）
-  - 引入 4 个新 hooks：`useChatMessages`、`useChatToolExecution`、`useChatNetworkControl`、`useChatLifecycle`
-  - 完全使用 `MessageSyncStateMachine` 和 `ChatRunStateMachine` 进行状态管理
-  - 移除内联的消息同步逻辑，改用 `useChatMessages` hook
-  - 移除内联的工具执行逻辑，改用 `useChatToolExecution` hook
-  - 移除内联的网络状态处理逻辑，改用 `useChatNetworkControl` hook
-  - 移除内联的生命周期管理逻辑，改用 `useChatLifecycle` hook
-  - 使用状态机的 `transition()` 方法替代所有直接的 ref 操作
-  - 减少 useEffect 数量，提高代码可维护性
-  - 保留的逻辑：useChat hook 配置、图片缓存、推理时长计算、UI 状态、对话历史管理
-
-**架构改进**：
-
-1. **消息同步**：使用 `MessageSyncStateMachine` 管理 storage ↔ UI 的双向同步
-   - 避免循环同步问题
-   - 流式时自动锁定同步
-   - 使用消息指纹对比避免重复同步
-
-2. **工具执行**：使用 `DrainableToolQueue` 确保工具串行执行
-   - 提供 `drainQueue` 方法等待所有工具完成
-   - 支持工具执行超时和中止
-   - 统一的错误处理
-
-3. **网络控制**：监听网络状态变化并自动处理
-   - 网络断开时停止流式、释放锁、标记对话完成
-   - 网络恢复时显示提示
-   - 自动管理恢复提示的显示和隐藏
-
-4. **生命周期管理**：统一管理聊天生命周期
-   - 消息提交流程（锁获取、状态机初始化、发送消息、错误回滚）
-   - 取消流程（中止请求、等待工具队列、释放锁）
-   - 页面卸载处理（beforeunload/pagehide 监听）
-   - 组件卸载清理
+- ChatSidebar 基于状态机与 hooks 重写（约 2117 → 1402 行，-715）
+- 新增 hooks：`useChatMessages`、`useChatToolExecution`、`useChatNetworkControl`、`useChatLifecycle`
+- 引入 `MessageSyncStateMachine` / `ChatRunStateMachine`，统一使用 `transition()` 管理状态
+- 引入 `DrainableToolQueue`，工具调用串行化并支持超时/中止
+- 统一卸载清理：beforeunload/pagehide 监听、队列 drain、锁释放与状态复位
 
 **影响文件**：1 个主文件（ChatSidebar.tsx）+ 4 个新 hooks
 
 **下次关注**：
 
-- 观察新架构在生产环境中的稳定性
-- 监控状态机状态转换是否有遗漏的边界情况
-- 考虑是否需要进一步提取其他可复用的逻辑到 hooks
+- 观察新架构在生产环境中的稳定性与边界状态覆盖
+- 状态机事件与 UI 提示的一致性（错误/离线/取消）
 
 ### 2025-12-08 清理
 
@@ -358,11 +340,9 @@ app/components/chat/
 ├── ChatInputArea.tsx             # 输入区域
 ├── ChatInputActions.tsx          # 输入操作按钮（含模型 Popover）
 ├── ModelComboBox.tsx             # 模型选择器
-├── ChatSessionMenu.tsx           # 会话菜单
 ├── ChatHistoryView.tsx           # 历史记录视图
 ├── HistoryToolbar.tsx            # 历史工具栏
 ├── ConversationList.tsx          # 对话列表
-├── MessagePreviewPanel.tsx       # 消息预览面板
 ├── EmptyState.tsx                # 空状态提示
 ├── TypingIndicator.tsx           # 打字指示器
 ├── typing-indicator.css          # 打字动画样式

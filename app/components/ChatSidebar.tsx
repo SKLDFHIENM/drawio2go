@@ -31,7 +31,12 @@ import {
   useChatToolExecution,
   useChatNetworkControl,
   useChatLifecycle,
+  usePageSelection,
 } from "@/app/hooks";
+import {
+  isFatalToolError,
+  type AddToolResultFn,
+} from "@/app/hooks/useChatToolExecution";
 import { useAlertDialog } from "@/app/components/alert";
 import { useI18n } from "@/app/i18n/hooks";
 import {
@@ -144,8 +149,10 @@ async function createDrawioXmlSnapshot(
   }
 
   const storageResult = await getDrawioXML();
-  if (storageResult.success && storageResult.xml) return storageResult.xml;
-  throw new Error(storageResult.error || "无法获取 DrawIO XML 快照");
+  if (storageResult.success) return storageResult.xml;
+  throw new Error(
+    storageResult.message || storageResult.error || "无法获取 DrawIO XML 快照",
+  );
 }
 
 async function enqueueAndWait<T>(
@@ -359,7 +366,7 @@ async function maybeInjectCanvasContext(options: {
 
     return injectPrefixIntoLastUserMessage({ messages, prefix });
   } catch (error) {
-    console.error("[ChatSidebar] 获取画布上下文失败，已降级为不注入", error);
+    logger.error("获取画布上下文失败，已降级为不注入", { error });
     return messages;
   }
 }
@@ -373,8 +380,10 @@ async function getDrawioXmlFromRef(
   }
 
   const storageResult = await getDrawioXML();
-  if (storageResult.success && storageResult.xml) return storageResult.xml;
-  throw new Error(storageResult.error || "无法获取 DrawIO XML");
+  if (storageResult.success) return storageResult.xml;
+  throw new Error(
+    storageResult.message || storageResult.error || "无法获取 DrawIO XML",
+  );
 }
 
 async function replaceDrawioXmlFromRef(
@@ -418,6 +427,7 @@ export default function ChatSidebar({
   const [input, setInput] = useState("");
   const [isCanvasContextEnabled, setIsCanvasContextEnabled] = useState(true);
   const isCanvasContextEnabledRef = useRef(false);
+  const [pageSelectorXml, setPageSelectorXml] = useState<string | null>(null);
   const [expandedToolCalls, setExpandedToolCalls] = useState<
     Record<string, boolean>
   >({});
@@ -430,6 +440,41 @@ export default function ChatSidebar({
   const [mcpOverlayPortalContainer, setMcpOverlayPortalContainer] =
     useState<Element | null>(null);
   const chatShellContainerRef = useRef<HTMLDivElement | null>(null);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  const refreshPageSelectorXml = useCallback(async (): Promise<
+    string | null
+  > => {
+    try {
+      const xmlSnapshot = await createDrawioXmlSnapshot(editorRef);
+      if (isMountedRef.current) {
+        setPageSelectorXml(xmlSnapshot);
+      }
+      return xmlSnapshot;
+    } catch (error) {
+      logger.warn("[ChatSidebar] 获取页面选择器 XML 快照失败", { error });
+      if (isMountedRef.current) {
+        setPageSelectorXml(null);
+      }
+      return null;
+    }
+  }, [editorRef]);
+
+  const pageSelection = usePageSelection({ xml: pageSelectorXml });
+  const selectedPageIdsRef = useRef<Set<string>>(new Set());
+  const isAllSelectedPagesRef = useRef(true);
+
+  useEffect(() => {
+    selectedPageIdsRef.current = pageSelection.selectedPageIds;
+    isAllSelectedPagesRef.current = pageSelection.isAllSelected;
+  }, [pageSelection.isAllSelected, pageSelection.selectedPageIds]);
 
   // ========== Hooks 聚合 ==========
   const { t, i18n } = useI18n();
@@ -467,6 +512,14 @@ export default function ChatSidebar({
   useEffect(() => {
     setMcpOverlayPortalContainer(mcpOverlayContainerRef.current);
   }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    refreshPageSelectorXml().catch((error) => {
+      logger.warn("[ChatSidebar] 初始化页面选择器 XML 快照失败", { error });
+    });
+  }, [isOpen, refreshPageSelectorXml, resolvedProjectUuid]);
 
   useEffect(() => {
     isCanvasContextEnabledRef.current = isCanvasContextEnabled;
@@ -528,8 +581,7 @@ export default function ChatSidebar({
   const reasoningTimersRef = useRef<Map<string, number>>(new Map());
   const finishReasonRef = useRef<string | null>(null);
 
-  // 工具执行队列和状态机
-  const toolQueue = useRef(new DrainableToolQueue());
+  // 状态机
   const stateMachine = useRef(new ChatRunStateMachine());
   const activeRequestAbortRef = useRef<AbortController | null>(null);
 
@@ -767,6 +819,28 @@ export default function ChatSidebar({
     ],
   );
 
+  const handleFrontendToolVersionSnapshot = useCallback(
+    async (description: string) => {
+      try {
+        await createAutoVersionSnapshot(description);
+      } catch (error) {
+        // 降级处理：快照失败仅警告，不阻止工具执行
+        const message =
+          extractErrorMessage(error) ??
+          (toErrorString(error) || t("toasts.unknownError"));
+        showNotice(
+          t("toasts.autoVersionSnapshotFailed", { error: message }),
+          "warning",
+        );
+        logger.warn(
+          "[ChatSidebar] AI 自动版本快照失败（已降级，不阻塞 AI 编辑）",
+          { error, description },
+        );
+      }
+    },
+    [createAutoVersionSnapshot, extractErrorMessage, showNotice, t],
+  );
+
   const frontendToolContext = useMemo<FrontendToolContext>(() => {
     return {
       getDrawioXML: async () => await getDrawioXmlFromRef(editorRef),
@@ -776,32 +850,32 @@ export default function ChatSidebar({
           description: ctxOptions?.description,
         });
       },
-      onVersionSnapshot: async (description) => {
-        try {
-          await createAutoVersionSnapshot(description);
-        } catch (error) {
-          // 降级处理：快照失败仅警告，不阻止工具执行
-          const message =
-            extractErrorMessage(error) ??
-            (toErrorString(error) || t("toasts.unknownError"));
-          showNotice(
-            t("toasts.autoVersionSnapshotFailed", { error: message }),
-            "warning",
-          );
-          logger.warn(
-            "[ChatSidebar] AI 自动版本快照失败（已降级，不阻塞 AI 编辑）",
-            { error, description },
-          );
-        }
-      },
+      onVersionSnapshot: handleFrontendToolVersionSnapshot,
+      getPageFilterContext: () => ({
+        selectedPageIds: isAllSelectedPagesRef.current
+          ? []
+          : Array.from(selectedPageIdsRef.current),
+        isMcpContext: false,
+      }),
     };
-  }, [
-    editorRef,
-    createAutoVersionSnapshot,
-    extractErrorMessage,
-    showNotice,
-    t,
-  ]);
+  }, [editorRef, handleFrontendToolVersionSnapshot]);
+
+  const mcpFrontendToolContext = useMemo<FrontendToolContext>(() => {
+    return {
+      getDrawioXML: async () => await getDrawioXmlFromRef(editorRef),
+      replaceDrawioXML: async (xml, ctxOptions) => {
+        return await replaceDrawioXmlFromRef(editorRef, xml, {
+          requestId: currentToolCallIdRef.current ?? undefined,
+          description: ctxOptions?.description,
+        });
+      },
+      onVersionSnapshot: handleFrontendToolVersionSnapshot,
+      getPageFilterContext: () => ({
+        selectedPageIds: [],
+        isMcpContext: true,
+      }),
+    };
+  }, [editorRef, handleFrontendToolVersionSnapshot]);
 
   const frontendTools = useMemo(
     () => createFrontendDrawioTools(frontendToolContext),
@@ -812,6 +886,16 @@ export default function ChatSidebar({
   useEffect(() => {
     frontendToolsRef.current = frontendTools;
   }, [frontendTools]);
+
+  const mcpFrontendTools = useMemo(
+    () => createFrontendDrawioTools(mcpFrontendToolContext),
+    [mcpFrontendToolContext],
+  );
+
+  const mcpFrontendToolsRef = useRef(mcpFrontendTools);
+  useEffect(() => {
+    mcpFrontendToolsRef.current = mcpFrontendTools;
+  }, [mcpFrontendTools]);
 
   const llmConfigRef = useRef(llmConfig);
   useEffect(() => {
@@ -1025,6 +1109,7 @@ export default function ChatSidebar({
     addToolResult,
   } = useChat<UseChatMessage>({
     id: activeConversationId || "default",
+    experimental_throttle: 100, // 限制消息更新频率为 100ms，减少快速流式输出时的性能开销
     messages: initialMessages as unknown as UseChatMessage[],
     transport: chatTransport,
     onToolCall: ({ toolCall }) => {
@@ -1064,20 +1149,39 @@ export default function ChatSidebar({
           !isAbort && !isError && finishReason === "tool-calls";
 
         if (shouldContinue) {
-          if (toolExecution.toolError) {
-            const toolErrorMessage =
-              extractErrorMessage(toolExecution.toolError) ??
-              toolExecution.toolError.message ??
-              "工具执行失败";
+          if (
+            toolExecution.toolError &&
+            isFatalToolError(toolExecution.toolError)
+          ) {
             logger.error(
-              "[ChatSidebar] onFinish: shouldContinue 但检测到工具错误，转入错误恢复流程",
+              "[ChatSidebar] onFinish: shouldContinue 但检测到致命工具错误，停止继续轮次",
               {
                 toolError: toolExecution.toolError,
-                toolErrorMessage,
                 finishReason,
               },
             );
-            throw new Error(`工具执行失败: ${toolErrorMessage}`);
+            return;
+          }
+
+          // 工具轮次也要落盘：避免多轮工具调用中间过程丢失（崩溃/刷新会丢）
+          try {
+            await chatService.saveNow(
+              ctx.conversationId,
+              finishedMessages as unknown as ChatUIMessage[],
+              {
+                forceTitleUpdate: false,
+                resolveConversationId,
+                onConversationResolved: (resolvedId) => {
+                  ctx.conversationId = resolvedId;
+                  setActiveConversationId(resolvedId);
+                },
+              },
+            );
+            logger.info("[ChatSidebar] onFinish: 工具轮次中间保存成功");
+          } catch (saveError) {
+            logger.error("[ChatSidebar] onFinish: 工具轮次保存失败", {
+              saveError,
+            });
           }
 
           logger.info("[ChatSidebar] onFinish: 工具需要继续，等待下一轮");
@@ -1129,6 +1233,33 @@ export default function ChatSidebar({
       } catch (error) {
         logger.error("[ChatSidebar] onFinish: 发生错误", { error });
 
+        // 即使失败也要保存消息（保留失败现场：工具调用输入/输出/错误信息）
+        try {
+          await chatService.saveNow(
+            ctx.conversationId,
+            finishedMessages as unknown as ChatUIMessage[],
+            {
+              forceTitleUpdate: false,
+              resolveConversationId,
+              onConversationResolved: (resolvedId) => {
+                ctx.conversationId = resolvedId;
+                setActiveConversationId(resolvedId);
+              },
+            },
+          );
+          logger.info("[ChatSidebar] onFinish/catch: 已保存失败现场");
+        } catch (saveError) {
+          logger.error("[ChatSidebar] onFinish/catch: 保存消息失败", {
+            saveError,
+          });
+        }
+
+        // 异常路径也要清理 streaming 标志，避免会话长期卡在 is_streaming=true
+        logger.info("[ChatSidebar] onFinish/catch: 尝试清理 streaming 标志", {
+          conversationId: ctx.conversationId,
+        });
+        await updateStreamingFlag(ctx.conversationId, false);
+
         // 错误时转换到 errored → idle
         safeTransition("error", "onFinish/catch");
         safeTransition("error-cleanup", "onFinish/catch");
@@ -1149,7 +1280,7 @@ export default function ChatSidebar({
   // 工具执行 Hook
   const toolExecution = useChatToolExecution({
     frontendTools,
-    addToolResult,
+    addToolResult: addToolResult as unknown as AddToolResultFn,
   });
 
   // 同步 currentToolCallId
@@ -1164,7 +1295,7 @@ export default function ChatSidebar({
     if (!api?.onToolRequest || !api?.sendToolResponse) return;
 
     const handleToolRequest = (request: McpToolRequest) => {
-      const tool = frontendToolsRef.current[request.toolName];
+      const tool = mcpFrontendToolsRef.current[request.toolName];
       const execute = tool?.execute;
       if (!tool || typeof execute !== "function") {
         api.sendToolResponse(request.requestId, {
@@ -1290,7 +1421,7 @@ export default function ChatSidebar({
   // 生命周期管理 Hook
   const lifecycle = useChatLifecycle({
     stateMachine,
-    toolQueue,
+    toolQueue: toolExecution.toolQueue,
     acquireLock,
     releaseLock,
     sendMessage: (message, options) =>
@@ -1339,7 +1470,7 @@ export default function ChatSidebar({
       }
       return t(key);
     },
-    toolQueue: toolQueue.current,
+    toolQueue: toolExecution.toolQueue,
   });
 
   // 消息同步 Hook
@@ -1366,7 +1497,6 @@ export default function ChatSidebar({
 
   // ========== 初始化副作用 ==========
   useEffect(() => {
-    console.info("[ChatSidebar] calling loadModelSelector on mount");
     void loadModelSelector();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -1386,57 +1516,6 @@ export default function ChatSidebar({
     if (!activeConversationId) return;
     void handleAbnormalExitIfNeeded(activeConversationId);
   }, [activeConversationId, handleAbnormalExitIfNeeded]);
-
-  useEffect(() => {
-    if (typeof localStorage === "undefined") return;
-
-    const recoverUnloadData = async () => {
-      const keys = Object.keys(localStorage).filter((key) =>
-        key.startsWith("chat:unload:"),
-      );
-
-      for (const key of keys) {
-        try {
-          const raw = localStorage.getItem(key);
-          if (!raw) {
-            localStorage.removeItem(key);
-            continue;
-          }
-
-          const parsed = JSON.parse(raw) as {
-            conversationId?: string;
-            messages?: ChatUIMessage[];
-          };
-
-          if (
-            !parsed ||
-            typeof parsed.conversationId !== "string" ||
-            !Array.isArray(parsed.messages)
-          ) {
-            localStorage.removeItem(key);
-            continue;
-          }
-
-          logger.info("[ChatSidebar] 恢复卸载时未保存的消息", { key });
-
-          await chatService.saveNow(parsed.conversationId, parsed.messages, {
-            resolveConversationId,
-            onConversationResolved: (resolvedId) => {
-              // eslint-disable-next-line sonarjs/no-nested-functions -- setState 函数式更新需要回调，且此处嵌套层级较深
-              setActiveConversationId((prev) => prev ?? resolvedId);
-            },
-          });
-
-          localStorage.removeItem(key);
-        } catch (error) {
-          logger.error("[ChatSidebar] 恢复卸载数据失败", { key, error });
-          localStorage.removeItem(key);
-        }
-      }
-    };
-
-    void recoverUnloadData();
-  }, [chatService, resolveConversationId, setActiveConversationId]);
 
   // ========== 推理时长计算 ==========
   useEffect(() => {
@@ -1555,6 +1634,7 @@ export default function ChatSidebar({
 
   useEffect(() => {
     if (!toolExecution.toolError) return;
+    if (!isFatalToolError(toolExecution.toolError)) return;
     if (lastHandledToolErrorRef.current === toolExecution.toolError) return;
     lastHandledToolErrorRef.current = toolExecution.toolError;
 
@@ -1578,6 +1658,12 @@ export default function ChatSidebar({
   // ========== 事件处理函数 ==========
 
   const submitMessage = async () => {
+    // 新一轮开始时清理旧的 toolError，避免污染 shouldContinue 判断
+    if (toolExecution.toolError) {
+      toolExecution.setToolError(null);
+      logger.info("[ChatSidebar] submitMessage: 清理旧的 toolError");
+    }
+
     const trimmedInput = input.trim();
     const readyAttachments = imageAttachments.attachments.filter(
       (item) => item.status === "ready",
@@ -1629,6 +1715,18 @@ export default function ChatSidebar({
     if (!targetSessionId) {
       showNotice(
         t("chat:messages.conversationNotReady", "对话尚未就绪，请稍后重试。"),
+        "warning",
+      );
+      return;
+    }
+
+    // 如果不是全选模式，检查选择数量（允许空选，但发送时拦截并提示）。
+    if (
+      !isAllSelectedPagesRef.current &&
+      selectedPageIdsRef.current.size === 0
+    ) {
+      showNotice(
+        t("chat:pageSelector.noPagesSelected", "请至少选择一个页面"),
         "warning",
       );
       return;
@@ -1900,6 +1998,13 @@ export default function ChatSidebar({
   };
 
   const modelSelectorDisabled = isChatStreaming || selectorLoading;
+  const isModelConfigMissing = providers.length === 0 || models.length === 0;
+  const isInputDisabled =
+    configLoading ||
+    !llmConfig ||
+    isModelConfigMissing ||
+    !canSendNewMessage ||
+    !isOnline;
 
   // ========== 渲染 ==========
 
@@ -2001,6 +2106,13 @@ export default function ChatSidebar({
                 }}
                 isCanvasContextEnabled={isCanvasContextEnabled}
                 onCanvasContextToggle={handleCanvasContextToggle}
+                pageSelector={{
+                  pages: pageSelection.pages,
+                  selectedPageIds: pageSelection.selectedPageIds,
+                  onSelectionChange: pageSelection.setSelectedPageIds,
+                  onRequestRefresh: refreshPageSelectorXml,
+                  isDisabled: isInputDisabled,
+                }}
                 mcpConfigDialog={{
                   isActive: mcpServer.running,
                   isOpen: isMcpConfigOpen,

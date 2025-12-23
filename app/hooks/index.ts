@@ -19,6 +19,8 @@ export { useOperationToast } from "./useOperationToast";
 export { useAttachmentObjectUrl } from "./useAttachmentObjectUrl";
 export { useUpdateChecker } from "./useUpdateChecker";
 export { useMcpServer } from "./useMcpServer";
+export { usePageSelection } from "./usePageSelection";
+export { useContainerQuery } from "./useContainerQuery";
 
 // Other Hooks - 其他 Hooks
 export { useDrawioEditor } from "./useDrawioEditor";

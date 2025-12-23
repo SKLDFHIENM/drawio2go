@@ -94,3 +94,143 @@
 .message-link:hover {
   opacity: 0.8;
 }
+
+/* ==================== 表格样式 ==================== */
+
+/* 表格滚动容器 */
+.message-table-wrapper {
+  width: fit-content;
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 0.75rem 0;
+  border-radius: 0.5rem;
+}
+
+/* 滚动条样式 */
+.message-table-wrapper::-webkit-scrollbar {
+  height: 8px;
+}
+
+.message-table-wrapper::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+  border-radius: 4px;
+}
+
+.message-table-wrapper::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+.message-table-wrapper::-webkit-scrollbar-thumb:hover {
+  background: var(--border-light);
+}
+
+/* 表格容器 */
+.message-table {
+  width: auto;
+  border-collapse: collapse;
+  border: 1px solid var(--border-light);
+  border-radius: 0.5rem;
+  overflow: hidden;
+  font-size: 0.875rem;
+  background: var(--surface);
+}
+
+.dark .message-table {
+  background: var(--bg-secondary);
+  border-color: var(--border);
+}
+
+/* 表头 */
+.message-table-head {
+  background: var(--bg-primary);
+  border-bottom: 2px solid var(--border-light);
+}
+
+.dark .message-table-head {
+  background: var(--bg-hover);
+  border-bottom-color: var(--border);
+}
+
+/* 表格行 */
+.message-table-row {
+  transition: background-color 0.2s ease;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.message-table-row:last-child {
+  border-bottom: none;
+}
+
+.message-table-row:hover {
+  background: var(--bg-hover);
+}
+
+.dark .message-table-row {
+  border-bottom-color: var(--border);
+}
+
+.dark .message-table-row:hover {
+  background: color-mix(in oklch, var(--accent) 12%, transparent);
+}
+
+/* 表头单元格 */
+.message-table-header-cell {
+  padding: 0.6rem 0.8rem;
+  text-align: left;
+  font-weight: 600;
+  color: var(--foreground);
+  background: inherit;
+  border-right: 1px solid var(--border-light);
+}
+
+.message-table-header-cell:last-child {
+  border-right: none;
+}
+
+.dark .message-table-header-cell {
+  border-right-color: var(--border);
+}
+
+/* 数据单元格 */
+.message-table-data-cell {
+  padding: 0.5rem 0.8rem;
+  color: var(--foreground);
+  border-right: 1px solid var(--border-light);
+}
+
+.message-table-data-cell:last-child {
+  border-right: none;
+}
+
+.dark .message-table-data-cell {
+  border-right-color: var(--border);
+}
+
+/* 表格内的行内代码 */
+.message-table code {
+  background: var(--bg-secondary);
+  padding: 0.2rem 0.4rem;
+  border-radius: 0.25rem;
+  font-size: 0.8em;
+}
+
+.dark .message-table code {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* 响应式设计 */
+@media (max-width: 640px) {
+  .message-table-wrapper {
+    margin: 0.5rem 0;
+  }
+
+  .message-table {
+    font-size: 0.75rem;
+  }
+
+  .message-table-header-cell,
+  .message-table-data-cell {
+    padding: 0.4rem 0.6rem;
+  }
+}

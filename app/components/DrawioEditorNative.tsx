@@ -10,10 +10,15 @@ import {
   useImperativeHandle,
 } from "react";
 import { Spinner } from "@heroui/react";
-import { DrawioSelectionInfo } from "../types/drawio-tools";
+import {
+  DrawioSelectionInfo,
+  type DrawioMergeErrorEventDetail,
+  type DrawioMergeSuccessEventDetail,
+} from "../types/drawio-tools";
 import { debounce } from "@/app/lib/utils";
 import { useAppTranslation } from "@/app/i18n/hooks";
 import { createLogger } from "@/lib/logger";
+import { toErrorString } from "@/app/lib/error-handler";
 
 const logger = createLogger("DrawioEditorNative");
 
@@ -180,7 +185,7 @@ const DrawioEditorNative = forwardRef<DrawioEditorRef, DrawioEditorNativeProps>(
     // 构建 DrawIO URL（包含主题参数）
     // dark=1 表示深色模式，dark=0 表示浅色模式
     // 运行时切换主题时，DrawIO 会通过 prefers-color-scheme 自动跟随，无需重载 iframe
-    const drawioUrl = `https://embed.diagrams.net/?embed=1&proto=json&spin=1&ui=kennedy&libraries=1&saveAndExit=1&noSaveBtn=1&noExitBtn=1&dark=${initialTheme === "dark" ? "1" : "0"}`;
+    const drawioUrl = `https://embed.diagrams.net/?embed=1&proto=json&spin=1&ui=kennedy&libraries=1&saveAndExit=0&noSaveBtn=1&noExitBtn=1&dark=${initialTheme === "dark" ? "1" : "0"}`;
 
     // 已发送等待响应的 load 回调队列（与 pendingLoadQueueRef 分开管理）
     const sentLoadResolversRef = useRef<Array<() => void>>([]);
@@ -517,25 +522,58 @@ const DrawioEditorNative = forwardRef<DrawioEditorRef, DrawioEditorNativeProps>(
         activeRequestIdRef.current = requestIdFromPayload;
       }
 
-      // 新增：检测 DrawIO 返回的 merge 错误
-      if (data.error) {
-        logger.error("[DrawIO] merge 错误:", data.error);
+      const context = { operation: "merge" as const, timestamp: Date.now() };
+
+      const hasErrorField = Object.prototype.hasOwnProperty.call(data, "error");
+      const rawError = (data as { error?: unknown }).error;
+      const rawMessage = (data as { message?: unknown }).message;
+      const message =
+        typeof rawMessage === "string" && rawMessage.trim()
+          ? rawMessage.trim()
+          : undefined;
+
+      // DrawIO 在 merge 失败时可能返回对象型 error，需要同时保留结构化信息与可读字符串
+      const isMergeError = (() => {
+        if (!hasErrorField) return false;
+        if (rawError instanceof Error) return true;
+        if (typeof rawError === "string") return Boolean(rawError.trim());
+        if (typeof rawError === "boolean") return rawError;
+        if (typeof rawError === "number") return rawError !== 0;
+        if (rawError && typeof rawError === "object") return true;
+        return rawError !== undefined && rawError !== null;
+      })();
+
+      if (isMergeError) {
+        const errorText = toErrorString(rawError);
+        logger.error("[DrawIO] merge 错误", {
+          requestId,
+          errorText,
+          message,
+          error: rawError,
+        });
+
+        const detail: DrawioMergeErrorEventDetail = {
+          error: rawError,
+          errorText,
+          message,
+          requestId,
+          context,
+        };
+
         window.dispatchEvent(
-          new CustomEvent("drawio-merge-error", {
-            detail: {
-              error: data.error,
-              message: data.message,
-              requestId,
-            },
+          new CustomEvent<DrawioMergeErrorEventDetail>("drawio-merge-error", {
+            detail,
           }),
         );
-      } else {
-        window.dispatchEvent(
-          new CustomEvent("drawio-merge-success", {
-            detail: { requestId },
-          }),
-        );
+        return;
       }
+
+      const detail: DrawioMergeSuccessEventDetail = { requestId, context };
+      window.dispatchEvent(
+        new CustomEvent<DrawioMergeSuccessEventDetail>("drawio-merge-success", {
+          detail,
+        }),
+      );
 
       logger.debug("merge 操作完成");
     }, []);

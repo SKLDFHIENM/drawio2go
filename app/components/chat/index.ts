@@ -6,7 +6,6 @@
 export { default as ChatSidebar } from "../ChatSidebar";
 
 // 拆分后的子组件
-export { default as ChatSessionMenu } from "./ChatSessionMenu";
 export { default as MessageList } from "./MessageList";
 export { default as MessageItem } from "./MessageItem";
 export { default as MessageContent } from "./MessageContent";
@@ -14,13 +13,13 @@ export { default as EmptyState } from "./EmptyState";
 export { default as ChatInputArea } from "./ChatInputArea";
 export { default as ChatInputActions } from "./ChatInputActions";
 export { default as CanvasContextButton } from "./CanvasContextButton";
+export { default as PageSelectorButton } from "./PageSelectorButton";
 export { default as ModelComboBox } from "./ModelComboBox";
 export { default as ToolCallCard } from "./ToolCallCard";
 export { default as ThinkingBlock } from "./ThinkingBlock";
 export { default as ChatHistoryView } from "./ChatHistoryView";
 export { default as HistoryToolbar } from "./HistoryToolbar";
 export { default as ConversationList } from "./ConversationList";
-export { default as MessagePreviewPanel } from "./MessagePreviewPanel";
 export { default as ChatShell } from "./ChatShell";
 export { default as MessagePane } from "./MessagePane";
 export { default as Composer } from "./Composer";

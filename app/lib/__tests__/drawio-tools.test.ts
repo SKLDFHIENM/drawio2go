@@ -23,6 +23,7 @@ vi.mock("../storage", () => ({
   buildPageMetadataFromXml: vi.fn(() => ({
     pageCount: 1,
     pageNames: ["Page-1"],
+    pages: [{ id: "page-1", name: "Page-1", index: 0 }],
   })),
 }));
 
@@ -41,7 +42,11 @@ vi.mock("../storage/xml-version-engine", () => ({
 vi.mock("../storage/writers", () => ({
   prepareXmlContext: vi.fn((xml: string) => ({
     normalizedXml: xml,
-    pageMetadata: { pageCount: 1, pageNames: ["Page-1"] },
+    pageMetadata: {
+      pageCount: 1,
+      pageNames: ["Page-1"],
+      pages: [{ id: "page-1", name: "Page-1", index: 0 }],
+    },
     pageNamesJson: '["Page-1"]',
   })),
   persistWipVersion: vi.fn(async (_projectUuid, xmlOrContext) => ({
@@ -50,7 +55,11 @@ vi.mock("../storage/writers", () => ({
       typeof xmlOrContext === "string"
         ? {
             normalizedXml: xmlOrContext,
-            pageMetadata: { pageCount: 1, pageNames: ["Page-1"] },
+            pageMetadata: {
+              pageCount: 1,
+              pageNames: ["Page-1"],
+              pages: [{ id: "page-1", name: "Page-1", index: 0 }],
+            },
             pageNamesJson: '["Page-1"]',
           }
         : xmlOrContext,
@@ -286,6 +295,9 @@ describe("replaceDrawioXML - 回滚错误处理", () => {
     const result = await replaceDrawioXML(INVALID_XML, { editorRef });
 
     expect(result.success).toBe(false);
+    if (result.success) {
+      throw new Error("expected replaceDrawioXML to fail");
+    }
     expect(result.error).toBe("merge_failed");
     expect(result.message).toBe("DrawIO 响应超时。已自动回滚到修改前状态");
     expect(editorRef.current.loadDiagram).toHaveBeenCalled();
@@ -352,6 +364,9 @@ describe("replaceDrawioXML - 回滚错误处理", () => {
     const result = await replaceDrawioXML(INVALID_XML, { editorRef });
 
     expect(result.success).toBe(false);
+    if (result.success) {
+      throw new Error("expected replaceDrawioXML to fail");
+    }
     expect(result.error).toBe("merge_failed");
     expect(editorRef.current.loadDiagram).toHaveBeenCalled();
   });
@@ -404,6 +419,9 @@ describe("replaceDrawioXML - 回滚错误处理", () => {
     const result = await replaceDrawioXML(INVALID_XML, { editorRef });
 
     expect(result.success).toBe(false);
+    if (result.success) {
+      throw new Error("expected replaceDrawioXML to fail");
+    }
     expect(result.error).toBe("merge_failed");
     expect(editorRef.current.loadDiagram).toHaveBeenCalled();
   });

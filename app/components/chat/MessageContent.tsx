@@ -1,6 +1,8 @@
 "use client";
 
+import { memo } from "react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import ThinkingBlock from "./ThinkingBlock";
 import ToolCallCard from "./ToolCallCard";
 import ImageContent from "./ImageContent";
@@ -20,7 +22,7 @@ interface MessageContentProps {
   onThinkingBlockToggle: (messageId: string) => void;
 }
 
-export default function MessageContent({
+export default memo(function MessageContent({
   message,
   status,
   isCurrentStreaming,
@@ -68,7 +70,10 @@ export default function MessageContent({
               className="message-markdown-wrapper"
             >
               <div className="message-markdown">
-                <ReactMarkdown components={markdownComponents}>
+                <ReactMarkdown
+                  components={markdownComponents}
+                  remarkPlugins={[remarkGfm]}
+                >
                   {part.text ?? ""}
                 </ReactMarkdown>
               </div>
@@ -106,7 +111,6 @@ export default function MessageContent({
             message.id,
             index,
             normalizedPart.toolCallId,
-            normalizedPart.state,
           );
           const isExpanded = expandedToolCalls[expansionKey] ?? false;
 
@@ -124,4 +128,4 @@ export default function MessageContent({
       })}
     </>
   );
-}
+});
