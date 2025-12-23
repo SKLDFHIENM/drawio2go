@@ -12,22 +12,27 @@
  * 从任意错误对象中提取可展示的错误消息。
  *
  * 行为约束（保持与历史实现一致）：
- * - `null` / `undefined` / `""`（空字符串）返回 `null`
- * - `string` 返回自身
- * - `Error` 返回 `error.message`
- * - `{ message: string }` 返回 message
+ * - `null` / `undefined` / 空白字符串（trim 后为空）返回 `null`
+ * - `string` 返回 trim 后的字符串
+ * - `Error` 返回 `error.message`（trim 后）
+ * - `{ message: string }` 返回 message（trim 后）
  * - 其他情况返回 `null`
  *
  * @param error - 任意类型的错误
  * @returns 可用的错误消息，无法提取时返回 null
  */
 export function extractErrorMessage(error: unknown): string | null {
-  if (!error) return null;
-  if (typeof error === "string") return error;
-  if (error instanceof Error) return error.message;
+  const normalize = (message: string): string | null => {
+    const trimmed = message.trim();
+    return trimmed.length === 0 ? null : trimmed;
+  };
+
+  if (error == null) return null;
+  if (typeof error === "string") return normalize(error);
+  if (error instanceof Error) return normalize(error.message);
   if (typeof error === "object" && "message" in error) {
     const maybeMessage = (error as { message?: unknown }).message;
-    if (typeof maybeMessage === "string") return maybeMessage;
+    if (typeof maybeMessage === "string") return normalize(maybeMessage);
   }
   return null;
 }
