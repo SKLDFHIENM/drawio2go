@@ -19,9 +19,8 @@
 
 一款现代化的 DrawIO 编辑器应用，致力于在AI加持下构建更好的**人机协同**建模工具。以用户为中心，提升人机功效，探索如何让更好与AI取长补短。提供开箱即用的应用(Windows/Linux/Mac OS)或作为网页部署。
 
-<div align="center">
-<img alt="image" src="https://github.com/user-attachments/assets/4ede9b64-dfe0-4aa7-be5c-4440ca520db7" width="60%" />
-</div>
+https://github.com/user-attachments/assets/40fe5c3b-0f37-4fbf-b6ac-60b8734f2d14
+
 <div align="center">
 <table width="100%">
   <tr>
@@ -33,34 +32,34 @@
     </td>
     <td width="33.33%" valign="top" align="center">
       <h3>AI加持修改</h3>
-      <p>基于XPath的精准删改查工具，效果好省token</p>
+      <p>基于XPath的精准删改查工具，效果好省token*</p>
       <img src="https://github.com/user-attachments/assets/db4c17b7-49f9-407d-a046-227092e70708" alt="演示" width="60%" />
       <br />
     </td>
     <td width="33.33%" valign="top" align="center">
       <h3>MCP服务</h3>
-      <p>启动带版本管理的MCP服务，连接其他应用</p>
-      <img src="https://github.com/user-attachments/assets/2109487f-b597-41b6-881a-8ac69a3d787c" alt="MCP" />
+      <p>启动带<b>画布内容版本管理</b>的MCP服务，连接其他应用</p>
+      <img src="https://github.com/user-attachments/assets/ad6c9e0c-8f71-4776-8522-73ebf89bf813" alt="MCP" />
       <br />
     </td>
   </tr>
   <tr>
     <td width="33.33%" valign="top" align="center">
-      <h3>多供应商管理</h3>
-      <p>支持多LLM供应商/多模型切换*</p>
-      <img src="https://github.com/user-attachments/assets/eeda8d0e-0d80-45c6-a51b-104724bf2094" alt="多供应商控制" width="50%" />
+      <h3>多页面编辑</h3>
+      <p>支持多页面drawio编辑，让AI仅编辑你想要修改的部分</p>
+      <img src="https://github.com/user-attachments/assets/b999be6b-b41e-4f73-8059-7cd26dafdd8b" alt="pages" width="90%" />
       <br />
     </td>
     <td width="33.33%" valign="top" align="center">
       <h3>版本对比</h3>
       <p>轻松对比/回滚不同修改版本之间的差异</p>
-      <img src="https://github.com/user-attachments/assets/b264ee8f-dedd-429d-8501-fb02efe12b44" alt="对比页面" width="100%" />
+      <img src="https://github.com/user-attachments/assets/149b0247-f6ae-48bd-a8e3-70dce2a3622e" alt="对比页面" width="100%" />
       <br />
       <br />
     </td>
     <td width="33.33%" valign="top" align="center">
       <h3>画布上下文</h3>
-      <p>不再需要描述“最右边的几个xxx”，直接鼠标框选，自动解析元素为上下文**</p>
+      <p>不再需要描述“最右边的几个xxx”，直接鼠标框选，会话会自动解析画布元素到上下文中**</p>
       <img src="https://github.com/user-attachments/assets/07ec5631-21bc-4a11-853a-62058061c49f" alt="上下文" width="100%" />
       <br />
       <br />
@@ -68,7 +67,7 @@
   </tr>
 </table>
 </div>
-<sub>* 目前支持Openai/Deepseek/Anthropic/Gemini格式</sub>
+<sub>* 目前LLM API支持Openai/Deepseek/Anthropic/Gemini格式</sub>
 <br />
 <sub>** 受限于Web API限制，鼠标选中感知功能在Web端不可用。但是Web端依然有基础的压缩画布内容上下文注入功能</sub>
 <br />
@@ -81,35 +80,31 @@
   <tr>
     <td width="50%" valign="top" align="center">
       <h3>U-net框架图</h3>
-      <p>绘制一个unet网络</p>
+      <p><b>glm-4.6</b> - 绘制一个unet网络</p>
       <img src="https://github.com/user-attachments/assets/5fae95e9-573c-4ced-8841-7b27dd8cc97b" alt="unet" width="100%" />
       <br />
-      <sub>使用glm-4.6绘制</sub>
       <br />
     </td>
     <td width="50%" valign="top" align="center">
       <h3>图转drawio</h3>
-      <p>传入使用gemini-3-pro-image生成的图片，要求其复刻</p>
+      <p><b>claude-sonnet-4.5</b> - 传入使用gemini-3-pro-image生成的图片，要求其复刻</p>
       <img src="https://github.com/user-attachments/assets/1b5be219-0dc6-48c8-abdc-f0a2946bf148" alt="image" width="100%" />
       <br />
-      <sub>使用claude-sonnet-4.5绘制，目前图片对话支持仍处于beta阶段</sub>
     </td>
   </tr>
     <tr>
     <td width="50%" valign="top" align="center">
       <h3>UML框架图</h3>
-      <p>绘制一个经典的前后端的WEB应用UML框架图</p>
-      <img src="https://github.com/user-attachments/assets/2c15fd37-4f8f-4a65-9ade-52176ae487e1" alt="UML" width="100%" />
+      <p><b>glm-4.7</b> - 绘制一个经典的前后端的WEB应用UML框架图</p>
+      <img src="https://github.com/user-attachments/assets/738ef6a9-a703-49d8-b26e-5438130106d1" alt="UML" width="100%" />
       <br />
-      <sub>使用glm-4.6绘制</sub>
       <br />
     </td>
     <td width="50%" valign="top" align="center">
       <h3>纯元素绘制</h3>
-      <p>画一个笔记本电脑</p>
-      <img src="https://github.com/user-attachments/assets/719e33e3-b7bc-4e0c-bae1-28896b63e23d" alt="演示" width="80%" />
+      <p><b>gemini-3-pro-preview</b> - 画一个笔记本电脑</p>
+      <img src="https://github.com/user-attachments/assets/f330468b-c52a-416a-9198-4e2e9b22539c" alt="演示" width="80%" />
       <br />
-      <sub>使用claude-sonnet-4.5绘制</sub>
       <br />
     </td>
   </tr>
@@ -149,17 +144,19 @@ npm run dev
 在浏览器中打开 [http://localhost:3000](http://localhost:3000)
 
 > [!IMPORTANT]
-> 请注意，目前没有在WEB端做任何的鉴权措施，请勿将其部署到公网中(LLM密钥是存储在浏览器端的，但是drawio工具回调没有做鉴权，其他人有可能能够获取drawio工具调用信息)
+> 请注意，目前暂时还没适配多人使用WEB端（虽然理论上没有问题，但是没有测试）
 
 ## 已知问题
 
-- [ ] WEB端中，对话可能会无法取消
-- [ ] 目前一些drawio工具的具体错误无法被捕获
-- [ ] 对话保存目前有一些问题，可能会导致历史对话加载异常
+- [x] WEB端中，对话可能会无法取消
+- [x] 目前一些drawio工具的具体错误无法被捕获
+- [x] 对话保存目前有一些问题，可能会导致历史对话加载异常
+- [ ] 一些UI显示存在一些问题
 
 ## 即将推出的新特征
 
-- [ ] Electron中支持将画布中选中的元素传递给AI
+- [x] Electron中支持将画布中选中的元素传递给AI
+- [ ] 多页面drawio支持
 - [ ] 完全的图形/文件对话支持
 - [ ] 支持自定义drawio控件URL
 - [ ] 直接导出为png/svg
