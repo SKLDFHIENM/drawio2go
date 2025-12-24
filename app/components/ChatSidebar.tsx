@@ -780,6 +780,20 @@ export default function ChatSidebar({
               xmlSnapshot, // 使用预捕获的 XML
             },
           );
+
+          /**
+           * 重要：首次自动快照时若主版本不存在，会用当前 xmlSnapshot 创建默认主版本（1.0.0）。
+           * 如果继续用同一个 xmlSnapshot 紧接着创建子版本（1.0.0.1），因为内容完全相同，
+           * computeVersionPayload 会返回 null，从而触发“无差异不可创建版本”的 4021 错误。
+           *
+           * 因此：当我们刚刚创建了默认主版本后，直接返回，跳过子版本创建。
+           * 只有在主版本已存在（即本次不需要创建默认主版本）时才创建子版本快照。
+           */
+          logger.info(
+            "[ChatSidebar] 自动版本快照：已创建默认主版本，跳过本次子版本创建（避免 4021 无差异错误）",
+            { projectUuid, version: DEFAULT_FIRST_VERSION },
+          );
+          return;
         }
 
         versions = await getAllXMLVersions(projectUuid);
