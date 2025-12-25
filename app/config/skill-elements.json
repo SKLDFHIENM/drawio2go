@@ -3,25 +3,25 @@
     {
       "id": "modern",
       "nameKey": "skill.theme.modern",
-      "promptFragment": "使用现代简洁的设计风格，线条清晰、扁平化、留白充足，色彩柔和但对比明确。"
+      "promptFragment": "现代简洁风格：使用蓝色、灰色等冷色调，线条简洁，圆角轻量。"
     },
     {
       "id": "academic",
       "nameKey": "skill.theme.academic",
-      "promptFragment": "使用学术风格，版式正式规范，黑白或低饱和配色，强调可读性与标准符号。"
+      "promptFragment": "学术规范风格：黑白为主或低饱和灰度配色，排版正式，强调可读性。"
     },
     {
       "id": "classic",
       "nameKey": "skill.theme.classic",
-      "promptFragment": "使用古典风格，传统图表布局，经典配色与详细标注，结构层次清楚。"
+      "promptFragment": "古典传统风格：暖棕、米色等传统色调，结构对称，细节标注完整。"
     },
     {
       "id": "custom",
       "nameKey": "skill.theme.custom",
-      "promptFragment": "不添加特定风格限制，完全遵循用户自定义要求。"
+      "promptFragment": "自定义风格：由用户指定配色与样式，不做额外风格限制。"
     }
   ],
-  "elements": [
+  "knowledge": [
     {
       "id": "general",
       "nameKey": "skill.element.general",

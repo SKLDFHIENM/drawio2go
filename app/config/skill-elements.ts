@@ -1,15 +1,8 @@
+import type { SkillKnowledgeId } from "@/app/types/chat";
 import rawConfig from "./skill-elements.json";
 
 export type SkillThemeId = "modern" | "academic" | "classic" | "custom";
-export type SkillElementId =
-  | "general"
-  | "basic"
-  | "misc"
-  | "uml"
-  | "aws"
-  | "azure"
-  | "gcp"
-  | "network";
+export type { SkillKnowledgeId };
 
 export type SkillThemeConfig = {
   id: SkillThemeId;
@@ -17,46 +10,46 @@ export type SkillThemeConfig = {
   promptFragment: string;
 };
 
-export type SkillElementConfig = {
-  id: SkillElementId;
+export type SkillKnowledgeConfig = {
+  id: SkillKnowledgeId;
   nameKey: string;
   required?: boolean;
   promptFragment: string;
 };
 
-export type SkillElementsConfig = {
+export type SkillKnowledgeConfigSet = {
   themes: SkillThemeConfig[];
-  elements: SkillElementConfig[];
+  knowledge: SkillKnowledgeConfig[];
 };
 
-export const skillElementsConfig = rawConfig as SkillElementsConfig;
+export const skillKnowledgeConfig = rawConfig as SkillKnowledgeConfigSet;
 
-export function loadSkillElementsConfig(): SkillElementsConfig {
-  return skillElementsConfig;
+export function loadSkillKnowledgeConfig(): SkillKnowledgeConfigSet {
+  return skillKnowledgeConfig;
 }
 
 export function getThemeById(
   id: SkillThemeId,
-  config: SkillElementsConfig = skillElementsConfig,
+  config: SkillKnowledgeConfigSet = skillKnowledgeConfig,
 ): SkillThemeConfig | undefined {
   return config.themes.find((theme) => theme.id === id);
 }
 
-export function getElementById(
-  id: SkillElementId,
-  config: SkillElementsConfig = skillElementsConfig,
-): SkillElementConfig | undefined {
-  return config.elements.find((element) => element.id === id);
+export function getKnowledgeById(
+  id: SkillKnowledgeId,
+  config: SkillKnowledgeConfigSet = skillKnowledgeConfig,
+): SkillKnowledgeConfig | undefined {
+  return config.knowledge.find((item) => item.id === id);
 }
 
-export function getRequiredElements(
-  config: SkillElementsConfig = skillElementsConfig,
-): SkillElementConfig[] {
-  return config.elements.filter((element) => element.required);
+export function getRequiredKnowledge(
+  config: SkillKnowledgeConfigSet = skillKnowledgeConfig,
+): SkillKnowledgeConfig[] {
+  return config.knowledge.filter((item) => item.required);
 }
 
-export function getOptionalElements(
-  config: SkillElementsConfig = skillElementsConfig,
-): SkillElementConfig[] {
-  return config.elements.filter((element) => !element.required);
+export function getOptionalKnowledge(
+  config: SkillKnowledgeConfigSet = skillKnowledgeConfig,
+): SkillKnowledgeConfig[] {
+  return config.knowledge.filter((item) => !item.required);
 }

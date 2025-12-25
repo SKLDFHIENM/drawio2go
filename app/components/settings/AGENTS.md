@@ -80,6 +80,8 @@ interface ModelsSettingsPanelProps {
 interface AgentSettingsPanelProps {
   systemPrompt: string;
   onChange: (systemPrompt: string) => void;
+  skillSettings: SkillSettings;
+  onSkillSettingsChange: (settings: SkillSettings) => void;
   error?: string;
 }
 ```
@@ -89,6 +91,7 @@ interface AgentSettingsPanelProps {
 - 内联 TextField + TextArea 直接编辑系统提示词（15 行默认高度）
 - 恢复默认：按钮 + `ConfirmDialog`（variant="danger"），使用 `DEFAULT_SYSTEM_PROMPT`
 - 校验辅助：导出 `isSystemPromptValid` / `getSystemPromptError`，空白时展示 `FieldError`
+- 新对话默认设置：复用 `skill-elements` 配置，支持默认风格与默认知识多选（必选项锁定）
 - 由父组件管理保存逻辑与时间戳更新（保持无副作用）
 
 ### VersionSettingsPanel（版本管理）
@@ -183,6 +186,10 @@ settings.agent.description
 settings.agent.systemPrompt.label
 settings.agent.systemPrompt.description
 settings.agent.futureFeatures
+settings.agent.defaultSettings.title
+settings.agent.defaultSettings.description
+settings.agent.defaultSettings.themeLabel
+settings.agent.defaultSettings.knowledgeLabel
 ```
 
 **文件设置：**
@@ -304,6 +311,14 @@ export function SettingsModal() {
                 updatedAt: Date.now(),
               }))
             }
+            skillSettings={agentSettings.skillSettings}
+            onSkillSettingsChange={(skillSettings) =>
+              setAgentSettings((prev) => ({
+                ...prev,
+                skillSettings,
+                updatedAt: Date.now(),
+              }))
+            }
             error={
               isSystemPromptValid(agentSettings.systemPrompt)
                 ? undefined
@@ -328,6 +343,11 @@ export function SettingsModal() {
   systemPrompt={systemPrompt}
   onChange={(next) => {
     setSystemPrompt(next);
+    setUpdatedAt(Date.now());
+  }}
+  skillSettings={skillSettings}
+  onSkillSettingsChange={(next) => {
+    setSkillSettings(next);
     setUpdatedAt(Date.now());
   }}
   error={isSystemPromptValid(systemPrompt) ? undefined : "系统提示词不能为空"}
@@ -406,6 +426,7 @@ interface ModelConfig {
 interface AgentSettings {
   systemPrompt: string;
   updatedAt: number;
+  skillSettings: SkillSettings;
 }
 ```
 

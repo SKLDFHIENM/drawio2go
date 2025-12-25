@@ -216,6 +216,61 @@
   container-name: chat-input-container;
 }
 
+.chat-top-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-wrap: nowrap;
+}
+
+.chat-top-actions__item {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.chat-top-actions .canvas-context-button,
+.chat-top-actions .skill-button,
+.chat-top-actions .mcp-button,
+.chat-top-actions .page-selector-button {
+  width: 100%;
+  min-width: 0;
+  justify-content: center;
+}
+
+.chat-top-actions .canvas-context-button__label,
+.chat-top-actions .skill-button__label,
+.chat-top-actions .mcp-button__label,
+.chat-top-actions .page-selector-button__label {
+  display: inline;
+}
+
+@container chat-input-container (max-width: 520px) {
+  .chat-top-actions .mcp-button__label {
+    display: none;
+  }
+}
+
+@container chat-input-container (max-width: 450px) {
+  .chat-top-actions .canvas-context-button__label {
+    display: none;
+  }
+}
+
+@container chat-input-container (max-width: 380px) {
+  .chat-top-actions .skill-button__label {
+    display: none;
+  }
+}
+
+@container chat-input-container (max-width: 320px) {
+  .chat-top-actions .page-selector-button__label {
+    display: none;
+  }
+}
+
 .chat-config-status {
   display: flex;
   align-items: center;
@@ -315,8 +370,8 @@
 }
 
 .skill-popover {
-  min-width: 260px;
-  max-width: 320px;
+  min-width: 360px;
+  max-width: 420px;
   padding: var(--spacing-sm);
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-default, var(--border));
@@ -357,10 +412,77 @@
   color: var(--text-secondary);
 }
 
-.skill-radio-group {
+.skill-theme-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(5rem, 1fr));
+  gap: var(--spacing-xs);
+}
+
+.skill-theme-card {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: var(--spacing-xs);
+  padding: var(--spacing-xs);
+  border-radius: var(--radius);
+  border: 1px solid var(--border-light);
+  background: var(--surface);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    background var(--transition-fast);
+}
+
+.skill-theme-card:hover {
+  border-color: var(--border-hover);
+  background: var(--bg-primary);
+}
+
+.skill-theme-card:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+.skill-theme-card--selected {
+  border-color: var(--border-focus);
+  box-shadow: var(--shadow-xs);
+  background: var(--bg-secondary);
+}
+
+.skill-theme-card:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.skill-theme-thumbnail {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-light);
+  background: var(--bg-secondary);
+  overflow: hidden;
+}
+
+.skill-theme-thumbnail__image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.skill-theme-label {
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--text-secondary);
+  text-align: center;
+  line-height: 1.2;
+}
+
+.skill-theme-card--selected .skill-theme-label {
+  color: var(--text-primary);
 }
 
 .skill-elements-list {
@@ -426,6 +548,10 @@
 }
 
 @container chat-input-container (max-width: 400px) {
+  .chat-top-actions {
+    gap: var(--spacing-compact-sm, 0.5rem);
+  }
+
   .chat-input-actions {
     flex-wrap: nowrap;
     align-items: stretch;
@@ -466,8 +592,8 @@
   }
 
   .skill-popover {
-    min-width: min(240px, 100cqi);
-    max-width: min(90cqi, 320px);
+    min-width: min(260px, 100cqi);
+    max-width: min(94cqi, 360px);
   }
 }
 

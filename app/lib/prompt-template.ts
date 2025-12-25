@@ -1,7 +1,7 @@
 import { SkillSettings } from "@/app/types/chat";
 import {
-  getElementById,
-  getRequiredElements,
+  getKnowledgeById,
+  getRequiredKnowledge,
   getThemeById,
 } from "@/app/config/skill-elements";
 
@@ -9,7 +9,7 @@ import {
  * Check if system prompt contains template variables.
  */
 export function hasTemplateVariables(prompt: string): boolean {
-  return /\{\{theme\}\}/.test(prompt) || /\{\{elements\}\}/.test(prompt);
+  return /\{\{theme\}\}/.test(prompt) || /\{\{knowledge\}\}/.test(prompt);
 }
 
 /**
@@ -20,10 +20,10 @@ export function hasThemeVariable(prompt: string): boolean {
 }
 
 /**
- * Check if the elements variable exists.
+ * Check if the knowledge variable exists.
  */
-export function hasElementsVariable(prompt: string): boolean {
-  return /\{\{elements\}\}/.test(prompt);
+export function hasKnowledgeVariable(prompt: string): boolean {
+  return /\{\{knowledge\}\}/.test(prompt);
 }
 
 /**
@@ -33,25 +33,31 @@ export function buildThemePrompt(skillSettings: SkillSettings): string {
   const theme = getThemeById(
     skillSettings.selectedTheme as Parameters<typeof getThemeById>[0],
   );
-  if (!theme || theme.id === "custom") {
+  if (!theme) {
     return "";
+  }
+  if (theme.id === "custom") {
+    const customPrompt = skillSettings.customThemePrompt?.trim();
+    return customPrompt && customPrompt.length > 0
+      ? customPrompt
+      : theme.promptFragment;
   }
   return theme.promptFragment;
 }
 
 /**
- * Build elements prompt fragments from skill settings.
+ * Build knowledge prompt fragments from skill settings.
  */
-export function buildElementsPrompt(skillSettings: SkillSettings): string {
-  const requiredIds = getRequiredElements().map((element) => element.id);
+export function buildKnowledgePrompt(skillSettings: SkillSettings): string {
+  const requiredIds = getRequiredKnowledge().map((item) => item.id);
   const allSelectedIds = [
-    ...new Set([...requiredIds, ...skillSettings.selectedElements]),
+    ...new Set([...requiredIds, ...skillSettings.selectedKnowledge]),
   ];
 
   const fragments = allSelectedIds
-    .map((id) => getElementById(id as Parameters<typeof getElementById>[0]))
+    .map((id) => getKnowledgeById(id as Parameters<typeof getKnowledgeById>[0]))
     .filter(Boolean)
-    .map((element) => element!.promptFragment);
+    .map((item) => item!.promptFragment);
 
   return fragments.join("\n\n");
 }
@@ -69,10 +75,10 @@ export function applyTemplateVariables(
     result = result.replace(/\{\{theme\}\}/g, buildThemePrompt(skillSettings));
   }
 
-  if (hasElementsVariable(result)) {
+  if (hasKnowledgeVariable(result)) {
     result = result.replace(
-      /\{\{elements\}\}/g,
-      buildElementsPrompt(skillSettings),
+      /\{\{knowledge\}\}/g,
+      buildKnowledgePrompt(skillSettings),
     );
   }
 

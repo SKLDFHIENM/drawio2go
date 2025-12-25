@@ -9,6 +9,7 @@ import type {
   ModelConfig,
   RuntimeLLMConfig,
   ProviderConfig,
+  SkillKnowledgeId,
   SkillSettings,
 } from "@/app/types/chat";
 import {
@@ -89,19 +90,25 @@ const normalizeSkillSettings = (parsed: unknown): SkillSettings => {
       ? record.selectedTheme
       : DEFAULT_SKILL_SETTINGS.selectedTheme;
 
-  const selectedElements = Array.isArray(record.selectedElements)
-    ? record.selectedElements.filter(
-        (item): item is string =>
+  const selectedKnowledge = Array.isArray(record.selectedKnowledge)
+    ? record.selectedKnowledge.filter(
+        (item): item is SkillKnowledgeId =>
           typeof item === "string" && item.trim().length > 0,
       )
-    : DEFAULT_SKILL_SETTINGS.selectedElements;
+    : DEFAULT_SKILL_SETTINGS.selectedKnowledge;
+
+  const customThemePrompt =
+    typeof record.customThemePrompt === "string"
+      ? record.customThemePrompt
+      : DEFAULT_SKILL_SETTINGS.customThemePrompt;
 
   return {
     selectedTheme,
-    selectedElements:
-      selectedElements.length > 0
-        ? selectedElements
-        : DEFAULT_SKILL_SETTINGS.selectedElements,
+    selectedKnowledge:
+      selectedKnowledge.length > 0
+        ? selectedKnowledge
+        : DEFAULT_SKILL_SETTINGS.selectedKnowledge,
+    customThemePrompt,
   };
 };
 
@@ -316,7 +323,9 @@ export function useStorageSettings() {
       return {
         ...DEFAULT_AGENT_SETTINGS,
         ...parsed,
-        skillSettings: normalizeSkillSettings(parsed.skillSettings),
+        skillSettings:
+          normalizeSkillSettings(parsed.skillSettings) ??
+          DEFAULT_SKILL_SETTINGS,
       };
     },
     [],

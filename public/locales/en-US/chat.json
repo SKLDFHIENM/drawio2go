@@ -125,11 +125,11 @@
     "noPagesSelected": "Please select at least one page"
   },
   "skill": {
-    "buttonLabel": "{{theme}} · {{count}} elements",
-    "ariaLabel": "Configure diagram style and elements",
+    "buttonLabel": "{{theme}}",
+    "ariaLabel": "Configure diagram style and knowledge",
     "disabled": {
-      "missingTemplate": "System prompt must include {{theme}} and {{elements}} placeholders.",
-      "partialTemplate": "System prompt must include both {{theme}} and {{elements}} placeholders.",
+      "missingTemplate": "System prompt must include {{theme}} and {{knowledge}} placeholders.",
+      "partialTemplate": "System prompt must include both {{theme}} and {{knowledge}} placeholders.",
       "unavailable": "Skill settings are unavailable right now."
     },
     "theme": {
@@ -141,10 +141,16 @@
       "custom": "Custom",
       "unknown": "Unknown style"
     },
-    "elements": {
-      "label": "Elements",
-      "description": "Choose element types (multi-select)",
+    "knowledge": {
+      "label": "Knowledge",
+      "description": "Choose knowledge types (multi-select)",
       "required": "Required"
+    },
+    "custom": {
+      "title": "Custom style",
+      "placeholder": "Describe the style you want, e.g. blue tech, minimal lines, soft palette.",
+      "save": "Save",
+      "cancel": "Cancel"
     },
     "element": {
       "general": "General",

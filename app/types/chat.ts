@@ -60,15 +60,26 @@ export interface ModelConfig {
 }
 
 // 全局 Agent 设置
+export type SkillKnowledgeId =
+  | "general"
+  | "basic"
+  | "misc"
+  | "uml"
+  | "aws"
+  | "azure"
+  | "gcp"
+  | "network";
+
 export interface SkillSettings {
   selectedTheme: string; // 选中的风格 ID
-  selectedElements: string[]; // 选中的元素 ID 列表
+  selectedKnowledge: SkillKnowledgeId[]; // 选中的知识 ID 列表
+  customThemePrompt?: string; // 自定义风格提示词
 }
 
 export interface AgentSettings {
   systemPrompt: string; // 系统提示词
   updatedAt: number; // 更新时间戳（毫秒）
-  skillSettings?: SkillSettings; // Skill 配置（可选，向后兼容）
+  skillSettings: SkillSettings; // 新对话默认 Skill 配置（风格/知识）
 }
 
 // 当前活动模型引用

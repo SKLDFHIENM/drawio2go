@@ -5,24 +5,31 @@ import {
   Dropdown,
   Label,
   ListBox,
-  Radio,
-  RadioGroup,
+  Surface,
+  TextArea,
   TooltipContent,
   TooltipRoot,
   TooltipTrigger,
 } from "@heroui/react";
 import { Sparkles } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import type { Selection } from "react-aria-components";
-import { useAppTranslation } from "@/app/i18n/hooks";
-import type { SkillSettings } from "@/app/types/chat";
+import Image from "next/image";
+import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import {
-  getRequiredElements,
+  Dialog as AriaDialog,
+  Heading,
+  Modal as AriaModal,
+  ModalOverlay,
+  type Selection,
+} from "react-aria-components";
+import { useAppTranslation } from "@/app/i18n/hooks";
+import type { SkillKnowledgeId, SkillSettings } from "@/app/types/chat";
+import {
+  getRequiredKnowledge,
   getThemeById,
-  skillElementsConfig,
+  skillKnowledgeConfig,
 } from "@/app/config/skill-elements";
 import {
-  hasElementsVariable,
+  hasKnowledgeVariable,
   hasTemplateVariables,
   hasThemeVariable,
 } from "@/app/lib/prompt-template";
@@ -32,15 +39,18 @@ export interface SkillButtonProps {
   onSkillSettingsChange: (settings: SkillSettings) => void;
   systemPrompt: string;
   isDisabled?: boolean;
+  isIconOnly?: boolean;
   className?: string;
 }
 
-const themeOptions = skillElementsConfig.themes;
-const elementOptions = skillElementsConfig.elements;
-const elementOrder = elementOptions.map((element) => element.id);
+const themeOptions = skillKnowledgeConfig.themes;
+const knowledgeOptions = skillKnowledgeConfig.knowledge;
+const knowledgeOrder = knowledgeOptions.map((item) => item.id);
 
-const buildOrderedElements = (ids: Set<string>): string[] => {
-  return elementOrder.filter((id) => ids.has(id));
+const buildOrderedKnowledge = (
+  ids: Set<SkillKnowledgeId>,
+): SkillKnowledgeId[] => {
+  return knowledgeOrder.filter((id) => ids.has(id));
 };
 
 export default function SkillButton({
@@ -48,33 +58,45 @@ export default function SkillButton({
   onSkillSettingsChange,
   systemPrompt,
   isDisabled,
+  isIconOnly,
   className,
 }: SkillButtonProps) {
   const { t } = useAppTranslation("chat");
   const [isOpen, setIsOpen] = useState(false);
+  const [isCustomModalOpen, setIsCustomModalOpen] = useState(false);
+  const [customPromptDraft, setCustomPromptDraft] = useState("");
+  const customModalTitle = t("skill.custom.title");
+  const customPlaceholder = t("skill.custom.placeholder");
+  const customSaveLabel = t("skill.custom.save");
+  const customCancelLabel = t("skill.custom.cancel");
+  const headingId = useId();
 
-  const requiredElementIds = useMemo<Set<string>>(
-    () => new Set(getRequiredElements().map((element) => element.id)),
+  const requiredKnowledgeIds = useMemo<Set<SkillKnowledgeId>>(
+    () => new Set(getRequiredKnowledge().map((item) => item.id)),
     [],
   );
 
-  const availableElementIds = useMemo<Set<string>>(
-    () => new Set(elementOptions.map((element) => element.id)),
+  const availableKnowledgeIds = useMemo<Set<SkillKnowledgeId>>(
+    () => new Set(knowledgeOptions.map((item) => item.id)),
     [],
   );
 
-  const selectedElementIds = useMemo(() => {
-    const next = new Set<string>();
-    for (const id of skillSettings.selectedElements) {
-      if (availableElementIds.has(id)) {
+  const selectedKnowledgeIds = useMemo(() => {
+    const next = new Set<SkillKnowledgeId>();
+    for (const id of skillSettings.selectedKnowledge) {
+      if (availableKnowledgeIds.has(id)) {
         next.add(id);
       }
     }
-    for (const id of requiredElementIds) {
+    for (const id of requiredKnowledgeIds) {
       next.add(id);
     }
     return next;
-  }, [availableElementIds, requiredElementIds, skillSettings.selectedElements]);
+  }, [
+    availableKnowledgeIds,
+    requiredKnowledgeIds,
+    skillSettings.selectedKnowledge,
+  ]);
 
   const selectedTheme = useMemo(() => {
     return (
@@ -88,15 +110,15 @@ export default function SkillButton({
     ? t(selectedTheme.nameKey)
     : t("skill.theme.unknown");
 
-  const elementCount = selectedElementIds.size;
   const buttonLabel = t("skill.buttonLabel", {
     theme: themeLabel,
-    count: elementCount,
   });
+
+  const customPromptValue = skillSettings.customThemePrompt ?? "";
 
   const hasAnyTemplate = hasTemplateVariables(systemPrompt);
   const hasAllTemplates =
-    hasThemeVariable(systemPrompt) && hasElementsVariable(systemPrompt);
+    hasThemeVariable(systemPrompt) && hasKnowledgeVariable(systemPrompt);
   const isTemplateReady = hasAllTemplates;
 
   const isButtonDisabled = Boolean(isDisabled) || !isTemplateReady;
@@ -116,6 +138,12 @@ export default function SkillButton({
     }
   }, [isButtonDisabled, isOpen]);
 
+  useEffect(() => {
+    if (isCustomModalOpen) {
+      setCustomPromptDraft(customPromptValue);
+    }
+  }, [customPromptValue, isCustomModalOpen]);
+
   const handleThemeChange = useCallback(
     (value: string) => {
       if (!value || value === skillSettings.selectedTheme) return;
@@ -127,40 +155,70 @@ export default function SkillButton({
     [onSkillSettingsChange, skillSettings],
   );
 
-  const handleElementsChange = useCallback(
+  const handleCustomThemeClick = useCallback(() => {
+    if (isButtonDisabled) return;
+    const shouldSelect = skillSettings.selectedTheme !== "custom";
+    if (shouldSelect) {
+      handleThemeChange("custom");
+    }
+    setIsOpen(false);
+    setCustomPromptDraft(customPromptValue);
+    setIsCustomModalOpen(true);
+  }, [
+    customPromptValue,
+    handleThemeChange,
+    isButtonDisabled,
+    skillSettings.selectedTheme,
+  ]);
+
+  const handleCustomModalClose = useCallback(() => {
+    setIsCustomModalOpen(false);
+  }, []);
+
+  const handleCustomPromptSave = useCallback(() => {
+    const nextPrompt = customPromptDraft.trim();
+    onSkillSettingsChange({
+      ...skillSettings,
+      selectedTheme: "custom",
+      customThemePrompt: nextPrompt,
+    });
+    setIsCustomModalOpen(false);
+  }, [customPromptDraft, onSkillSettingsChange, skillSettings]);
+
+  const handleKnowledgeChange = useCallback(
     (keys: Selection) => {
       if (keys === "all") {
-        const allIds = new Set<string>(elementOrder);
-        for (const id of requiredElementIds) {
+        const allIds = new Set<SkillKnowledgeId>(knowledgeOrder);
+        for (const id of requiredKnowledgeIds) {
           allIds.add(id);
         }
         onSkillSettingsChange({
           ...skillSettings,
-          selectedElements: buildOrderedElements(allIds),
+          selectedKnowledge: buildOrderedKnowledge(allIds),
         });
         return;
       }
 
-      const next = new Set<string>();
+      const next = new Set<SkillKnowledgeId>();
       for (const key of keys) {
-        const id = String(key);
-        if (availableElementIds.has(id)) {
+        const id = String(key) as SkillKnowledgeId;
+        if (availableKnowledgeIds.has(id)) {
           next.add(id);
         }
       }
-      for (const id of requiredElementIds) {
+      for (const id of requiredKnowledgeIds) {
         next.add(id);
       }
 
       onSkillSettingsChange({
         ...skillSettings,
-        selectedElements: buildOrderedElements(next),
+        selectedKnowledge: buildOrderedKnowledge(next),
       });
     },
     [
-      availableElementIds,
+      availableKnowledgeIds,
       onSkillSettingsChange,
-      requiredElementIds,
+      requiredKnowledgeIds,
       skillSettings,
     ],
   );
@@ -172,6 +230,7 @@ export default function SkillButton({
       variant="secondary"
       aria-label={t("skill.ariaLabel")}
       isDisabled={isButtonDisabled}
+      isIconOnly={isIconOnly}
       className={["chat-icon-button", "skill-button", className]
         .filter(Boolean)
         .join(" ")}
@@ -182,98 +241,177 @@ export default function SkillButton({
   );
 
   return (
-    <TooltipRoot delay={0} isDisabled={!disabledReason}>
-      <Dropdown
-        isOpen={isOpen}
-        onOpenChange={(open) => {
-          if (isButtonDisabled) {
-            setIsOpen(false);
-            return;
-          }
-          setIsOpen(open);
-        }}
-      >
-        {isButtonDisabled ? (
-          <TooltipTrigger className="inline-flex" aria-disabled="true">
-            {button}
-          </TooltipTrigger>
-        ) : (
-          button
-        )}
-        <Dropdown.Popover placement="top end" className="skill-popover">
-          <div className="skill-section">
-            <div className="skill-section__header">
-              <Label className="skill-section__title">
-                {t("skill.theme.label")}
-              </Label>
-              <p className="skill-section__hint">
-                {t("skill.theme.description")}
-              </p>
-            </div>
-            <RadioGroup
-              aria-label={t("skill.theme.label")}
-              value={selectedTheme?.id ?? skillSettings.selectedTheme}
-              onChange={handleThemeChange}
-              isDisabled={isButtonDisabled}
-              className="skill-radio-group"
-            >
-              {themeOptions.map((theme) => (
-                <Radio key={theme.id} value={theme.id}>
-                  <Radio.Content>
-                    <Label>{t(theme.nameKey)}</Label>
-                  </Radio.Content>
-                </Radio>
-              ))}
-            </RadioGroup>
-          </div>
-
-          <div className="skill-section">
-            <div className="skill-section__header">
-              <Label className="skill-section__title">
-                {t("skill.elements.label")}
-              </Label>
-              <p className="skill-section__hint">
-                {t("skill.elements.description")}
-              </p>
-            </div>
-            <ListBox
-              aria-label={t("skill.elements.label")}
-              selectionMode="multiple"
-              selectedKeys={selectedElementIds}
-              onSelectionChange={handleElementsChange}
-              disabledKeys={
-                isButtonDisabled ? "all" : new Set(requiredElementIds.values())
-              }
-              className="skill-elements-list"
-            >
-              {elementOptions.map((element) => {
-                const isRequired = requiredElementIds.has(element.id);
-                return (
-                  <ListBox.Item
-                    key={element.id}
-                    id={element.id}
-                    textValue={t(element.nameKey)}
-                    className="skill-element-item"
-                  >
-                    <span className="skill-element-item__label">
-                      {t(element.nameKey)}
-                    </span>
-                    {isRequired ? (
-                      <span className="skill-element-item__required">
-                        {t("skill.elements.required")}
+    <>
+      <TooltipRoot delay={0} isDisabled={!disabledReason}>
+        <Dropdown
+          isOpen={isOpen}
+          onOpenChange={(open) => {
+            if (isButtonDisabled) {
+              setIsOpen(false);
+              return;
+            }
+            setIsOpen(open);
+          }}
+        >
+          {isButtonDisabled ? (
+            <TooltipTrigger className="inline-flex" aria-disabled="true">
+              {button}
+            </TooltipTrigger>
+          ) : (
+            button
+          )}
+          <Dropdown.Popover placement="top end" className="skill-popover">
+            <div className="skill-section">
+              <div className="skill-section__header">
+                <Label className="skill-section__title">
+                  {t("skill.theme.label")}
+                </Label>
+                <p className="skill-section__hint">
+                  {t("skill.theme.description")}
+                </p>
+              </div>
+              <div
+                className="skill-theme-grid"
+                role="radiogroup"
+                aria-label={t("skill.theme.label")}
+              >
+                {themeOptions.map((theme) => {
+                  const isSelected =
+                    (selectedTheme?.id ?? skillSettings.selectedTheme) ===
+                    theme.id;
+                  const handleClick =
+                    theme.id === "custom"
+                      ? handleCustomThemeClick
+                      : () => handleThemeChange(theme.id);
+                  return (
+                    <button
+                      key={theme.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={isSelected}
+                      aria-label={t(theme.nameKey)}
+                      className={[
+                        "skill-theme-card",
+                        isSelected && "skill-theme-card--selected",
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                      onClick={handleClick}
+                      disabled={isButtonDisabled}
+                    >
+                      <span className="skill-theme-thumbnail">
+                        <Image
+                          src={`/images/skill-themes/${theme.id}.svg`}
+                          alt=""
+                          aria-hidden="true"
+                          className="skill-theme-thumbnail__image"
+                          width={80}
+                          height={60}
+                        />
                       </span>
-                    ) : null}
-                    <ListBox.ItemIndicator />
-                  </ListBox.Item>
-                );
-              })}
-            </ListBox>
-          </div>
-        </Dropdown.Popover>
-      </Dropdown>
-      <TooltipContent placement="top">
-        <p>{disabledReason}</p>
-      </TooltipContent>
-    </TooltipRoot>
+                      <span className="skill-theme-label">
+                        {t(theme.nameKey)}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="skill-section">
+              <div className="skill-section__header">
+                <Label className="skill-section__title">
+                  {t("skill.knowledge.label")}
+                </Label>
+                <p className="skill-section__hint">
+                  {t("skill.knowledge.description")}
+                </p>
+              </div>
+              <ListBox
+                aria-label={t("skill.knowledge.label")}
+                selectionMode="multiple"
+                selectedKeys={selectedKnowledgeIds}
+                onSelectionChange={handleKnowledgeChange}
+                disabledKeys={
+                  isButtonDisabled
+                    ? "all"
+                    : new Set(requiredKnowledgeIds.values())
+                }
+                className="skill-elements-list"
+              >
+                {knowledgeOptions.map((item) => {
+                  const isRequired = requiredKnowledgeIds.has(item.id);
+                  return (
+                    <ListBox.Item
+                      key={item.id}
+                      id={item.id}
+                      textValue={t(item.nameKey)}
+                      className="skill-element-item"
+                    >
+                      <span className="skill-element-item__label">
+                        {t(item.nameKey)}
+                      </span>
+                      {isRequired ? (
+                        <span className="skill-element-item__required">
+                          {t("skill.knowledge.required")}
+                        </span>
+                      ) : null}
+                      <ListBox.ItemIndicator />
+                    </ListBox.Item>
+                  );
+                })}
+              </ListBox>
+            </div>
+          </Dropdown.Popover>
+        </Dropdown>
+        <TooltipContent placement="top">
+          <p>{disabledReason}</p>
+        </TooltipContent>
+      </TooltipRoot>
+
+      <ModalOverlay
+        isOpen={isCustomModalOpen}
+        onOpenChange={(open) => {
+          if (!open) handleCustomModalClose();
+        }}
+        isDismissable
+        isKeyboardDismissDisabled={false}
+        className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+      >
+        <AriaModal className="w-full max-w-md px-4">
+          <Surface className="w-full rounded-2xl bg-content1 p-4 shadow-2xl outline-none">
+            <AriaDialog
+              aria-labelledby={headingId}
+              className="flex flex-col gap-4"
+            >
+              <Heading
+                id={headingId}
+                className="text-lg font-semibold text-foreground"
+              >
+                {customModalTitle}
+              </Heading>
+
+              <TextArea
+                value={customPromptDraft}
+                onChange={(event) => setCustomPromptDraft(event.target.value)}
+                placeholder={customPlaceholder}
+                aria-label={customModalTitle}
+                rows={6}
+                className="w-full"
+              />
+
+              <div className="flex items-center justify-end gap-2">
+                <Button variant="tertiary" onPress={handleCustomModalClose}>
+                  {customCancelLabel}
+                </Button>
+                <Button variant="primary" onPress={handleCustomPromptSave}>
+                  {customSaveLabel}
+                </Button>
+              </div>
+            </AriaDialog>
+          </Surface>
+        </AriaModal>
+      </ModalOverlay>
+    </>
   );
 }

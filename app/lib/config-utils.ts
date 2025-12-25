@@ -4,6 +4,7 @@ import {
   ModelConfig,
   ProviderConfig,
   ProviderType,
+  type SkillKnowledgeId,
   type RuntimeLLMConfig,
   type SkillSettings,
 } from "@/app/types/chat";
@@ -48,7 +49,7 @@ Replace entire diagram XML. Use only for template replacement or complete restru
 
 ## DrawIO Elements Usage Guide
 
-{{elements}}
+{{knowledge}}
 
 ## DrawIO XML Structure Reference
 
@@ -287,7 +288,8 @@ export const DEFAULT_MODELS: ModelConfig[] = [];
 
 export const DEFAULT_SKILL_SETTINGS: SkillSettings = {
   selectedTheme: "modern",
-  selectedElements: ["general"],
+  selectedKnowledge: ["general"],
+  customThemePrompt: "",
 };
 
 export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
@@ -348,19 +350,25 @@ const normalizeSkillSettings = (value: unknown): SkillSettings | undefined => {
       ? record.selectedTheme
       : DEFAULT_SKILL_SETTINGS.selectedTheme;
 
-  const selectedElements = Array.isArray(record.selectedElements)
-    ? record.selectedElements.filter(
-        (item): item is string =>
+  const selectedKnowledge = Array.isArray(record.selectedKnowledge)
+    ? record.selectedKnowledge.filter(
+        (item): item is SkillKnowledgeId =>
           typeof item === "string" && item.trim().length > 0,
       )
-    : DEFAULT_SKILL_SETTINGS.selectedElements;
+    : DEFAULT_SKILL_SETTINGS.selectedKnowledge;
+
+  const customThemePrompt =
+    typeof record.customThemePrompt === "string"
+      ? record.customThemePrompt
+      : DEFAULT_SKILL_SETTINGS.customThemePrompt;
 
   return {
     selectedTheme,
-    selectedElements:
-      selectedElements.length > 0
-        ? selectedElements
-        : DEFAULT_SKILL_SETTINGS.selectedElements,
+    selectedKnowledge:
+      selectedKnowledge.length > 0
+        ? selectedKnowledge
+        : DEFAULT_SKILL_SETTINGS.selectedKnowledge,
+    customThemePrompt,
   };
 };
 
