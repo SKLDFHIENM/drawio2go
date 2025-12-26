@@ -11,9 +11,16 @@ import {
   TooltipRoot,
   TooltipTrigger,
 } from "@heroui/react";
-import { Sparkles } from "lucide-react";
+import { Wand2 } from "lucide-react";
 import Image from "next/image";
-import { useCallback, useEffect, useId, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Dialog as AriaDialog,
   Heading,
@@ -47,6 +54,13 @@ const themeOptions = skillKnowledgeConfig.themes;
 const knowledgeOptions = skillKnowledgeConfig.knowledge;
 const knowledgeOrder = knowledgeOptions.map((item) => item.id);
 
+const formatPromptBytes = (bytes: number) => {
+  if (bytes < 1024) {
+    return `${bytes}B`;
+  }
+  return `${(bytes / 1024).toFixed(1)}KB`;
+};
+
 const buildOrderedKnowledge = (
   ids: Set<SkillKnowledgeId>,
 ): SkillKnowledgeId[] => {
@@ -65,11 +79,21 @@ export default function SkillButton({
   const [isOpen, setIsOpen] = useState(false);
   const [isCustomModalOpen, setIsCustomModalOpen] = useState(false);
   const [customPromptDraft, setCustomPromptDraft] = useState("");
+  const customModalTimerRef = useRef<number | null>(null);
   const customModalTitle = t("skill.custom.title");
   const customPlaceholder = t("skill.custom.placeholder");
   const customSaveLabel = t("skill.custom.save");
   const customCancelLabel = t("skill.custom.cancel");
   const headingId = useId();
+  const knowledgeByteSizes = useMemo(() => {
+    const encoder = new TextEncoder();
+    return new Map(
+      knowledgeOptions.map((item) => [
+        item.id,
+        encoder.encode(item.promptFragment ?? "").length,
+      ]),
+    );
+  }, []);
 
   const requiredKnowledgeIds = useMemo<Set<SkillKnowledgeId>>(
     () => new Set(getRequiredKnowledge().map((item) => item.id)),
@@ -144,6 +168,15 @@ export default function SkillButton({
     }
   }, [customPromptValue, isCustomModalOpen]);
 
+  useEffect(() => {
+    return () => {
+      if (customModalTimerRef.current !== null) {
+        window.clearTimeout(customModalTimerRef.current);
+        customModalTimerRef.current = null;
+      }
+    };
+  }, []);
+
   const handleThemeChange = useCallback(
     (value: string) => {
       if (!value || value === skillSettings.selectedTheme) return;
@@ -161,9 +194,16 @@ export default function SkillButton({
     if (shouldSelect) {
       handleThemeChange("custom");
     }
+    if (customModalTimerRef.current !== null) {
+      window.clearTimeout(customModalTimerRef.current);
+      customModalTimerRef.current = null;
+    }
     setIsOpen(false);
     setCustomPromptDraft(customPromptValue);
-    setIsCustomModalOpen(true);
+    customModalTimerRef.current = window.setTimeout(() => {
+      setIsCustomModalOpen(true);
+      customModalTimerRef.current = null;
+    }, 300);
   }, [
     customPromptValue,
     handleThemeChange,
@@ -235,7 +275,7 @@ export default function SkillButton({
         .filter(Boolean)
         .join(" ")}
     >
-      <Sparkles size={16} aria-hidden />
+      <Wand2 size={16} aria-hidden />
       <span className="skill-button__label">{buttonLabel}</span>
     </Button>
   );
@@ -341,6 +381,7 @@ export default function SkillButton({
               >
                 {knowledgeOptions.map((item) => {
                   const isRequired = requiredKnowledgeIds.has(item.id);
+                  const byteSize = knowledgeByteSizes.get(item.id) ?? 0;
                   return (
                     <ListBox.Item
                       key={item.id}
@@ -356,6 +397,9 @@ export default function SkillButton({
                           {t("skill.knowledge.required")}
                         </span>
                       ) : null}
+                      <span className="skill-element-item__bytes">
+                        {formatPromptBytes(byteSize)}
+                      </span>
                       <ListBox.ItemIndicator />
                     </ListBox.Item>
                   );

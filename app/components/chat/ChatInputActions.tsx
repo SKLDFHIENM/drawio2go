@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Button,
   Dropdown,
@@ -67,11 +74,103 @@ export function ChatTopActions({
   isCanvasContextEnabled,
   onCanvasContextToggle,
 }: ChatTopActionsProps) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const rafRef = useRef<number | null>(null);
   const shouldRenderPageSelector =
     Boolean(pageSelector) && (pageSelector?.pages?.length ?? 0) > 0;
+  const hasSkillButton = Boolean(skillButton);
+  const hasMcpConfigDialog = Boolean(mcpConfigDialog);
+
+  const updateCollapseStage = useCallback(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const maxStage = 4;
+    const rawStage = Number(container.dataset.collapseStage ?? "0");
+    let stage = Number.isFinite(rawStage)
+      ? Math.min(Math.max(rawStage, 0), maxStage)
+      : 0;
+
+    const fits = () => container.scrollWidth <= container.clientWidth + 1;
+    const setStage = (nextStage: number) => {
+      container.dataset.collapseStage = String(nextStage);
+    };
+
+    // 先确保当前 stage 的样式已生效，避免外部首次渲染时 dataset 缺失导致测量偏差。
+    setStage(stage);
+
+    if (!fits()) {
+      while (stage < maxStage) {
+        stage += 1;
+        setStage(stage);
+        if (fits()) break;
+      }
+      return;
+    }
+
+    while (stage > 0) {
+      const nextStage = stage - 1;
+      setStage(nextStage);
+      if (fits()) {
+        stage = nextStage;
+        continue;
+      }
+      setStage(stage);
+      break;
+    }
+  }, []);
+
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const schedule = () => {
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+      }
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = null;
+        updateCollapseStage();
+      });
+    };
+
+    updateCollapseStage();
+
+    const ro = new ResizeObserver(() => schedule());
+    ro.observe(container);
+
+    const selectors = [
+      ".mcp-button",
+      ".canvas-context-button",
+      ".skill-button",
+      ".page-selector-button",
+    ];
+
+    for (const selector of selectors) {
+      const element = container.querySelector(selector);
+      if (element) ro.observe(element);
+    }
+
+    return () => {
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+      ro.disconnect();
+    };
+  }, [
+    updateCollapseStage,
+    shouldRenderPageSelector,
+    hasSkillButton,
+    hasMcpConfigDialog,
+  ]);
 
   return (
-    <div className="chat-top-actions">
+    <div
+      ref={containerRef}
+      className="chat-top-actions"
+      data-collapse-stage="0"
+    >
       <div className="chat-top-actions__item">
         <CanvasContextButton
           enabled={isCanvasContextEnabled}

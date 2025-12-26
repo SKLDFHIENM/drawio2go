@@ -154,6 +154,7 @@ ChatInputArea（输入组件）
 
 ## 输入区 UX 规则
 
+- 顶部操作栏（ChatTopActions）按钮自适应仅两档：**完整文本** / **标准圆图标**；缩放为渐进式（MCP → 画布上下文 → 样式 → 页面），由 `data-collapse-stage` 驱动（逻辑在 `app/components/chat/ChatInputActions.tsx`，样式在 `app/styles/components/chat.css`）。
 - 禁止连续用户消息：最后一条消息为用户且未在流式时会禁用发送并提示等待
 - 未配置任何供应商/模型：输入框与发送按钮禁用，并显示“请先配置模型”引导（可一键跳转到设置 → 模型）
 - 直接重试：点击“重试上一条消息”按钮会移除该消息并回填输入框，不弹确认

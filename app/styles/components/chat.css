@@ -214,20 +214,23 @@
   /* Container Query：基于侧边栏（输入区域）宽度，而非 viewport。 */
   container-type: inline-size;
   container-name: chat-input-container;
+  --chat-action-size: 2.25rem;
+  --chat-top-actions-gap: clamp(var(--spacing-xs), 2cqi, var(--spacing-sm));
+  --chat-actions-gap: clamp(var(--spacing-xs), 1.5cqi, var(--spacing-sm));
 }
 
 .chat-top-actions {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
+  gap: var(--chat-top-actions-gap);
   flex-wrap: nowrap;
+  --chat-top-action-size: var(--chat-action-size);
+  overflow: hidden;
 }
 
 .chat-top-actions__item {
-  flex: 1 1 0;
-  min-width: 0;
+  flex: 0 0 auto;
   display: flex;
-  justify-content: center;
   align-items: center;
 }
 
@@ -235,8 +238,11 @@
 .chat-top-actions .skill-button,
 .chat-top-actions .mcp-button,
 .chat-top-actions .page-selector-button {
-  width: 100%;
+  width: auto;
+  max-width: none;
   min-width: 0;
+  height: var(--chat-top-action-size);
+  min-height: var(--chat-top-action-size);
   justify-content: center;
 }
 
@@ -245,30 +251,61 @@
 .chat-top-actions .mcp-button__label,
 .chat-top-actions .page-selector-button__label {
   display: inline;
+  white-space: nowrap;
 }
 
-@container chat-input-container (max-width: 520px) {
-  .chat-top-actions .mcp-button__label {
-    display: none;
-  }
+/* 顶部按钮渐进式缩放（两档：完整文本 / 标准圆图标）
+ * - 由 ChatTopActions 在运行时根据真实 scrollWidth 设置 data-collapse-stage
+ * - 缩放顺序：MCP → 画布上下文 → 样式 → 页面
+ * - 高度始终不变（使用 --chat-top-action-size）
+ */
+.chat-top-actions:is(
+    [data-collapse-stage="1"],
+    [data-collapse-stage="2"],
+    [data-collapse-stage="3"],
+    [data-collapse-stage="4"]
+  )
+  .mcp-button,
+.chat-top-actions:is(
+    [data-collapse-stage="2"],
+    [data-collapse-stage="3"],
+    [data-collapse-stage="4"]
+  )
+  .canvas-context-button,
+.chat-top-actions:is([data-collapse-stage="3"], [data-collapse-stage="4"])
+  .skill-button,
+.chat-top-actions[data-collapse-stage="4"] .page-selector-button {
+  width: var(--chat-top-action-size);
+  min-width: var(--chat-top-action-size);
+  max-width: var(--chat-top-action-size);
+  padding-inline: 0;
+  padding-block: 0;
+  border-radius: 50%;
 }
 
-@container chat-input-container (max-width: 450px) {
-  .chat-top-actions .canvas-context-button__label {
-    display: none;
-  }
+.chat-top-actions:is(
+    [data-collapse-stage="1"],
+    [data-collapse-stage="2"],
+    [data-collapse-stage="3"],
+    [data-collapse-stage="4"]
+  )
+  .mcp-button__label,
+.chat-top-actions:is(
+    [data-collapse-stage="2"],
+    [data-collapse-stage="3"],
+    [data-collapse-stage="4"]
+  )
+  .canvas-context-button__label,
+.chat-top-actions:is([data-collapse-stage="3"], [data-collapse-stage="4"])
+  .skill-button__label,
+.chat-top-actions[data-collapse-stage="4"] .page-selector-button__label {
+  display: none;
 }
 
-@container chat-input-container (max-width: 380px) {
-  .chat-top-actions .skill-button__label {
-    display: none;
-  }
-}
-
-@container chat-input-container (max-width: 320px) {
-  .chat-top-actions .page-selector-button__label {
-    display: none;
-  }
+.chat-top-actions .skill-button__label {
+  max-width: none;
+  overflow: visible;
+  text-overflow: clip;
 }
 
 .chat-config-status {
@@ -294,14 +331,14 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
+  gap: var(--chat-actions-gap);
+  flex-wrap: nowrap;
 }
 
 .chat-actions-left,
 .chat-actions-right {
   display: flex;
-  gap: 0.5rem;
+  gap: var(--chat-actions-gap);
   align-items: center;
 }
 
@@ -311,7 +348,10 @@
 }
 
 .chat-actions-right {
-  flex: 0 0 auto;
+  flex: 1 1 auto;
+  min-width: 0;
+  justify-content: flex-end;
+  white-space: nowrap;
 }
 
 .chat-icon-button {
@@ -319,15 +359,18 @@
   align-items: center;
   justify-content: center;
   gap: var(--spacing-xs);
-  min-height: 36px;
+  height: var(--chat-action-size);
+  min-height: var(--chat-action-size);
 }
 
 .chat-model-button {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  min-height: 36px;
-  padding-inline: 0.75rem;
+  gap: var(--spacing-xs);
+  min-width: 0;
+  height: var(--chat-action-size);
+  min-height: var(--chat-action-size);
+  padding-inline: calc(var(--spacing-sm) + var(--spacing-xs));
 }
 
 .chat-model-button__label {
@@ -335,6 +378,11 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.chat-input-actions :is(button, [role="button"]) {
+  height: var(--chat-action-size);
+  min-height: var(--chat-action-size);
 }
 
 .chat-model-popover {
@@ -356,9 +404,9 @@
 .skill-button {
   display: inline-flex;
   align-items: center;
-  gap: var(--spacing-xs);
+  gap: var(--spacing-sm);
   min-height: 36px;
-  padding-inline: var(--spacing-sm);
+  padding-inline: calc(var(--spacing-sm) + var(--spacing-xs));
   flex-shrink: 0;
 }
 
@@ -513,6 +561,15 @@
   color: var(--text-secondary);
 }
 
+.skill-element-item__bytes {
+  flex: 0 0 auto;
+  padding: 0 var(--spacing-xs);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-light);
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--text-secondary);
+}
+
 .skill-element-item[data-selected="true"],
 .skill-element-item[aria-selected="true"] {
   background: var(--bg-secondary);
@@ -547,26 +604,10 @@
   white-space: pre;
 }
 
-@container chat-input-container (max-width: 400px) {
-  .chat-top-actions {
-    gap: var(--spacing-compact-sm, 0.5rem);
-  }
-
-  .chat-input-actions {
-    flex-wrap: nowrap;
-    align-items: stretch;
-    gap: var(--spacing-compact-sm, 0.5rem);
-  }
-
-  .chat-actions-left {
-    flex: 1 1 0;
-    min-width: 0;
-    gap: var(--spacing-compact-md, 0.25rem);
-  }
-
-  .chat-actions-right {
-    flex-shrink: 0;
-    gap: var(--spacing-compact-md, 0.25rem);
+@container chat-input-container (max-width: 420px) {
+  .chat-input-container {
+    --chat-top-actions-gap: var(--spacing-xs);
+    --chat-actions-gap: var(--spacing-xs);
   }
 
   .chat-model-button,
@@ -576,13 +617,15 @@
     justify-content: center;
   }
 
-  .chat-model-button__label {
-    display: none;
+  .chat-model-button {
+    width: var(--chat-action-size);
+    min-width: var(--chat-action-size);
+    max-width: var(--chat-action-size);
+    padding: 0;
+    border-radius: 50%;
   }
 
-  .mcp-button__label,
-  .page-selector-button__label,
-  .skill-button__label {
+  .chat-model-button__label {
     display: none;
   }
 
@@ -594,17 +637,6 @@
   .skill-popover {
     min-width: min(260px, 100cqi);
     max-width: min(94cqi, 360px);
-  }
-}
-
-@container chat-input-container (max-width: 360px) {
-  .chat-input-actions {
-    gap: var(--spacing-compact-md, 0.25rem);
-  }
-
-  .chat-actions-right button,
-  .chat-actions-right [role="button"] {
-    min-height: 44px;
   }
 }
 
