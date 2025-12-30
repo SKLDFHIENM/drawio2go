@@ -71,9 +71,9 @@
 
 **技术要点**:
 
-- URL: `https://embed.diagrams.net/?embed=1&proto=json&ui=kennedy`
+- URL: 基于 `drawioBaseUrl` 构建默认参数（`embed=1`/`proto=json`/`spin=1`/`ui=${drawioTheme}`/`libraries=1`/`dark=0|1` 等），再应用用户自定义 `drawioUrlParams`（优先级最高，可覆盖 `ui=` 等）
 - 消息协议：`{action: 'load'|'merge'|'export', ...}`
-- 安全检查：验证 `event.origin.includes('diagrams.net')`
+- 安全检查：验证 `event.origin.includes(drawioIdentifier)`（默认 `diagrams.net`）
 - merge 回调事件：
   - 失败：`window.dispatchEvent(new CustomEvent("drawio-merge-error", { detail }))`
   - 成功：`window.dispatchEvent(new CustomEvent("drawio-merge-success", { detail }))`
@@ -101,9 +101,10 @@
 
 **Props**: `onSettingsChange`
 
-**五个面板**:
+**六个面板**:
 
 - **GeneralSettingsPanel**: 语言切换 + 默认文件路径选择（Electron 环境支持 `selectFolder`）
+- **DrawioSettingsPanel**: 画布设置（DrawIO Base URL、DrawIO 标识符、默认主题 ui=）
 - **ModelsSettingsPanel**: 供应商/模型管理（Accordion 列表、级联删除、Provider 编辑占位）
 - **AgentSettingsPanel**: 全局系统提示词（System Prompt）编辑
 - **VersionSettingsPanel**: AI 自动版本快照开关（`autoVersionOnAIEdit`）

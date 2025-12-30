@@ -1,6 +1,7 @@
 {
   "nav": {
     "general": "General",
+    "drawio": "Canvas",
     "models": "Models",
     "agent": "Agent",
     "version": "Version Settings",
@@ -50,6 +51,47 @@
     "sidebarExpanded": {
       "label": "Expand Sidebar by Default",
       "description": "Open the right sidebar on startup"
+    }
+  },
+  "drawio": {
+    "title": "DrawIO Canvas",
+    "description": "Configure canvas loading, messaging, and default theme",
+    "baseUrl": {
+      "label": "DrawIO Base URL",
+      "description": "The DrawIO embed service URL used to load the editor iframe",
+      "placeholder": "https://embed.diagrams.net",
+      "warning": "Changing this may cause the canvas to stop working",
+      "reset": "Reset to Default",
+      "resetTitle": "Reset DrawIO Base URL",
+      "resetConfirm": "Reset DrawIO Base URL to the default value?"
+    },
+    "identifier": {
+      "label": "DrawIO Identifier",
+      "description": "Used for postMessage origin verification (origin check)",
+      "placeholder": "diagrams.net",
+      "warning": "Changing this may cause canvas messaging to fail",
+      "reset": "Reset to Default",
+      "resetTitle": "Reset DrawIO Identifier",
+      "resetConfirm": "Reset DrawIO Identifier to the default value?"
+    },
+    "theme": {
+      "label": "DrawIO Default Theme",
+      "description": "Controlled via URL parameter ui= (requires reloading the canvas)",
+      "options": {
+        "kennedy": "kennedy (Default)",
+        "min": "min",
+        "atlas": "atlas",
+        "sketch": "sketch",
+        "simple": "simple"
+      }
+    },
+    "urlParams": {
+      "label": "Custom URL Params",
+      "placeholder": "e.g. spin=0&libraries=0",
+      "description": "Overrides default params. Common: embed, proto, spin, ui, libraries, dark. Example: embed=1&proto=json&spin=1&libraries=1",
+      "warning": "Changes may break the canvas",
+      "reset": "Clear Params",
+      "resetConfirm": "Clear custom URL params?"
     }
   },
   "llm": {

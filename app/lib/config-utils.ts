@@ -20,7 +20,7 @@ You should assume the LLM knows nothing about DrawIO XML. Be explicit, but keep 
 
 ## Optional Canvas Context (may appear in the user's message)
 - \`<drawio_status vertices="X" edges="Y"/>\`: counts only (no IDs)
-- \`<user_select>id1,id2</user_select>\`: selected mxCell IDs (Electron only)
+- \`<user_select>id1,id2</user_select>\`: selected mxCell IDs
 
 ## Style (controls look + color policy)
 {{theme}}
@@ -222,11 +222,43 @@ export const STORAGE_KEY_ACTIVE_MODEL = "settings.llm.activeModel";
 
 export const STORAGE_KEY_GENERAL_SETTINGS = "settings.general";
 
+export type DrawioTheme = "kennedy" | "min" | "atlas" | "sketch" | "simple";
+
+export const DEFAULT_DRAWIO_BASE_URL = "https://embed.diagrams.net";
+export const DEFAULT_DRAWIO_IDENTIFIER = "diagrams.net";
+export const DEFAULT_DRAWIO_THEME: DrawioTheme = "kennedy";
+
+export const DRAWIO_THEME_OPTIONS: DrawioTheme[] = [
+  "kennedy",
+  "min",
+  "atlas",
+  "sketch",
+  "simple",
+];
+
+export function isDrawioTheme(value: unknown): value is DrawioTheme {
+  return (
+    value === "kennedy" ||
+    value === "min" ||
+    value === "atlas" ||
+    value === "sketch" ||
+    value === "simple"
+  );
+}
+
 export interface GeneralSettings {
   // 默认展开侧边栏
   sidebarExpanded: boolean;
   // 默认文件路径
   defaultPath: string;
+  // DrawIO Base URL（用于 iframe src 构建）
+  drawioBaseUrl?: string;
+  // DrawIO 标识符（用于 postMessage origin 验证）
+  drawioIdentifier?: string;
+  // DrawIO 默认主题（URL 参数 ui=）
+  drawioTheme?: DrawioTheme;
+  // 自定义 URL 参数（如 "spin=0&libraries=0"，可覆盖默认参数）
+  drawioUrlParams?: string;
 }
 
 export const DEFAULT_GENERAL_SETTINGS: GeneralSettings = {
