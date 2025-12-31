@@ -21,6 +21,56 @@
       "promptFragment": "Custom (user-defined)\n- Follow user's style description exactly as provided in conversation.\n- If no style specified, fall back to Modern theme.\n- Respect all user palette/brand rules verbatim.\n- Keep palette small and consistent; never invent arbitrary colors."
     }
   ],
+  "colorThemes": [
+    {
+      "id": "default",
+      "nameKey": "skill.colorTheme.default",
+      "colors": ["#dae8fc", "#d5e8d4", "#fff2cc", "#f8cecc", "#e1d5e7"],
+      "promptFragment": "Color Theme: Default (DrawIO Classic)\nUse the standard DrawIO color palette with fillColor/strokeColor pairs:\n- Blue (#dae8fc/#6c8ebf): Main process nodes, primary flow, scope management\n- Green (#d5e8d4/#82b366): Success states, completed steps, progress tracking\n- Yellow (#fff2cc/#d6b656): Decision points, warnings, risk management\n- Red (#f8cecc/#b85450): Error states, critical items, quality issues\n- Purple (#e1d5e7/#9673a6): Documents, external references, special elements\n- Orange (#ffe6cc/#d79b00): Warnings, attention items, important notices\n- Gray (#f5f5f5/#666666): Containers, swimlanes, general grouping\nApply fillColor for node backgrounds and strokeColor for borders. Use strokeColor for connector lines. Maintain consistent pairing throughout the diagram."
+    },
+    {
+      "id": "blue",
+      "nameKey": "skill.colorTheme.blue",
+      "colors": ["#d4e6f1", "#aed6f1", "#85c1e9", "#5dade2", "#3498db"],
+      "promptFragment": "Color Theme: Blue Monochrome\nUse blue color variations exclusively:\n- Light blue (#d4e6f1/#85c1e9): Background elements, containers, less important nodes\n- Medium blue (#aed6f1/#5dade2): Standard process nodes, main content\n- Dark blue (#85c1e9/#3498db): Important nodes, key decisions, highlights\n- Navy blue (#5dade2/#2874a6): Critical elements, headers, emphasis\n- Stroke: Use darker shades from the palette for borders and connectors\nMaintain visual hierarchy through lightness variation. Apply fillColor/strokeColor pairs consistently."
+    },
+    {
+      "id": "green",
+      "nameKey": "skill.colorTheme.green",
+      "colors": ["#d5f4e6", "#a9dfbf", "#7dcea0", "#52be80", "#27ae60"],
+      "promptFragment": "Color Theme: Green Monochrome\nUse green color variations exclusively:\n- Light green (#d5f4e6/#7dcea0): Background elements, containers, supporting nodes\n- Medium green (#a9dfbf/#52be80): Standard process nodes, main content\n- Dark green (#7dcea0/#27ae60): Important nodes, completed states, highlights\n- Forest green (#52be80/#1e8449): Critical elements, success indicators, emphasis\n- Stroke: Use darker shades from the palette for borders and connectors\nConvey growth, progress, and positive outcomes through green variations. Apply fillColor/strokeColor pairs consistently."
+    },
+    {
+      "id": "warm",
+      "nameKey": "skill.colorTheme.warm",
+      "colors": ["#f8cecc", "#ffe6cc", "#fff2cc"],
+      "promptFragment": "Color Theme: Warm (Red-Orange-Yellow)\nUse warm colors from the DrawIO palette:\n- Red (#f8cecc/#b85450): Critical nodes, error states, urgent alerts, quality issues\n- Orange (#ffe6cc/#d79b00): Warning nodes, attention areas, important notices\n- Yellow (#fff2cc/#d6b656): Highlights, pending states, decision points, caution markers\n- Stroke: Use corresponding strokeColor values (#b85450, #d79b00, #d6b656) for borders and connectors\n- Background: Light warm tones for group containers\nIdeal for alert systems, risk management, urgent workflows. Ensure sufficient contrast between adjacent warm colors. Apply fillColor/strokeColor pairs consistently."
+    },
+    {
+      "id": "cool",
+      "nameKey": "skill.colorTheme.cool",
+      "colors": ["#dae8fc", "#e1d5e7"],
+      "promptFragment": "Color Theme: Cool (Blue-Purple)\nUse cool colors from the DrawIO palette:\n- Blue (#dae8fc/#6c8ebf): Main nodes, primary processes, standard flow\n- Purple (#e1d5e7/#9673a6): Alternative flows, documents, external references, special elements\n- Stroke: Use corresponding strokeColor values (#6c8ebf, #9673a6) for borders and connectors\n- Background: Light blue or purple tones for group containers\nIdeal for business processes, documentation, formal diagrams. Convey calm, trust, and professionalism. Apply fillColor/strokeColor pairs consistently."
+    },
+    {
+      "id": "grayscale",
+      "nameKey": "skill.colorTheme.grayscale",
+      "colors": ["#ffffff", "#f5f5f5", "#cccccc", "#999999", "#666666"],
+      "promptFragment": "Color Theme: Grayscale (Black-White-Gray)\nUse grayscale colors exclusively:\n- White (#ffffff/#666666): Background, default containers\n- Light gray (#f5f5f5/#666666): Standard nodes, swimlanes, group containers\n- Medium gray (#cccccc/#666666): Secondary nodes, supporting elements\n- Dark gray (#999999/#333333): Important nodes, headers, emphasis\n- Charcoal (#666666/#000000): Critical elements, strong emphasis\n- Stroke: Use #666666 or darker for all borders and connectors\nPerfect for print, formal documentation, academic papers. Use varying shades to create hierarchy. Ensure sufficient contrast between adjacent elements. Apply fillColor/strokeColor pairs consistently."
+    },
+    {
+      "id": "earth",
+      "nameKey": "skill.colorTheme.earth",
+      "colors": ["#d5e8d4", "#f5f5dc", "#deb887", "#8b7355"],
+      "promptFragment": "Color Theme: Earth Tones (Natural Colors)\nUse natural earth tones:\n- Green (#d5e8d4/#82b366): Natural elements, eco-friendly processes, growth\n- Beige (#f5f5dc/#c19a6b): Neutral background, containers, supporting elements\n- Tan (#deb887/#8b7355): Standard nodes, organic processes\n- Brown (#d2b48c/#8b4513): Earth elements, grounding components, foundations\n- Stroke: Use darker earth tones (#82b366, #c19a6b, #8b7355, #8b4513) for borders and connectors\nIdeal for environmental, agricultural, sustainability diagrams. Convey organic, natural, earth-friendly themes. Apply fillColor/strokeColor pairs consistently."
+    },
+    {
+      "id": "none",
+      "nameKey": "skill.colorTheme.none",
+      "colors": ["#9CA3AF"],
+      "promptFragment": "Color Theme: None (No Restriction)\n- No specific color palette enforced\n- Let the diagram style theme determine default colors\n- If user provides custom colors in conversation, use those exactly\n- Otherwise follow the selected diagram style (modern/academic/minimal) defaults\n- Maintain consistency within the diagram\n- Ensure sufficient contrast for readability"
+    }
+  ],
   "knowledge": [
     {
       "id": "general",

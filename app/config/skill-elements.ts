@@ -2,11 +2,27 @@ import type { SkillKnowledgeId } from "@/app/types/chat";
 import rawConfig from "./skill-elements.json";
 
 export type SkillThemeId = "modern" | "academic" | "minimal" | "custom";
+export type SkillColorThemeId =
+  | "default"
+  | "blue"
+  | "green"
+  | "warm"
+  | "cool"
+  | "grayscale"
+  | "earth"
+  | "none";
 export type { SkillKnowledgeId };
 
 export type SkillThemeConfig = {
   id: SkillThemeId;
   nameKey: string;
+  promptFragment: string;
+};
+
+export type SkillColorThemeConfig = {
+  id: SkillColorThemeId;
+  nameKey: string;
+  colors: string[];
   promptFragment: string;
 };
 
@@ -21,6 +37,7 @@ export type SkillKnowledgeConfig = {
 
 export type SkillKnowledgeConfigSet = {
   themes: SkillThemeConfig[];
+  colorThemes: SkillColorThemeConfig[];
   knowledge: SkillKnowledgeConfig[];
 };
 
@@ -54,4 +71,11 @@ export function getOptionalKnowledge(
   config: SkillKnowledgeConfigSet = skillKnowledgeConfig,
 ): SkillKnowledgeConfig[] {
   return config.knowledge.filter((item) => !item.required);
+}
+
+export function getColorThemeById(
+  id: SkillColorThemeId,
+  config: SkillKnowledgeConfigSet = skillKnowledgeConfig,
+): SkillColorThemeConfig | undefined {
+  return config.colorThemes.find((theme) => theme.id === id);
 }

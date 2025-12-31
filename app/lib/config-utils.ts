@@ -22,6 +22,14 @@ export const CANVAS_CONTEXT_GUIDE = `The user's message may include context tags
 
 These tags help you understand the current diagram state and scope.`;
 
+export const LAYOUT_CHECK_GUIDE = `Layout check is enabled.
+
+After each \`drawio_edit_batch\`, the system automatically checks for overlaps between connectors (edges) and other elements.
+
+If overlaps are detected, tool results may include a \`warnings\` array and a \`layout_check\` object with details.
+
+These are warnings (overlaps may be intentional). When appropriate, briefly point them out and ask the user whether to fix or keep them.`;
+
 export const DEFAULT_SYSTEM_PROMPT = `You are a professional DrawIO diagram assistant. You safely read and edit diagrams using XPath-driven tools. All diagrams are stored as XML, and you interact with them through structured tool calls.
 
 ## A. DrawIO XML Fundamentals
@@ -116,6 +124,8 @@ Styles are semicolon-separated key-value pairs in the \`style\` attribute.
 ## D. Canvas Context (Injected by User)
 
 {{canvas_context_guide}}
+
+{{layout_check_guide}}
 
 ## E. Style Theme (Injected Here)
 
@@ -379,6 +389,7 @@ export const DEFAULT_SKILL_SETTINGS: SkillSettings = {
   selectedTheme: "modern",
   selectedKnowledge: ["general"],
   customThemePrompt: "",
+  selectedColorTheme: "default",
 };
 
 export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
@@ -451,6 +462,12 @@ const normalizeSkillSettings = (value: unknown): SkillSettings | undefined => {
       ? record.customThemePrompt
       : DEFAULT_SKILL_SETTINGS.customThemePrompt;
 
+  const selectedColorTheme =
+    typeof record.selectedColorTheme === "string" &&
+    record.selectedColorTheme.trim()
+      ? record.selectedColorTheme
+      : DEFAULT_SKILL_SETTINGS.selectedColorTheme;
+
   return {
     selectedTheme,
     selectedKnowledge:
@@ -458,6 +475,7 @@ const normalizeSkillSettings = (value: unknown): SkillSettings | undefined => {
         ? selectedKnowledge
         : DEFAULT_SKILL_SETTINGS.selectedKnowledge,
     customThemePrompt,
+    selectedColorTheme,
   };
 };
 
