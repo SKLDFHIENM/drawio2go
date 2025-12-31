@@ -33,7 +33,8 @@ export default function CanvasContextButton({
   const [isOpen, setIsOpen] = useState(false);
   const enabledCount = useMemo(
     () =>
-      Number(Boolean(isCanvasContextEnabled)) + Number(Boolean(isLayoutCheckEnabled)),
+      Number(Boolean(isCanvasContextEnabled)) +
+      Number(Boolean(isLayoutCheckEnabled)),
     [isCanvasContextEnabled, isLayoutCheckEnabled],
   );
 
@@ -65,7 +66,9 @@ export default function CanvasContextButton({
         size="sm"
         variant={enabledCount > 0 ? "primary" : "secondary"}
         aria-label={label}
-        className={["canvas-context-button", className].filter(Boolean).join(" ")}
+        className={["canvas-context-button", className]
+          .filter(Boolean)
+          .join(" ")}
         {...restButtonProps}
       >
         <SquareMousePointer size={16} aria-hidden />

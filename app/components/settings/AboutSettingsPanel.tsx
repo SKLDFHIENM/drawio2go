@@ -50,11 +50,11 @@ export default function AboutSettingsPanel({
 
   const canCheckForUpdates = useMemo(
     () => typeof window !== "undefined" && !!window.electron?.checkForUpdates,
-    []
+    [],
   );
 
   const packageVersion = normalizeVersion(
-    (pkg as { version?: string }).version
+    (pkg as { version?: string }).version,
   );
   const currentVersion =
     normalizeVersion(updateInfo?.currentVersion) ?? packageVersion ?? "0.0.0";
@@ -93,7 +93,7 @@ export default function AboutSettingsPanel({
     return formatConversationDate(
       lastCheckTime.getTime(),
       "datetime",
-      i18n.language
+      i18n.language,
     );
   }, [i18n.language, lastCheckTime, t]);
 
@@ -113,7 +113,7 @@ export default function AboutSettingsPanel({
     (isSelected: boolean) => {
       onAutoCheckChange(Boolean(isSelected));
     },
-    [onAutoCheckChange]
+    [onAutoCheckChange],
   );
 
   return (

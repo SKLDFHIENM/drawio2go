@@ -390,8 +390,13 @@ function convertNodeToResult(node: Node): DrawioQueryResult | null {
       const attributes = collectAttributes(element);
 
       // 解析子元素信息
-      const childElements: Array<{ tag_name: string; attributes: Record<string, string> }> = [];
-      const childNodes = Array.from(element.childNodes).filter(n => n.nodeType === 1);
+      const childElements: Array<{
+        tag_name: string;
+        attributes: Record<string, string>;
+      }> = [];
+      const childNodes = Array.from(element.childNodes).filter(
+        (n) => n.nodeType === 1,
+      );
 
       for (const child of childNodes) {
         const childElement = child as Element;
@@ -411,7 +416,9 @@ function convertNodeToResult(node: Node): DrawioQueryResult | null {
         // 检查子元素是否有嵌套子元素
         for (const child of childNodes) {
           const childElement = child as Element;
-          const grandChildren = Array.from(childElement.childNodes).filter(n => n.nodeType === 1);
+          const grandChildren = Array.from(childElement.childNodes).filter(
+            (n) => n.nodeType === 1,
+          );
           if (grandChildren.length > 0) {
             shouldShowXmlString = true;
             break;
@@ -424,7 +431,9 @@ function convertNodeToResult(node: Node): DrawioQueryResult | null {
         tag_name: element.tagName,
         attributes,
         children: childElements.length > 0 ? childElements : undefined,
-        xml_string: shouldShowXmlString ? xmlSerializer.serializeToString(element) : "",
+        xml_string: shouldShowXmlString
+          ? xmlSerializer.serializeToString(element)
+          : "",
         matched_xpath: matchedXPath,
       };
     }
@@ -1338,7 +1347,8 @@ function buildVertexGeometry(cell: Element): {
   const y = parseFiniteNumber(geometry.getAttribute("y"));
   const width = parseFiniteNumber(geometry.getAttribute("width"));
   const height = parseFiniteNumber(geometry.getAttribute("height"));
-  if (x === null || y === null || width === null || height === null) return null;
+  if (x === null || y === null || width === null || height === null)
+    return null;
 
   const left = x;
   const top = y;
@@ -1372,7 +1382,9 @@ function resolveEdgeAnchorPoint(
   return null;
 }
 
-function collectEdgeIntermediatePoints(geometry: Element | null): LayoutPoint[] {
+function collectEdgeIntermediatePoints(
+  geometry: Element | null,
+): LayoutPoint[] {
   if (!geometry) return [];
 
   const intermediatePoints: LayoutPoint[] = [];
@@ -1456,18 +1468,36 @@ function segmentBoundingBox(a: LayoutPoint, b: LayoutPoint): LayoutRect {
 }
 
 function rectIntersectsRect(a: LayoutRect, b: LayoutRect): boolean {
-  return !(a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom);
+  return !(
+    a.right < b.left ||
+    a.left > b.right ||
+    a.bottom < b.top ||
+    a.top > b.bottom
+  );
 }
 
-function segmentIntersectsSegment(p1: LayoutPoint, q1: LayoutPoint, p2: LayoutPoint, q2: LayoutPoint): boolean {
+function segmentIntersectsSegment(
+  p1: LayoutPoint,
+  q1: LayoutPoint,
+  p2: LayoutPoint,
+  q2: LayoutPoint,
+): boolean {
   const eps = 1e-9;
-  const orientation = (p: LayoutPoint, q: LayoutPoint, r: LayoutPoint): number => {
+  const orientation = (
+    p: LayoutPoint,
+    q: LayoutPoint,
+    r: LayoutPoint,
+  ): number => {
     const val = (q.y - p.y) * (r.x - q.x) - (q.x - p.x) * (r.y - q.y);
     if (Math.abs(val) < eps) return 0;
     return val > 0 ? 1 : 2;
   };
 
-  const onSegment = (p: LayoutPoint, q: LayoutPoint, r: LayoutPoint): boolean => {
+  const onSegment = (
+    p: LayoutPoint,
+    q: LayoutPoint,
+    r: LayoutPoint,
+  ): boolean => {
     return (
       q.x <= Math.max(p.x, r.x) + eps &&
       q.x + eps >= Math.min(p.x, r.x) &&
@@ -1489,7 +1519,11 @@ function segmentIntersectsSegment(p1: LayoutPoint, q1: LayoutPoint, p2: LayoutPo
   return false;
 }
 
-function segmentIntersectsRect(a: LayoutPoint, b: LayoutPoint, rect: LayoutRect): boolean {
+function segmentIntersectsRect(
+  a: LayoutPoint,
+  b: LayoutPoint,
+  rect: LayoutRect,
+): boolean {
   const segBox = segmentBoundingBox(a, b);
   if (!rectIntersectsRect(segBox, rect)) return false;
   if (pointInRect(a, rect) || pointInRect(b, rect)) return true;
@@ -1507,7 +1541,10 @@ function segmentIntersectsRect(a: LayoutPoint, b: LayoutPoint, rect: LayoutRect)
   );
 }
 
-function selectMxCellElements(document: Document, expression: string): Element[] {
+function selectMxCellElements(
+  document: Document,
+  expression: string,
+): Element[] {
   const selected = xpath.select(expression, document);
   if (!Array.isArray(selected)) return [];
   return selected.filter(
@@ -1597,7 +1634,10 @@ function collectPolylineOverlaps(params: {
   overlapsSample: Array<{ edgeId: string; vertexId: string }>;
   maxSamples: number;
 }): void {
-  if (params.allowedPageIds && !params.allowedPageIds.has(params.polyline.pageId)) {
+  if (
+    params.allowedPageIds &&
+    !params.allowedPageIds.has(params.polyline.pageId)
+  ) {
     return;
   }
 
@@ -1639,7 +1679,10 @@ function computeLayoutOverlaps(params: {
   const maxSamples = 8;
 
   for (const edge of params.edges) {
-    const polyline = buildEdgePolyline({ edge, vertexCentersById: params.vertexCentersById });
+    const polyline = buildEdgePolyline({
+      edge,
+      vertexCentersById: params.vertexCentersById,
+    });
     if (!polyline) continue;
 
     collectPolylineOverlaps({
@@ -1665,13 +1708,19 @@ function runLayoutOverlapCheck(params: {
   overlapsFound: number;
   overlapsSample: Array<{ edgeId: string; vertexId: string }>;
 } {
-  const vertexNodes = selectMxCellElements(params.document, "//mxCell[@vertex='1']");
+  const vertexNodes = selectMxCellElements(
+    params.document,
+    "//mxCell[@vertex='1']",
+  );
   const { verticesByPage, vertexCentersById } = buildLayoutVertexIndex({
     vertices: vertexNodes,
     allowedPageIds: params.allowedPageIds,
   });
 
-  const edgeNodes = selectMxCellElements(params.document, "//mxCell[@edge='1']");
+  const edgeNodes = selectMxCellElements(
+    params.document,
+    "//mxCell[@edge='1']",
+  );
 
   return computeLayoutOverlaps({
     edges: edgeNodes,

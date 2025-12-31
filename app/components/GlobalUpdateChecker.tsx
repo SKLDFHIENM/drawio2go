@@ -81,8 +81,12 @@ const openExternalUrl = async (rawUrl: string): Promise<void> => {
 export default function GlobalUpdateChecker() {
   const { t } = useAppTranslation("settings");
   const { push } = useToast();
-  const { getSetting, subscribeSettingsUpdates, getAgentSettings, saveAgentSettings } =
-    useStorageSettings();
+  const {
+    getSetting,
+    subscribeSettingsUpdates,
+    getAgentSettings,
+    saveAgentSettings,
+  } = useStorageSettings();
 
   const [autoCheckEnabled, setAutoCheckEnabled] = useState<boolean | null>(
     null,

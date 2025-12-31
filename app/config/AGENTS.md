@@ -202,12 +202,12 @@ TypeScript 类型定义与配置读取工具，提供以下能力：
 
 修改配置时需同步检查/更新以下文件：
 
-| 文件                                  | 同步内容                                |
-| ------------------------------------- | --------------------------------------- |
-| `app/config/skill-elements.ts`        | 类型定义（`SkillThemeId` 等）           |
-| `app/types/chat.ts`                   | `SkillKnowledgeId` 类型                 |
+| 文件                                  | 同步内容                                                      |
+| ------------------------------------- | ------------------------------------------------------------- |
+| `app/config/skill-elements.ts`        | 类型定义（`SkillThemeId` 等）                                 |
+| `app/types/chat.ts`                   | `SkillKnowledgeId` 类型                                       |
 | `public/locales/*/chat.json`          | `skill.theme.*` / `skill.colorTheme.*` / `skill.element.*` 键 |
-| `public/images/skill-themes/{id}.svg` | 风格缩略图资源                          |
+| `public/images/skill-themes/{id}.svg` | 风格缩略图资源                                                |
 
 ### 4. 提示词片段编写规范
 

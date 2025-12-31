@@ -269,7 +269,10 @@ export default function AgentSettingsPanel({
               <div
                 className="skill-theme-grid"
                 role="radiogroup"
-                aria-label={t("agent.defaultSettings.themeLabel", "默认风格设置")}
+                aria-label={t(
+                  "agent.defaultSettings.themeLabel",
+                  "默认风格设置",
+                )}
               >
                 {themeOptions.map((theme) => {
                   const isSelected =
@@ -341,7 +344,9 @@ export default function AgentSettingsPanel({
                   aria-label={tChat("skill.colorTheme.label")}
                   className="skill-color-theme-select"
                 >
-                  <Select.Trigger>{tChat(selectedColorTheme.nameKey)}</Select.Trigger>
+                  <Select.Trigger>
+                    {tChat(selectedColorTheme.nameKey)}
+                  </Select.Trigger>
                   <Select.Popover>
                     <ListBox>
                       {colorThemeOptions.map((theme) => (
@@ -375,10 +380,7 @@ export default function AgentSettingsPanel({
               <div className="skill-section">
                 <div className="skill-section__header">
                   <Label className="skill-section__title">
-                    {tChat(
-                      "skill.customThemePrompt.label",
-                      "自定义风格提示词",
-                    )}
+                    {tChat("skill.customThemePrompt.label", "自定义风格提示词")}
                   </Label>
                   <p className="skill-section__hint break-words">
                     {tChat(
@@ -459,10 +461,7 @@ export default function AgentSettingsPanel({
             <div className="skill-section">
               <div className="skill-section__header">
                 <Label className="skill-section__title">
-                  {tChat(
-                    "skill.customKnowledge.label",
-                    "自定义知识内容",
-                  )}
+                  {tChat("skill.customKnowledge.label", "自定义知识内容")}
                 </Label>
                 <p className="skill-section__hint break-words">
                   {tChat(

@@ -422,7 +422,9 @@ export default function SkillButton({
                   isDisabled={isButtonDisabled}
                   className="skill-color-theme-select"
                 >
-                  <Select.Trigger>{t(selectedColorTheme.nameKey)}</Select.Trigger>
+                  <Select.Trigger>
+                    {t(selectedColorTheme.nameKey)}
+                  </Select.Trigger>
                   <Select.Popover>
                     <ListBox>
                       {colorThemeOptions.map((theme) => (

@@ -6,7 +6,10 @@ import {
   getThemeById,
   type SkillColorThemeId,
 } from "@/app/config/skill-elements";
-import { CANVAS_CONTEXT_GUIDE, LAYOUT_CHECK_GUIDE } from "@/app/lib/config-utils";
+import {
+  CANVAS_CONTEXT_GUIDE,
+  LAYOUT_CHECK_GUIDE,
+} from "@/app/lib/config-utils";
 
 /**
  * Check if system prompt contains template variables.
