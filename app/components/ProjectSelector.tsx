@@ -575,7 +575,7 @@ export default function ProjectSelector({
     >
       <div
         className="modal-content"
-        style={{ maxWidth: "800px", minWidth: "600px" }}
+        style={{ width: "min(800px, 90vw)" }}
       >
         {/* 标题 */}
         <div className="flex items-center justify-between mb-4">

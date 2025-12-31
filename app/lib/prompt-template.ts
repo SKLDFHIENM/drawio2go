@@ -90,6 +90,11 @@ export function buildKnowledgePrompt(skillSettings: SkillSettings): string {
     .filter(Boolean)
     .map((item) => item!.promptFragment);
 
+  const customKnowledge = skillSettings.customKnowledgeContent?.trim();
+  if (customKnowledge) {
+    fragments.push(customKnowledge);
+  }
+
   return fragments.join("\n\n");
 }
 

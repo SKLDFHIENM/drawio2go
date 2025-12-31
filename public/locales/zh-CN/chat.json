@@ -172,6 +172,15 @@
       "save": "保存",
       "cancel": "取消"
     },
+    "customThemePrompt": {
+      "label": "自定义风格提示词",
+      "description": "仅在选择「自定义」风格时生效，用于替换 {{theme}} 内容。"
+    },
+    "customKnowledge": {
+      "label": "自定义知识内容",
+      "description": "可选：追加到 {{knowledge}} 的末尾，用于补充你自己的知识或约束。",
+      "placeholder": "例如：请优先使用公司内部术语/命名规范；或补充特定图形库/业务规则等。"
+    },
     "element": {
       "general": "通用",
       "basic": "基础流程",

@@ -172,6 +172,15 @@
       "save": "Save",
       "cancel": "Cancel"
     },
+    "customThemePrompt": {
+      "label": "Custom style prompt",
+      "description": "Only applies when \"Custom\" style is selected. Replaces {{theme}} content."
+    },
+    "customKnowledge": {
+      "label": "Custom knowledge",
+      "description": "Optional: appended to the end of {{knowledge}} to add your own constraints or domain notes.",
+      "placeholder": "e.g. Prefer internal terminology/naming rules, or add domain-specific libraries/business rules, etc."
+    },
     "element": {
       "general": "General",
       "basic": "Basic Flow",

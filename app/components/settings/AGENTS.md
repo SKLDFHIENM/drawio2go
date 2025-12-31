@@ -122,7 +122,10 @@ interface AgentSettingsPanelProps {
 - 内联 TextField + TextArea 直接编辑系统提示词（15 行默认高度）
 - 恢复默认：按钮 + `ConfirmDialog`（variant="danger"），使用 `DEFAULT_SYSTEM_PROMPT`
 - 校验辅助：导出 `isSystemPromptValid` / `getSystemPromptError`，空白时展示 `FieldError`
-- 新对话默认设置：复用 `skill-elements` 配置，支持默认风格与默认知识多选（必选项锁定）
+- 新对话默认设置：复用 `skill-elements` 配置，支持默认风格/颜色主题/默认知识多选（必选项锁定）
+  - **自定义风格提示词**：当选择 `custom` 风格时可编辑 `customThemePrompt`，用于替换 `{{theme}}` 注入内容
+  - **自定义知识内容**：可选 `customKnowledgeContent`，追加到 `{{knowledge}}` 的末尾以补充自定义约束
+  - **知识大小提示**：知识列表展示每项 prompt 片段字节数（TextEncoder 计算），便于控制 token 消耗
 - 由父组件管理保存逻辑与时间戳更新（保持无副作用）
 
 ### VersionSettingsPanel（版本管理）

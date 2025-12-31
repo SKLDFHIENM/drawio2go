@@ -4,12 +4,14 @@
   top: 0;
   right: 0;
   width: var(--sidebar-width);
+  max-width: 100vw;
   height: 100vh;
   background: var(--background, #ffffff);
   border-left: 2px solid var(--primary-color);
   transform: translateX(100%);
   transition: transform 0.3s var(--ease-out-cubic);
   z-index: 100;
+  overflow-x: hidden;
   overflow-y: hidden;
   box-shadow: var(--shadow-sidebar);
 }
@@ -29,12 +31,14 @@
   top: 0;
   right: 0;
   width: var(--sidebar-width);
+  max-width: 100vw;
   height: 100vh;
   background: var(--background, #ffffff);
   border-left: 2px solid var(--primary-color);
   transform: translateX(100%);
   transition: transform 0.3s var(--ease-out-cubic);
   z-index: 100;
+  overflow-x: hidden;
   overflow-y: auto;
   box-shadow: var(--shadow-sidebar);
 }
@@ -285,6 +289,8 @@
 .settings-content {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
+  min-width: 0;
   padding: var(--spacing-3);
   padding-bottom: calc(var(--spacing-xl) + var(--spacing-sm));
 }

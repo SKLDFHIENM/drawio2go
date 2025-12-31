@@ -389,6 +389,7 @@ export const DEFAULT_SKILL_SETTINGS: SkillSettings = {
   selectedTheme: "modern",
   selectedKnowledge: ["general"],
   customThemePrompt: "",
+  customKnowledgeContent: "",
   selectedColorTheme: "default",
 };
 
@@ -462,6 +463,11 @@ const normalizeSkillSettings = (value: unknown): SkillSettings | undefined => {
       ? record.customThemePrompt
       : DEFAULT_SKILL_SETTINGS.customThemePrompt;
 
+  const customKnowledgeContent =
+    typeof record.customKnowledgeContent === "string"
+      ? record.customKnowledgeContent
+      : DEFAULT_SKILL_SETTINGS.customKnowledgeContent;
+
   const selectedColorTheme =
     typeof record.selectedColorTheme === "string" &&
     record.selectedColorTheme.trim()
@@ -475,6 +481,7 @@ const normalizeSkillSettings = (value: unknown): SkillSettings | undefined => {
         ? selectedKnowledge
         : DEFAULT_SKILL_SETTINGS.selectedKnowledge,
     customThemePrompt,
+    customKnowledgeContent,
     selectedColorTheme,
   };
 };
