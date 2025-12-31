@@ -127,6 +127,11 @@ export type DrawioReadResult =
 
 export type DrawioEditBatchResult = ToolResult<{
   operations_applied: number;
+  warnings?: string[];
+  layout_check?: {
+    overlaps_found: number;
+    overlaps_sample: Array<{ edgeId: string; vertexId: string }>;
+  };
 }>;
 
 /**

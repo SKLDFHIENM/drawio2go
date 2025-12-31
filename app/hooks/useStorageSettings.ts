@@ -142,6 +142,12 @@ const normalizeSkillSettings = (parsed: unknown): SkillSettings => {
       ? record.customThemePrompt
       : DEFAULT_SKILL_SETTINGS.customThemePrompt;
 
+  const selectedColorTheme =
+    typeof record.selectedColorTheme === "string" &&
+    record.selectedColorTheme.trim()
+      ? record.selectedColorTheme
+      : DEFAULT_SKILL_SETTINGS.selectedColorTheme;
+
   return {
     selectedTheme,
     selectedKnowledge:
@@ -149,6 +155,7 @@ const normalizeSkillSettings = (parsed: unknown): SkillSettings => {
         ? selectedKnowledge
         : DEFAULT_SKILL_SETTINGS.selectedKnowledge,
     customThemePrompt,
+    selectedColorTheme,
   };
 };
 

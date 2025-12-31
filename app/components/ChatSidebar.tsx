@@ -485,6 +485,8 @@ export default function ChatSidebar({
   const [input, setInput] = useState("");
   const [isCanvasContextEnabled, setIsCanvasContextEnabled] = useState(true);
   const isCanvasContextEnabledRef = useRef(false);
+  const [isLayoutCheckEnabled, setIsLayoutCheckEnabled] = useState(true);
+  const isLayoutCheckEnabledRef = useRef(false);
   const [pageSelectorXml, setPageSelectorXml] = useState<string | null>(null);
   const [expandedToolCalls, setExpandedToolCalls] = useState<
     Record<string, boolean>
@@ -645,6 +647,10 @@ export default function ChatSidebar({
     isCanvasContextEnabledRef.current = isCanvasContextEnabled;
   }, [isCanvasContextEnabled]);
 
+  useEffect(() => {
+    isLayoutCheckEnabledRef.current = isLayoutCheckEnabled;
+  }, [isLayoutCheckEnabled]);
+
   const isMcpExposureOverlayOpen =
     isOpen &&
     Boolean(mcpOverlayPortalContainer) &&
@@ -675,8 +681,12 @@ export default function ChatSidebar({
     [mcpServer.isLoading, mcpServer.running],
   );
 
-  const handleCanvasContextToggle = useCallback(() => {
-    setIsCanvasContextEnabled((prev) => !prev);
+  const handleCanvasContextChange = useCallback((enabled: boolean) => {
+    setIsCanvasContextEnabled(enabled);
+  }, []);
+
+  const handleLayoutCheckChange = useCallback((enabled: boolean) => {
+    setIsLayoutCheckEnabled(enabled);
   }, []);
 
   const handleConfirmMcpConfig = useCallback(
@@ -991,6 +1001,7 @@ export default function ChatSidebar({
           : Array.from(selectedPageIdsRef.current),
         isMcpContext: false,
       }),
+      getLayoutCheckEnabled: () => isLayoutCheckEnabledRef.current,
     };
   }, [editorRef, handleFrontendToolVersionSnapshot]);
 
@@ -1008,6 +1019,7 @@ export default function ChatSidebar({
         selectedPageIds: [],
         isMcpContext: true,
       }),
+      getLayoutCheckEnabled: () => isLayoutCheckEnabledRef.current,
     };
   }, [editorRef, handleFrontendToolVersionSnapshot]);
 
@@ -1221,10 +1233,11 @@ export default function ChatSidebar({
           llmConfigRef.current ??
           DEFAULT_LLM_CONFIG;
 
-        // 将 isCanvasContextEnabled 状态注入到 config 中，供 API 路由使用
+        // 将画布增强开关状态注入到 config 中，供 API 路由使用（提示词模板变量）
         const config = {
           ...baseConfig,
           isCanvasContextEnabled: isCanvasContextEnabledRef.current,
+          isLayoutCheckEnabled: isLayoutCheckEnabledRef.current,
         };
 
         // 确保每次请求都包含 conversationId 和 projectUuid
@@ -2257,7 +2270,9 @@ export default function ChatSidebar({
                   modelLabel: selectedModelLabel,
                 }}
                 isCanvasContextEnabled={isCanvasContextEnabled}
-                onCanvasContextToggle={handleCanvasContextToggle}
+                onCanvasContextChange={handleCanvasContextChange}
+                isLayoutCheckEnabled={isLayoutCheckEnabled}
+                onLayoutCheckChange={handleLayoutCheckChange}
                 pageSelector={{
                   pages: pageSelection.pages,
                   selectedPageIds: pageSelection.selectedPageIds,
