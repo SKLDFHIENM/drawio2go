@@ -183,12 +183,11 @@ export const DEFAULT_LLM_CONFIG: LLMConfig = {
 };
 ```
 
-### URL 规范化
+### URL 处理
 
 ```typescript
-normalizeApiUrl(url: string): string
-// - 移除尾部斜杠
-// - 自动添加 /v1（如无版本号）
+getDefaultApiUrlForProvider(providerType: ProviderType): string
+// - 获取默认 baseURL（未提供 apiUrl 时使用；不会改写用户输入的 URL）
 ```
 
 ### 配置规范化

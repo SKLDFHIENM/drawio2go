@@ -34,7 +34,6 @@ import {
   type UpdateModelInput,
   useStorageSettings,
 } from "@/app/hooks/useStorageSettings";
-import { normalizeProviderApiUrl } from "@/app/lib/config-utils";
 import { getDefaultCapabilities } from "@/app/lib/model-capabilities";
 import { useToast } from "@/app/components/toast";
 import type { ModelCapabilities, ModelConfig } from "@/app/types/chat";
@@ -354,10 +353,7 @@ export function ModelEditDialog({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          apiUrl: normalizeProviderApiUrl(
-            provider.providerType,
-            provider.apiUrl,
-          ),
+          apiUrl: provider.apiUrl,
           apiKey: provider.apiKey,
           providerType: provider.providerType,
           modelName: trimmedModelName,
