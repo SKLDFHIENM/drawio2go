@@ -31,10 +31,7 @@ import {
   type CreateProviderInput,
   useStorageSettings,
 } from "@/app/hooks/useStorageSettings";
-import {
-  getDefaultApiUrlForProvider,
-  normalizeProviderApiUrl,
-} from "@/app/lib/config-utils";
+import { getDefaultApiUrlForProvider } from "@/app/lib/config-utils";
 import { extractSingleKey, normalizeSelection } from "@/app/lib/select-utils";
 import { useToast } from "@/app/components/toast";
 import type { ProviderConfig, ProviderType } from "@/app/types/chat";
@@ -57,6 +54,15 @@ const defaultForm: CreateProviderInput = {
 };
 
 type EditableFieldKey = "displayName" | "providerType" | "apiUrl" | "apiKey";
+
+const normalizeApiUrlForCompare = (value: string): string => {
+  const trimmed = value.trim();
+  let end = trimmed.length;
+  while (end > 0 && trimmed[end - 1] === "/") {
+    end -= 1;
+  }
+  return trimmed.slice(0, end);
+};
 
 export function ProviderEditDialog({
   isOpen,
@@ -111,15 +117,17 @@ export function ProviderEditDialog({
       setFormData((prev) => {
         const next = { ...prev, [field]: value };
 
-        // 当供应商类型变化时，自动更新 apiUrl（如果是默认 URL 或为空）
+        // 当供应商类型变化时，自动更新 apiUrl（仅当此前仍为默认值或为空）
         if (field === "providerType") {
           const newType = value as ProviderType;
-          const currentUrl = prev.apiUrl.trim();
-          const oldDefaultUrl = getDefaultApiUrlForProvider(prev.providerType);
+          const currentUrl = normalizeApiUrlForCompare(prev.apiUrl);
+          const previousDefaultUrl = normalizeApiUrlForCompare(
+            getDefaultApiUrlForProvider(prev.providerType),
+          );
           const newDefaultUrl = getDefaultApiUrlForProvider(newType);
 
-          // 如果当前 URL 为空或等于旧供应商的默认 URL，则自动填入新供应商的默认 URL
-          if (!currentUrl || currentUrl === oldDefaultUrl) {
+          // 仅当当前 URL 为空，或仍等于“旧类型默认 URL”时，才自动替换为新默认值
+          if (!currentUrl || currentUrl === previousDefaultUrl) {
             next.apiUrl = newDefaultUrl;
           }
         }
@@ -177,7 +185,7 @@ export function ProviderEditDialog({
       const payload: CreateProviderInput = {
         displayName: formData.displayName.trim(),
         providerType: formData.providerType,
-        apiUrl: normalizeProviderApiUrl(formData.providerType, formData.apiUrl),
+        apiUrl: formData.apiUrl,
         apiKey: formData.apiKey,
       };
 
@@ -335,7 +343,7 @@ export function ProviderEditDialog({
                     }
                     placeholder={t("models.form.apiUrl.placeholder")}
                   />
-                  <Description>
+                  <Description className="whitespace-pre-line">
                     {t("models.form.apiUrl.description")}
                   </Description>
                   {errors.apiUrl ? (

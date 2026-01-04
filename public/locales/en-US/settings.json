@@ -240,7 +240,7 @@
       "apiUrl": {
         "label": "API URL",
         "placeholder": "https://api.openai.com/v1",
-        "description": "The base URL for the API. Should include /v1 path.",
+        "description": "The API base URL used to build request endpoints.\nExamples:\nOpenAI: https://api.openai.com/v1\nGemini: https://generativelanguage.googleapis.com/v1beta\nAnthropic: https://api.anthropic.com\nDeepSeek: https://api.deepseek.com\nWhen switching type, the URL auto-updates only if it was still the default.",
         "required": "API URL is required",
         "invalid": "Invalid URL format",
         "invalidProtocol": "URL must use HTTP or HTTPS"

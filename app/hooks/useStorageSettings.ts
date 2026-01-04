@@ -24,7 +24,6 @@ import {
   STORAGE_KEY_LLM_PROVIDERS,
   isDrawioTheme,
   normalizeLLMConfig,
-  stripTrailingSlashes,
 } from "@/app/lib/config-utils";
 import { getDefaultCapabilities } from "@/app/lib/model-capabilities";
 import { createLogger } from "@/app/lib/logger";
@@ -89,7 +88,7 @@ const normalizeGeneralSettings = (parsed: unknown): GeneralSettings | null => {
     } catch {
       return undefined;
     }
-    return stripTrailingSlashes(trimmed);
+    return trimmed;
   };
 
   const normalizeDrawioIdentifier = (value: unknown): string | undefined => {

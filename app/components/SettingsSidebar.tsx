@@ -13,7 +13,6 @@ import {
   DEFAULT_DRAWIO_BASE_URL,
   DEFAULT_DRAWIO_IDENTIFIER,
   DEFAULT_DRAWIO_THEME,
-  stripTrailingSlashes,
   type DrawioTheme,
 } from "@/app/lib/config-utils";
 import { debounce } from "@/app/lib/utils";
@@ -164,7 +163,7 @@ export default function SettingsSidebar({
 
   const saveDrawioBaseUrlNow = useCallback(
     async (url: string) => {
-      const trimmed = stripTrailingSlashes(url.trim());
+      const trimmed = url.trim();
       if (!trimmed) return;
 
       try {

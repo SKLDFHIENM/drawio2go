@@ -156,10 +156,7 @@ export function generateSmartDiffSvg(
 **核心函数**：
 
 - `isProviderType()`: 验证 provider 合法性（支持：openai-reasoning, openai-compatible, deepseek-native, anthropic, gemini）
-- `normalizeApiUrl()`: 规范化 API URL（移除尾斜杠 + 自动补 /v1）
-- `normalizeAnthropicApiUrl()`: Anthropic 专用规范化（不自动补 /v1，处理官方 URL 特殊情况）
-- `normalizeGeminiApiUrl()`: Gemini 专用规范化（保持用户配置）
-- `normalizeProviderApiUrl()`: 按供应商类型选择规范化策略
+- `normalizeProviderApiUrl()`: 保持用户输入的原始 URL（缺省时使用 fallback/默认值）
 - `getDefaultApiUrlForProvider()`: 获取指定供应商的默认 API URL
 - `normalizeLLMConfig()`: 规范化运行时 LLM 配置（合并默认值、类型校验、能力回退、技能配置）
 - `initializeDefaultLLMConfig()`: 兼容性工具（仅清理旧键，不再写入默认 provider/model）

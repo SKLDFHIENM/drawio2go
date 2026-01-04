@@ -200,14 +200,6 @@ export const DEFAULT_GEMINI_API_URL =
 // 通用默认值（用于 OpenAI 兼容类型）
 export const DEFAULT_API_URL = DEFAULT_OPENAI_API_URL;
 
-export function stripTrailingSlashes(input: string): string {
-  let end = input.length;
-  while (end > 0 && input.charCodeAt(end - 1) === 47) {
-    end -= 1;
-  }
-  return end === input.length ? input : input.slice(0, end);
-}
-
 export function isProviderType(value: unknown): value is ProviderType {
   return (
     value === "openai-reasoning" ||
@@ -217,90 +209,6 @@ export function isProviderType(value: unknown): value is ProviderType {
     value === "gemini"
   );
 }
-
-/**
- * 规范化 API URL
- * - 移除尾部斜杠
- * - 自动添加 /v1 后缀（如果不存在版本号）
- */
-export const normalizeApiUrl = (
-  value?: string,
-  fallback: string = DEFAULT_API_URL,
-): string => {
-  if (!value) {
-    return fallback;
-  }
-
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return fallback;
-  }
-
-  const withoutTrailingSlash = stripTrailingSlashes(trimmed);
-
-  if (/\/v\d+($|\/)/i.test(withoutTrailingSlash)) {
-    return withoutTrailingSlash;
-  }
-
-  return `${withoutTrailingSlash}/v1`;
-};
-
-/**
- * Anthropic API 的 baseURL 规范化
- * - 移除尾部斜杠
- * - 不自动补 /v1（@ai-sdk/anthropic 以 baseURL 为根路径）
- * - 若 host 为 api.anthropic.com 且路径为 /v1，则自动去掉 /v1（避免重复 /v1）
- */
-export const normalizeAnthropicApiUrl = (
-  value?: string,
-  fallback: string = DEFAULT_ANTHROPIC_API_URL,
-): string => {
-  if (!value) {
-    return fallback;
-  }
-
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return fallback;
-  }
-
-  const withoutTrailingSlash = stripTrailingSlashes(trimmed);
-
-  try {
-    const parsed = new URL(withoutTrailingSlash);
-    const normalizedPath = stripTrailingSlashes(parsed.pathname).toLowerCase();
-
-    if (parsed.hostname === "api.anthropic.com" && normalizedPath === "/v1") {
-      parsed.pathname = "";
-      return stripTrailingSlashes(parsed.toString());
-    }
-  } catch {
-    // ignore invalid url, caller may validate separately
-  }
-
-  return withoutTrailingSlash;
-};
-
-/**
- * Gemini API 的 baseURL 规范化
- * - 移除尾部斜杠
- * - 不自动补 /v1（保持用户配置）
- */
-export const normalizeGeminiApiUrl = (
-  value?: string,
-  fallback: string = DEFAULT_GEMINI_API_URL,
-): string => {
-  if (!value) {
-    return fallback;
-  }
-
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return fallback;
-  }
-
-  return stripTrailingSlashes(trimmed);
-};
 
 /**
  * 获取指定供应商类型的默认 API URL
@@ -327,14 +235,8 @@ export const normalizeProviderApiUrl = (
   value?: string,
   fallback?: string,
 ): string => {
-  const defaultUrl = fallback ?? getDefaultApiUrlForProvider(providerType);
-  if (providerType === "gemini") {
-    return normalizeGeminiApiUrl(value, defaultUrl);
-  }
-  if (providerType === "anthropic") {
-    return normalizeAnthropicApiUrl(value, defaultUrl);
-  }
-  return normalizeApiUrl(value, defaultUrl);
+  if (typeof value === "string") return value;
+  return fallback ?? getDefaultApiUrlForProvider(providerType);
 };
 
 export const STORAGE_KEY_LLM_PROVIDERS = "settings.llm.providers";
@@ -496,7 +398,7 @@ const normalizeSkillSettings = (value: unknown): SkillSettings | undefined => {
 /**
  * 规范化运行时 LLM 配置
  * - 合并默认值
- * - 规范化 API URL（移除尾斜杠 + 自动补 /v1）
+ * - 保持 API URL 原始值（完全尊重用户输入）
  * - 确保类型安全（数字/字符串校验、能力回退）
  */
 export function normalizeLLMConfig(
@@ -508,10 +410,7 @@ export function normalizeLLMConfig(
     ? safeConfig.providerType
     : DEFAULT_LLM_CONFIG.providerType;
 
-  const apiUrl =
-    typeof safeConfig.apiUrl === "string"
-      ? normalizeProviderApiUrl(providerType, safeConfig.apiUrl)
-      : normalizeProviderApiUrl(providerType, undefined);
+  const apiUrl = normalizeProviderApiUrl(providerType, safeConfig.apiUrl);
 
   const modelName =
     typeof safeConfig.modelName === "string" && safeConfig.modelName.trim()
