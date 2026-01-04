@@ -55,6 +55,15 @@ const defaultForm: CreateProviderInput = {
 
 type EditableFieldKey = "displayName" | "providerType" | "apiUrl" | "apiKey";
 
+const normalizeApiUrlForCompare = (value: string): string => {
+  const trimmed = value.trim();
+  let end = trimmed.length;
+  while (end > 0 && trimmed[end - 1] === "/") {
+    end -= 1;
+  }
+  return trimmed.slice(0, end);
+};
+
 export function ProviderEditDialog({
   isOpen,
   provider,
@@ -108,14 +117,17 @@ export function ProviderEditDialog({
       setFormData((prev) => {
         const next = { ...prev, [field]: value };
 
-        // 当供应商类型变化时，自动更新 apiUrl（仅当为空时）
+        // 当供应商类型变化时，自动更新 apiUrl（仅当此前仍为默认值或为空）
         if (field === "providerType") {
           const newType = value as ProviderType;
-          const currentUrl = prev.apiUrl.trim();
+          const currentUrl = normalizeApiUrlForCompare(prev.apiUrl);
+          const previousDefaultUrl = normalizeApiUrlForCompare(
+            getDefaultApiUrlForProvider(prev.providerType),
+          );
           const newDefaultUrl = getDefaultApiUrlForProvider(newType);
 
-          // 仅当当前 URL 为空时，才自动填入新供应商的默认 URL
-          if (!currentUrl) {
+          // 仅当当前 URL 为空，或仍等于“旧类型默认 URL”时，才自动替换为新默认值
+          if (!currentUrl || currentUrl === previousDefaultUrl) {
             next.apiUrl = newDefaultUrl;
           }
         }
@@ -331,7 +343,7 @@ export function ProviderEditDialog({
                     }
                     placeholder={t("models.form.apiUrl.placeholder")}
                   />
-                  <Description>
+                  <Description className="whitespace-pre-line">
                     {t("models.form.apiUrl.description")}
                   </Description>
                   {errors.apiUrl ? (

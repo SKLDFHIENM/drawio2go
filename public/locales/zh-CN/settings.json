@@ -240,7 +240,7 @@
       "apiUrl": {
         "label": "API 地址",
         "placeholder": "https://api.openai.com/v1",
-        "description": "API 基础地址，需包含 /v1 路径",
+        "description": "API 基础地址（Base URL），用于拼接具体接口路径。\n示例：\nOpenAI：https://api.openai.com/v1\nGemini：https://generativelanguage.googleapis.com/v1beta\nAnthropic：https://api.anthropic.com\nDeepSeek：https://api.deepseek.com\n切换类型时，若当前仍为默认地址会自动替换。",
         "required": "API 地址为必填项",
         "invalid": "URL 格式不正确",
         "invalidProtocol": "URL 必须使用 HTTP 或 HTTPS"
